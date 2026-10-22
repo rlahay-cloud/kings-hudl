@@ -1,6 +1,6 @@
-# Rink Stats
+# Kings HUDL
 
-A season stats website for the team. Open it on a phone or computer to see the record, leaders, player cards, game box scores, goalies and video moments.
+A season stats website for the team, called Kings HUDL. Open it on a phone or computer to see the record, leaders, player cards, game box scores, goalies and video moments.
 
 ## After each game
 
@@ -25,5 +25,6 @@ Player names come from `roster.json`. Edit it to add or fix names. Goalies can g
 ## Notes
 
 - Stats are added up from the game files, so the season only counts games that were uploaded.
+- The summary lists every goal with the period, time, who scored and who assisted, so the game page shows a goals list. Streamn keeps the last 16 goals of a game.
 - Two games on the same date share one video link and one timestamps file.
 - Add `?sample` to the site address to preview it with made up data.
