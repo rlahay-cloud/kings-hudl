@@ -641,8 +641,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       '<p class="note" id="clNote" aria-live="polite">Load a video to start.</p>' +
       '<details><summary class="note">Settings</summary><div class="fld"><label for="clLead">Save each moment this many seconds earlier</label><select id="clLead"><option>0</option><option>5</option><option selected>8</option><option>10</option><option>15</option></select></div></details></div>' +
       "<h2>Marked highlights</h2><div class='card' id='clList'></div>" +
-      '<h2>Share with the coaches</h2><div class="card"><ol class="steps"><li>Coaches: tap <b>Share to Kings HUDL</b> and pick Messages. That is all.</li><li>Erica: on GitHub, open the games folder and upload the file, named like <b>clips_' + date + '.txt</b>.</li><li>Then everyone sees the highlights on the game page, with links to the video.</li></ol>' +
-      '<div class="seg"><button id="clSend">Share to Kings HUDL</button><button id="clSave">Save file</button><button id="clCopy">Copy text</button></div><p class="note" id="clShare" aria-live="polite"></p></div>';
+      '<div class="seg" style="margin-top:12px"><button class="btn" id="clSend" style="width:100%">Share to Kings HUDL</button></div><p class="note" id="clShare" aria-live="polite"></p>';
   }
   function bindClips(dateParam) {
     var dates = dateChoices(), date = $("clDate").value, list = getClips(date), cur = null, focusIdx = -1;
@@ -716,8 +715,6 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       if (navigator.share) { navigator.share({title: name, text: text}).then(function () { $("clShare").textContent = "Sent."; }, function () { $("clShare").textContent = "Cancelled."; }); return; }
       plainCopy(text, $("clShare"));
     });
-    $("clSave").addEventListener("click", function () { if (!list.length) { $("clShare").textContent = "Nothing to save yet."; return; } saveFile("clips_" + date + ".txt", fmtClips(list), $("clShare")); });
-    $("clCopy").addEventListener("click", function () { if (!list.length) { $("clShare").textContent = "Nothing to copy yet."; return; } plainCopy(fmtClips(list), $("clShare")); });
   }
 
   // ---------- shot map ----------
