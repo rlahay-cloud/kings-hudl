@@ -87,6 +87,32 @@ svg .ax { stroke: var(--line); stroke-width: 1; }
 .leg { display: flex; gap: 14px; font-size: 13px; color: var(--muted); margin-top: 6px; flex-wrap: wrap; }
 .leg i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; }
 .note { color: var(--muted); font-size: 14px; }
+.av { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; background: var(--panel2); border: 2px solid var(--line); flex: none; display: inline-flex; align-items: center; justify-content: center; font-family: var(--display); font-weight: 700; color: var(--accent); font-size: 22px; }
+.av.sm { width: 30px; height: 30px; font-size: 13px; border-width: 1px; }
+.av.lg { width: 96px; height: 96px; font-size: 36px; }
+.phead { display: flex; align-items: center; gap: 14px; }
+.pcard .top { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.lead .who { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+.seg { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 10px; }
+.seg button, .chip { min-height: 44px; min-width: 44px; padding: 6px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel2); color: var(--fg); font-family: var(--display); font-weight: 600; letter-spacing: .06em; font-size: 17px; }
+.seg button[aria-pressed="true"], .chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.good { background: var(--good); color: #02170d; } .btn.bad { background: var(--blue); color: #021226; }
+.btn[disabled] { opacity: .4; cursor: default; }
+.fld { display: flex; flex-direction: column; gap: 4px; margin: 8px 0; }
+.fld label { color: var(--muted); font-size: 13px; font-family: var(--display); letter-spacing: .08em; text-transform: uppercase; }
+input[type=text], input[type=url], input[type=date], select, textarea { min-height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel2); color: var(--fg); padding: 8px 10px; font: inherit; width: 100%; }
+.rinkwrap { max-width: 640px; margin: 0 auto; touch-action: manipulation; }
+.rinkwrap svg { display: block; width: 100%; height: auto; border-radius: 14px; background: #dfeaf5; }
+.rinkwrap svg text { fill: #5b6b86; font-size: 3.2px; }
+.filters { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 12px; aspect-ratio: 16 / 9; display: block; }
+.clip { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; padding: 10px 0; border-bottom: 1px solid var(--line); align-items: center; }
+.clip .tm { font-family: var(--display); font-weight: 700; font-size: 20px; color: var(--accent); background: none; border: 0; padding: 0; text-align: left; }
+.clip .f { grid-column: 1 / -1; display: grid; grid-template-columns: 130px 1fr auto; gap: 6px; }
+.clip .f input.pl { grid-column: 1 / 3; }
+@media (max-width: 520px) { .clip .f { grid-template-columns: 1fr; } .clip .f input.pl { grid-column: auto; } }
+.stickybar { position: sticky; bottom: 0; z-index: 3; justify-content: center; margin: 12px -14px 0; padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); background: var(--panel); border-top: 1px solid var(--line); }
+.steps { margin: 6px 0 0; padding-left: 20px; } .steps li { margin: 4px 0; }
 @media (max-width: 520px) { .score .s { font-size: 52px; } th, td { padding: 8px 6px; } }
 @media (prefers-reduced-motion: no-preference) { .pcard { transition: border-color .15s; } }
 </style>
@@ -103,7 +129,7 @@ svg .ax { stroke: var(--line); stroke-width: 1; }
 (function () {
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
-  var D = {games: [], roster: {}, home: "", videos: {}, events: {}, sample: false, error: ""};
+  var D = {games: [], roster: {}, home: "", videos: {}, events: {}, clips: {}, shots: {}, sample: false, error: ""};
 
   // ---------- helpers ----------
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return {"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]; }); }
@@ -116,6 +142,17 @@ svg .ax { stroke: var(--line); stroke-width: 1; }
     return names[+m[2] - 1] + " " + (+m[3]);
   }
   function pname(n) { return D.roster[n] || ""; }
+  // Player photos live in photos/<number>.jpg (or .png, .webp). Without one, the number shows.
+  window.__av = function (img) {
+    var exts = ["jpg", "png", "webp"], i = +img.getAttribute("data-i") || 0;
+    if (i + 1 < exts.length) { img.setAttribute("data-i", i + 1); img.src = "photos/" + img.getAttribute("data-n") + "." + exts[i + 1]; return; }
+    var d = document.createElement("span"); d.className = img.className; d.textContent = "#" + img.getAttribute("data-n");
+    d.setAttribute("aria-hidden", "true");
+    img.replaceWith(d);
+  };
+  function avatar(n, size) {
+    return '<img class="av ' + (size || "") + '" data-n="' + n + '" data-i="0" src="photos/' + n + '.jpg" alt="" loading="lazy" onerror="__av(this)">';
+  }
   function label(n) { return "#" + n + (pname(n) ? " " + pname(n) : ""); }
   function sum(a, f) { return a.reduce(function (t, x) { return t + f(x); }, 0); }
   function svp(sa, ga) { return sa > 0 ? (sa - ga) / sa : null; }
@@ -196,6 +233,8 @@ svg .ax { stroke: var(--line); stroke-width: 1; }
     var gamesP = listGameFiles().then(function (names) {
       var sums = names.filter(function (n) { return /^game_summary_\d{4}-\d{2}-\d{2}_\d{6}\.txt$/.test(n); }).sort();
       var evs = names.filter(function (n) { return /^timestamps_\d{4}-\d{2}-\d{2}\.txt$/.test(n); });
+      var clipFiles = names.filter(function (n) { return /^clips_\d{4}-\d{2}-\d{2}\.txt$/.test(n); });
+      var shotFiles = names.filter(function (n) { return /^shots_\d{4}-\d{2}-\d{2}\.txt$/.test(n); });
       var jobs = sums.map(function (n) {
         var d = /(\d{4}-\d{2}-\d{2})_(\d{6})/.exec(n);
         return getText("games/" + n).then(function (t) { var g = parseSummary(t, d[1] + "_" + d[2], d[1]); if (g) D.games.push(g); }).catch(function () {});
@@ -203,6 +242,14 @@ svg .ax { stroke: var(--line); stroke-width: 1; }
       evs.forEach(function (n) {
         var d = /(\d{4}-\d{2}-\d{2})/.exec(n)[1];
         jobs.push(getText("games/" + n).then(function (t) { D.events[d] = parseEvents(t); }).catch(function () {}));
+      });
+      clipFiles.forEach(function (n) {
+        var d = /(\d{4}-\d{2}-\d{2})/.exec(n)[1];
+        jobs.push(getText("games/" + n).then(function (t) { D.clips[d] = parseClips(t); }).catch(function () {}));
+      });
+      shotFiles.forEach(function (n) {
+        var d = /(\d{4}-\d{2}-\d{2})/.exec(n)[1];
+        jobs.push(getText("games/" + n).then(function (t) { D.shots[d] = parseShots(t); }).catch(function () {}));
       });
       return Promise.all(jobs);
     });
@@ -243,6 +290,15 @@ svg .ax { stroke: var(--line); stroke-width: 1; }
       D.events[g.date] = [{sec: 600, label: "Goal: " + g.home}, {sec: 1500, label: "Penalty: " + g.home + " #" + nums[0]}, {sec: 2400, label: "Goal: " + g.away}];
     });
     D.videos["2026-10-17"] = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
+    D.games.forEach(function (g) {
+      var l = [], n = g.hShots;
+      for (var i = 0; i < n; i++) {
+        var who = nums[Math.floor(rnd() * nums.length)];
+        l.push({p: 1 + Math.floor(rnd() * 3), x: Math.min(.98, .55 + rnd() * .4), y: Math.min(.95, Math.max(.05, .5 + (rnd() - .5) * .7)), n: who, r: i < g.hs ? "G" : "S", t: "H"});
+      }
+      D.shots[g.date] = l;
+    });
+    D.clips["2026-10-17"] = [{sec: 612, tag: "Goal", players: [nums[0]], label: "Nice shot from the slot"}, {sec: 1450, tag: "To fix", players: [], label: "Late on the back check"}];
     D.sample = true;
   }
 
@@ -323,7 +379,7 @@ svg .ax { stroke: var(--line); stroke-width: 1; }
   function leaderboard(title, rows, fmt, link) {
     var top = rows.slice(0, 5), max = Math.max.apply(null, [1].concat(top.map(function (r) { return Math.abs(r.v); })));
     return '<div class="card"><h3>' + title + "</h3>" + (top.length ? top.map(function (r) {
-      return '<a class="lead" href="#/player/' + r.n + '"><div style="flex:1;min-width:0"><div>' + esc(label(r.n)) + '</div><div class="bar" style="width:' + Math.max(4, Math.abs(r.v) * 100 / max) + '%"></div></div><span class="v">' + fmt(r.v) + "</span></a>";
+      return '<a class="lead" href="#/player/' + r.n + '"><div class="who">' + avatar(r.n, "sm") + '<div style="flex:1;min-width:0"><div>' + esc(label(r.n)) + '</div><div class="bar" style="width:' + Math.max(4, Math.abs(r.v) * 100 / max) + '%"></div></div></div><span class="v">' + fmt(r.v) + "</span></a>";
     }).join("") : '<p class="note">No data yet.</p>') + "</div>";
   }
   function insights(P, G, t) {
@@ -392,7 +448,7 @@ svg .ax { stroke: var(--line); stroke-width: 1; }
         return '<tr class="click" onclick="location.hash=\'#/player/' + p.n + '\'"><td>' + esc(label(p.n)) + "</td><td>" + p.gp + "</td><td>" + p.g + "</td><td>" + p.a + "</td><td><b>" + p.p + "</b></td><td>" + p.ppg.toFixed(2) + '</td><td class="' + pmCls(p.pm) + '">' + pmText(p.pm) + "</td><td>" + p.sog + "</td><td>" + (p.shp === null ? "-" : Math.round(p.shp * 100) + "%") + "</td><td>" + p.pim + "</td></tr>";
       }).join("") + "</tbody></table></div>";
     h += "<h2>Player cards</h2><div class='pcards'>" + P.map(function (p) {
-      return '<a class="pcard" href="#/player/' + p.n + '"><div class="n">#' + p.n + '</div><div class="nm">' + esc(pname(p.n) || "Player") + '</div><div class="st"><span><b>' + p.g + "</b>G</span><span><b>" + p.a + "</b>A</span><span><b>" + p.p + "</b>P</span></div></a>";
+      return '<a class="pcard" href="#/player/' + p.n + '"><div class="top">' + avatar(p.n) + '<div class="n">#' + p.n + '</div></div><div class="nm">' + esc(pname(p.n) || "Player") + '</div><div class="st"><span><b>' + p.g + "</b>G</span><span><b>" + p.a + "</b>A</span><span><b>" + p.p + "</b>P</span></div></a>";
     }).join("") + "</div>";
     return h;
   }
@@ -402,7 +458,7 @@ svg .ax { stroke: var(--line); stroke-width: 1; }
     if (!p) return '<a class="back" href="#/players">&larr; All players</a><div class="card empty">No games found for #' + n + ".</div>";
     var labels = p.log.map(function (l) { return fmtDate(l.game.date); });
     var cum = 0, cumPm = 0;
-    var h = '<a class="back" href="#/players">&larr; All players</a><h2>' + esc(label(n)) + "<small>" + p.gp + " games played</small></h2>";
+    var h = '<a class="back" href="#/players">&larr; All players</a><div class="phead">' + avatar(n, "lg") + "<h2 style='margin:18px 0 10px'>" + esc(label(n)) + "<small>" + p.gp + " games played</small></h2></div>";
     h += '<div class="kpis">' + kpi(p.g, "Goals") + kpi(p.a, "Assists") + kpi(p.p, "Points") + kpi('<span class="' + pmCls(p.pm) + '">' + pmText(p.pm) + "</span>", "Plus / minus") + kpi(p.sog, "Shots") + kpi(p.shp === null ? "-" : Math.round(p.shp * 100) + "%", "Shooting %") + kpi(p.pim, "Penalty min") + kpi(p.ppg.toFixed(2), "Points / game") + "</div>";
     h += "<h2>Game by game</h2><div class='row g2'>" +
       "<div class='card'><h3>Points per game</h3>" + barChart(p.log.map(function (l) { return l.s.p; }), labels, {label: "Points per game"}) + "</div>" +
@@ -454,7 +510,7 @@ svg .ax { stroke: var(--line); stroke-width: 1; }
     if (g.dnp.length) h += '<p class="note">Did not play: ' + g.dnp.map(function (n) { return esc(label(n)); }).join(", ") + "</p>";
     if (g.goalies.length) h += "<h2>Goalies</h2><div class='card scroll'><table><thead><tr><th>Goalie</th><th>SA</th><th>GA</th><th>SV%</th></tr></thead><tbody>" +
       g.goalies.map(function (x) { return "<tr><td>" + esc(label(x.n)) + "</td><td>" + x.sa + "</td><td>" + x.ga + "</td><td>" + svText(svp(x.sa, x.ga)) + "</td></tr>"; }).join("") + "</tbody></table></div>";
-    h += videoBlock(g);
+    h += videoBlock(g) + clipsBlock(g.date, D.videos[g.date]);
     return h;
   }
   function videoBlock(g) {
@@ -487,8 +543,290 @@ svg .ax { stroke: var(--line); stroke-width: 1; }
       (D.error ? '<p class="note">' + esc(D.error) + "</p>" : "") + '<button class="btn" id="sampleBtn">Preview with sample data</button></div>';
   }
 
+  // ---------- highlights (clips) and shot map: data ----------
+  var CK = "kh-clips-v1", SK = "kh-shots-v1", VK = "kh-video-v1";
+  function lget(k) { try { return JSON.parse(localStorage.getItem(k) || "{}") || {}; } catch (e) { return {}; } }
+  function lset(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function hms(sec) { return Math.floor(sec / 3600) + ":" + ("0" + Math.floor(sec % 3600 / 60)).slice(-2) + ":" + ("0" + sec % 60).slice(-2); }
+  function parseHms(t) { var m = /^(\d+):(\d{2}):(\d{2})$/.exec(String(t).trim()); return m ? (+m[1]) * 3600 + (+m[2]) * 60 + (+m[3]) : null; }
+  var TAGS = ["Highlight", "Goal", "Save", "Chance", "Good play", "To fix", "Other"];
+
+  function parseClips(text) {
+    var out = [];
+    text.split(/\r?\n/).forEach(function (line) {
+      var a = line.split("|"); if (a.length < 4) return;
+      var sec = parseHms(a[0]); if (sec === null) return;
+      out.push({sec: sec, tag: a[1].trim() || "Highlight", players: (a[2].match(/\d+/g) || []).map(Number), label: a.slice(3).join("|").trim()});
+    });
+    return out;
+  }
+  function fmtClips(list) {
+    return list.slice().sort(function (a, b) { return a.sec - b.sec; }).map(function (c) {
+      return hms(c.sec) + "|" + c.tag + "|" + c.players.join(" ") + "|" + c.label.replace(/[\r\n|]+/g, " ");
+    }).join("\n") + "\n";
+  }
+  function parseShots(text) {
+    var out = [];
+    text.split(/\r?\n/).forEach(function (line) {
+      var m = /^P(\d+)\|([\d.]+)\|([\d.]+)\|(-|\d+)\|(G|S)\|(H|A)\s*$/.exec(line.trim());
+      if (m) out.push({p: +m[1], x: +m[2], y: +m[3], n: m[4] === "-" ? null : +m[4], r: m[5], t: m[6]});
+    });
+    return out;
+  }
+  function fmtShots(list) {
+    return list.map(function (s) { return "P" + s.p + "|" + s.x.toFixed(3) + "|" + s.y.toFixed(3) + "|" + (s.n === null ? "-" : s.n) + "|" + s.r + "|" + s.t; }).join("\n") + "\n";
+  }
+  function getClips(date) { var l = lget(CK); return l[date] ? l[date].slice() : (D.clips[date] || []).map(function (c) { return {sec: c.sec, tag: c.tag, players: c.players.slice(), label: c.label}; }); }
+  function putClips(date, list) { var l = lget(CK); l[date] = list; lset(CK, l); }
+  function getShots(date) { var l = lget(SK); return l[date] ? l[date].slice() : (D.shots[date] || []).slice(); }
+  function putShots(date, list) { var l = lget(SK); l[date] = list; lset(SK, l); }
+  function shotDates() {
+    var seen = {}, out = [];
+    Object.keys(D.shots).concat(Object.keys(lget(SK))).forEach(function (d) { if (!seen[d]) { seen[d] = 1; out.push(d); } });
+    return out.sort().reverse();
+  }
+  function todayStr() { var d = new Date(), p = function (n) { return (n < 10 ? "0" : "") + n; }; return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()); }
+  function dateChoices() {
+    var set = {}; D.games.forEach(function (g) { set[g.date] = 1; }); set[todayStr()] = 1;
+    Object.keys(lget(CK)).concat(Object.keys(lget(SK)), Object.keys(D.clips), Object.keys(D.shots)).forEach(function (d) { set[d] = 1; });
+    return Object.keys(set).sort().reverse();
+  }
+  function dateSelect(id, dates, cur) {
+    return '<select id="' + id + '">' + dates.map(function (d) {
+      var g = D.games.filter(function (x) { return x.date === d; })[0];
+      return '<option value="' + d + '"' + (d === cur ? " selected" : "") + ">" + fmtDate(d) + " " + d.slice(0, 4) + (g ? " vs " + esc(g.away) : "") + "</option>";
+    }).join("") + "</select>";
+  }
+  function saveFile(name, text, noteEl) {
+    try {
+      var blob = new Blob([text], {type: "text/plain"}), url = URL.createObjectURL(blob), a = document.createElement("a");
+      a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+      noteEl.textContent = "Saved " + name + ". Now upload it to the games folder on GitHub.";
+    } catch (e) { noteEl.textContent = "Saving did not work here. Use Copy text instead."; }
+  }
+  function plainCopy(text, noteEl) {
+    var ta = document.createElement("textarea"); ta.value = text; ta.setAttribute("readonly", "");
+    ta.style.cssText = "position:fixed;top:0;left:0;opacity:0;font-size:16px"; document.body.appendChild(ta);
+    var ok = false; try { ta.focus(); ta.select(); ta.setSelectionRange(0, text.length); ok = document.execCommand("copy"); } catch (e) {}
+    ta.remove();
+    noteEl.textContent = ok ? "Copied. Paste it into a new file on GitHub." : "Copy did not work here. Use Save file instead.";
+  }
+  function ytId(url) { var m = /(?:youtu\.be\/|v=|\/live\/|\/embed\/)([\w-]{6,})/.exec(url || ""); return m ? m[1] : null; }
+
+  // ---------- highlights page ----------
+  function clipsBlock(date, url) {
+    var list = getClips(date); if (!list.length) return "";
+    return "<h2>Highlights<small>marked by the coaches</small></h2><div class='card'>" + list.map(function (c) {
+      var t = hms(c.sec), tl = url ? '<a class="t" href="' + esc(ytLink(url, c.sec)) + '" target="_blank" rel="noopener">' + t + "</a>" : '<span class="t" style="font-family:var(--display);font-weight:700;font-size:18px;min-width:70px">' + t + "</span>";
+      return '<div class="ev">' + tl + '<span class="lb"><b>' + esc(c.tag) + "</b> " + esc(c.label) + (c.players.length ? ' <span class="mut">' + c.players.map(function (n) { return "#" + n; }).join(" ") + "</span>" : "") + "</span></div>";
+    }).join("") + "</div>";
+  }
+  function vClips(dateParam) {
+    var dates = dateChoices(), date = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : (D.games.length ? D.games[D.games.length - 1].date : dates[0]);
+    if (dates.indexOf(date) < 0) dates.unshift(date);
+    var vk = lget(VK), url = vk[date] || D.videos[date] || "";
+    return "<h2>Highlights</h2>" +
+      '<div class="card"><div class="fld"><label for="clDate">Game</label>' + dateSelect("clDate", dates, date) + "</div>" +
+      '<div class="fld"><label for="clUrl">YouTube link for this game</label><input type="url" id="clUrl" placeholder="https://youtu.be/..." value="' + esc(url) + '"></div>' +
+      '<div class="seg"><button id="clLoad">Load video</button></div>' +
+      '<div class="fld"><label for="clFile">Or open a video file from this device</label><input type="file" id="clFile" accept="video/*"></div>' +
+      '<p class="note">The site does not store video. Footage stays on YouTube or on your device. Only the highlight times and labels are saved.</p></div>' +
+      '<div id="clVideo" style="margin-top:12px"></div>' +
+      '<div class="card" style="margin-top:12px"><div class="fld"><label for="clLead">Start each highlight this many seconds earlier</label><select id="clLead"><option>0</option><option>5</option><option selected>8</option><option>10</option><option>15</option></select></div>' +
+      '<button class="btn" id="clMark" disabled style="width:100%;min-height:60px;font-size:22px">Highlight</button><p class="note" id="clNote" aria-live="polite">Load a video, then tap Highlight whenever something happens. Label it after.</p></div>' +
+      "<h2>Marked highlights</h2><div class='card' id='clList'></div>" +
+      '<h2>Share with the coaches</h2><div class="card"><ol class="steps"><li>Tap Save file (or Copy text).</li><li>On GitHub, open the games folder and upload the file, named like <b>clips_' + date + '.txt</b>.</li><li>Everyone then sees the highlights on the game page, with links to the video.</li></ol>' +
+      '<div class="seg"><button id="clSave">Save file</button><button id="clCopy">Copy text</button></div><p class="note" id="clShare" aria-live="polite"></p></div>';
+  }
+  function bindClips(dateParam) {
+    var dates = dateChoices(), date = $("clDate").value, list = getClips(date), cur = null, focusIdx = -1;
+    $("clDate").addEventListener("change", function () { location.hash = "#/clips/" + $("clDate").value; });
+    function persist() { putClips(date, list); }
+    function renderList() {
+      var box = $("clList");
+      if (!list.length) { box.innerHTML = '<p class="note">Nothing marked yet.</p>'; return; }
+      box.innerHTML = list.map(function (c, i) {
+        return '<div class="clip" data-i="' + i + '"><button class="tm" data-act="seek">' + hms(c.sec) + "</button><span></span>" +
+          '<div class="f"><select data-f="tag" aria-label="Type">' + TAGS.map(function (t) { return "<option" + (t === c.tag ? " selected" : "") + ">" + t + "</option>"; }).join("") + "</select>" +
+          '<input type="text" data-f="label" placeholder="What happened?" value="' + esc(c.label) + '" aria-label="Label">' +
+          '<button class="chip" data-act="del" aria-label="Remove highlight">Remove</button>' +
+          '<input type="text" class="pl" data-f="players" placeholder="Players, like 4 10" value="' + esc(c.players.join(" ")) + '" aria-label="Players"></div></div>';
+      }).join("");
+      if (focusIdx >= 0) { var inp = box.querySelector('.clip[data-i="' + focusIdx + '"] input[data-f="label"]'); if (inp) inp.focus(); focusIdx = -1; }
+    }
+    $("clList").addEventListener("input", function (e) {
+      var row = e.target.closest(".clip"); if (!row) return; var c = list[+row.getAttribute("data-i")], f = e.target.getAttribute("data-f");
+      if (f === "label") c.label = e.target.value; else if (f === "tag") c.tag = e.target.value; else if (f === "players") c.players = (e.target.value.match(/\d+/g) || []).map(Number);
+      persist();
+    });
+    $("clList").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return; var row = b.closest(".clip"), i = +row.getAttribute("data-i"), act = b.getAttribute("data-act");
+      if (act === "seek" && cur) cur.seek(list[i].sec);
+      if (act === "del") { list.splice(i, 1); persist(); renderList(); }
+    });
+    renderList();
+    function ready(c) { cur = c; $("clMark").disabled = false; $("clNote").textContent = "Video loaded. Tap Highlight whenever something happens."; }
+    function loadFile(file) {
+      var v = document.createElement("video"); v.controls = true; v.playsInline = true; v.src = URL.createObjectURL(file);
+      $("clVideo").innerHTML = ""; $("clVideo").appendChild(v);
+      ready({get: function () { return v.currentTime; }, seek: function (s) { v.currentTime = s; v.play(); }});
+    }
+    function withYT(cb) {
+      if (window.YT && window.YT.Player) return cb();
+      var prev = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = function () { if (prev) prev(); cb(); };
+      if (!document.getElementById("yt-api")) { var sc = document.createElement("script"); sc.id = "yt-api"; sc.src = "https://www.youtube.com/iframe_api"; document.head.appendChild(sc); }
+      setTimeout(function () { if (!(window.YT && window.YT.Player)) $("clNote").textContent = "YouTube did not load. Check the connection, or open a video file from this device instead."; }, 9000);
+    }
+    function loadYT(url) {
+      var id = ytId(url);
+      if (!id) { $("clNote").textContent = "That does not look like a YouTube link."; return; }
+      var vk = lget(VK); vk[date] = url; lset(VK, vk);
+      $("clVideo").innerHTML = '<div class="ytbox" id="ytp"></div>';
+      withYT(function () {
+        var pl = new window.YT.Player("ytp", {videoId: id, width: "100%", height: "100%", playerVars: {playsinline: 1, rel: 0},
+          events: {onReady: function () { ready({get: function () { return pl.getCurrentTime(); }, seek: function (s) { pl.seekTo(s, true); pl.playVideo(); }}); }}});
+      });
+    }
+    $("clLoad").addEventListener("click", function () { loadYT($("clUrl").value.trim()); });
+    $("clFile").addEventListener("change", function () { if ($("clFile").files[0]) loadFile($("clFile").files[0]); });
+    $("clMark").addEventListener("click", function () {
+      if (!cur) return;
+      var lead = +$("clLead").value, t = Math.max(0, Math.floor(cur.get()) - lead);
+      list.push({sec: t, tag: "Highlight", players: [], label: ""});
+      list.sort(function (a, b) { return a.sec - b.sec; });
+      focusIdx = list.map(function (c) { return c.sec; }).lastIndexOf(t);
+      persist(); renderList(); $("clNote").textContent = "Marked " + hms(t) + ". Add a label below, or keep watching.";
+    });
+    $("clSave").addEventListener("click", function () { if (!list.length) { $("clShare").textContent = "Nothing to save yet."; return; } saveFile("clips_" + date + ".txt", fmtClips(list), $("clShare")); });
+    $("clCopy").addEventListener("click", function () { if (!list.length) { $("clShare").textContent = "Nothing to copy yet."; return; } plainCopy(fmtClips(list), $("clShare")); });
+  }
+
+  // ---------- shot map ----------
+  function rinkSvg(extra) {
+    return '<div class="rinkwrap"><svg id="rink" viewBox="0 0 100 85" role="img" aria-label="Offensive zone of the rink. The net is on the right.">' +
+      '<defs><radialGradient id="heat"><stop offset="0" stop-color="#ff5a00" stop-opacity=".42"/><stop offset="1" stop-color="#ff5a00" stop-opacity="0"/></radialGradient></defs>' +
+      '<path d="M0 0H72A28 28 0 0 1 100 28V57A28 28 0 0 1 72 85H0Z" fill="#f4f8fc" stroke="#46556e" stroke-width="1"/>' +
+      '<rect x="24" y="0" width="2" height="85" fill="#2b6cd9" opacity=".8"/><rect x="0" y="0" width="1.4" height="85" fill="#d33"/>' +
+      '<rect x="88.8" y="0" width=".5" height="85" fill="#d33" opacity=".8"/>' +
+      '<path d="M89 36.5A6 6 0 0 0 89 48.5Z" fill="#bcd4ee" stroke="#d33" stroke-width=".4"/>' +
+      '<rect x="89.3" y="39.5" width="3.4" height="6" fill="#fff" stroke="#46556e" stroke-width=".5"/>' +
+      '<g fill="none" stroke="#d33" stroke-width=".4"><circle cx="69" cy="20.5" r="15"/><circle cx="69" cy="64.5" r="15"/></g>' +
+      '<g fill="#d33"><circle cx="69" cy="20.5" r="1"/><circle cx="69" cy="64.5" r="1"/></g>' +
+      '<text x="26.5" y="6" font-size="3.6">blue line</text><text x="72" y="44" font-size="3.4">net</text>' +
+      '<g id="rinkHeat"></g><g id="rinkMarks"></g>' + (extra || "") + "</svg></div>";
+  }
+  function marksSvg(list, heat) {
+    var h = "", m = "";
+    list.forEach(function (s) {
+      var x = s.x * 100, y = s.y * 85;
+      if (heat) h += '<circle cx="' + x + '" cy="' + y + '" r="9" fill="url(#heat)"/>';
+      m += s.r === "G" ? '<circle cx="' + x + '" cy="' + y + '" r="2.3" fill="#ff7a1a" stroke="#fff" stroke-width=".7"/>'
+        : '<circle cx="' + x + '" cy="' + y + '" r="1.8" fill="none" stroke="#1e5fd0" stroke-width=".9"/>';
+    });
+    return {heat: h, marks: m};
+  }
+  function rosterNums() {
+    var set = {}; Object.keys(D.roster).forEach(function (k) { set[k] = 1; });
+    D.games.forEach(function (g) { g.players.forEach(function (p) { set[p.n] = 1; }); });
+    return Object.keys(set).map(Number).sort(function (a, b) { return a - b; });
+  }
+  function shotTabs(sub) {
+    return '<div class="seg" role="group"><button onclick="location.hash=\'#/shots\'" aria-pressed="' + (sub !== "mark") + '">Shot map</button><button onclick="location.hash=\'#/shots/mark\'" aria-pressed="' + (sub === "mark") + '">Mark shots</button></div>';
+  }
+  function vShots(sub) {
+    if (sub === "mark") {
+      var dates = dateChoices(), date = D.games.length ? D.games[D.games.length - 1].date : dates[0];
+      if (dates.indexOf(todayStr()) >= 0 && !D.games.some(function (g) { return g.date === todayStr(); })) date = todayStr();
+      return "<h2>Shot map</h2>" + shotTabs(sub) +
+        '<div class="card"><div class="fld"><label for="shDate">Game</label>' + dateSelect("shDate", dates, date) + "</div>" +
+        '<div class="fld"><label>Whose shot</label><div class="seg" id="shTeam"><button data-v="H" aria-pressed="true">Us</button><button data-v="A" aria-pressed="false">Opponent</button></div></div>' +
+        '<div class="fld"><label>Period</label><div class="seg" id="shPer">' + [1, 2, 3, 4].map(function (p, i) { return '<button data-v="' + p + '" aria-pressed="' + (i === 0) + '">' + PERIODS_LABEL[i] + "</button>"; }).join("") + "</div></div>" +
+        '<div class="fld" id="shPlWrap"><label>Player</label><div class="seg" id="shPl"></div></div>' +
+        '<p class="note">Tap where the shot was taken. Mark every shot as if the team is attacking the net on the right, even when the teams switch ends.</p>' +
+        rinkSvg() +
+        '<div class="seg stickybar"><button class="btn good" id="shGoal" disabled>Goal</button><button class="btn bad" id="shSave" disabled>Saved, no goal</button></div>' +
+        '<p class="note" id="shNote" aria-live="polite"></p>' +
+        '<div class="seg"><button id="shUndo">Undo last</button><button id="shFile">Save file</button><button id="shCopy">Copy text</button></div><p class="note" id="shShare" aria-live="polite"></p></div>' +
+        '<p class="note">To share with the coaches, upload the saved file to the games folder on GitHub, named like shots_' + date + '.txt.</p>';
+    }
+    var ds = shotDates(), nums = rosterNums();
+    return "<h2>Shot map</h2>" + shotTabs(sub) +
+      '<div class="card"><div class="filters"><div class="fld"><label for="mpGame">Game</label><select id="mpGame"><option value="">All games</option>' + ds.map(function (d) { return '<option value="' + d + '">' + fmtDate(d) + "</option>"; }).join("") + "</select></div>" +
+      '<div class="fld"><label for="mpPl">Player</label><select id="mpPl"><option value="">Everyone</option>' + nums.map(function (n) { return '<option value="' + n + '">' + esc(label(n)) + "</option>"; }).join("") + "</select></div>" +
+      '<div class="fld"><label for="mpRes">Result</label><select id="mpRes"><option value="">All shots</option><option value="G">Goals</option><option value="S">Saved</option></select></div>' +
+      '<div class="fld"><label for="mpTeam">Team</label><select id="mpTeam"><option value="H">Us</option><option value="A">Opponent</option></select></div></div>' +
+      '<label class="note"><input type="checkbox" id="mpHeat" checked> Show heat</label>' +
+      '<div class="kpis" id="mpKpi"></div>' + rinkSvg() +
+      '<div class="leg"><span><i style="background:#ff7a1a;border-radius:50%"></i>Goal</span><span><i style="border:2px solid #1e5fd0;border-radius:50%"></i>Saved</span></div>' +
+      (ds.length ? "" : '<p class="note">No shots marked yet. Use Mark shots to add some.</p>') + "</div>";
+  }
+  var PERIODS_LABEL = ["1", "2", "3", "OT"];
+  function bindShots(sub) {
+    if (sub === "mark") return bindMark();
+    function all() { var out = []; shotDates().forEach(function (d) { getShots(d).forEach(function (s) { out.push({d: d, p: s.p, x: s.x, y: s.y, n: s.n, r: s.r, t: s.t}); }); }); return out; }
+    var data = all();
+    function draw() {
+      var g = $("mpGame").value, pl = $("mpPl").value, r = $("mpRes").value, t = $("mpTeam").value;
+      var f = data.filter(function (s) { return (!g || s.d === g) && (!pl || s.n === +pl) && (!r || s.r === r) && s.t === t; });
+      var goals = f.filter(function (s) { return s.r === "G"; }).length;
+      var out = marksSvg(f, $("mpHeat").checked);
+      $("rinkHeat").innerHTML = out.heat; $("rinkMarks").innerHTML = out.marks;
+      $("mpKpi").innerHTML = kpi(f.length, "Shots") + kpi(goals, "Goals") + kpi(f.length ? Math.round(goals * 100 / f.length) + "%" : "-", "Shooting %");
+    }
+    ["mpGame", "mpPl", "mpRes", "mpTeam", "mpHeat"].forEach(function (id) { $(id).addEventListener("change", draw); });
+    draw();
+  }
+  function bindMark() {
+    var st = {p: 1, t: "H", n: null, pend: null}, nums = rosterNums();
+    function date() { return $("shDate").value; }
+    function list() { return getShots(date()); }
+    function btns(wrapId, onPick) {
+      $(wrapId).addEventListener("click", function (e) {
+        var b = e.target.closest("button"); if (!b) return;
+        Array.prototype.forEach.call($(wrapId).children, function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+        onPick(b.getAttribute("data-v"));
+      });
+    }
+    function drawPlayers() {
+      $("shPl").innerHTML = '<button data-v="" aria-pressed="' + (st.n === null) + '">?</button>' + nums.map(function (n) { return '<button data-v="' + n + '" aria-pressed="' + (st.n === n) + '">#' + n + "</button>"; }).join("");
+      $("shPlWrap").style.display = st.t === "H" ? "" : "none";
+    }
+    function drawMarks() {
+      var l = list().filter(function (s) { return true; }), out = marksSvg(l, false);
+      var pend = st.pend ? '<circle cx="' + st.pend.x * 100 + '" cy="' + st.pend.y * 85 + '" r="2.6" fill="none" stroke="#d33" stroke-width=".9" stroke-dasharray="1.2 1"/>' : "";
+      $("rinkMarks").innerHTML = out.marks + pend;
+      var goals = l.filter(function (s) { return s.r === "G"; }).length;
+      $("shNote").textContent = l.length + " shots marked for this game, " + goals + " goals.";
+      $("shGoal").disabled = $("shSave").disabled = !st.pend;
+    }
+    drawPlayers(); drawMarks();
+    $("shDate").addEventListener("change", function () { st.pend = null; drawMarks(); });
+    btns("shTeam", function (v) { st.t = v; drawPlayers(); });
+    btns("shPer", function (v) { st.p = +v; });
+    $("shPl").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return; var v = b.getAttribute("data-v"); st.n = v === "" ? null : +v; drawPlayers();
+    });
+    $("rink").addEventListener("click", function (e) {
+      var svg = $("rink"), pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+      var q = pt.matrixTransform(svg.getScreenCTM().inverse());
+      st.pend = {x: Math.min(1, Math.max(0, q.x / 100)), y: Math.min(1, Math.max(0, q.y / 85))}; drawMarks();
+    });
+    function commit(r) {
+      if (!st.pend) return;
+      var l = list(); l.push({p: st.p, x: st.pend.x, y: st.pend.y, n: st.t === "H" ? st.n : null, r: r, t: st.t});
+      putShots(date(), l); st.pend = null; drawMarks();
+    }
+    $("shGoal").addEventListener("click", function () { commit("G"); });
+    $("shSave").addEventListener("click", function () { commit("S"); });
+    $("shUndo").addEventListener("click", function () { var l = list(); if (!l.length) return; l.pop(); putShots(date(), l); drawMarks(); });
+    $("shFile").addEventListener("click", function () { var l = list(); if (!l.length) { $("shShare").textContent = "Nothing to save yet."; return; } saveFile("shots_" + date() + ".txt", fmtShots(l), $("shShare")); });
+    $("shCopy").addEventListener("click", function () { var l = list(); if (!l.length) { $("shShare").textContent = "Nothing to copy yet."; return; } plainCopy(fmtShots(l), $("shShare")); });
+  }
+
   // ---------- router ----------
-  var tabs = [["", "Overview"], ["players", "Players"], ["games", "Games"], ["goalies", "Goalies"], ["video", "Video"]];
+  var tabs = [["", "Overview"], ["players", "Players"], ["games", "Games"], ["goalies", "Goalies"], ["clips", "Highlights"], ["shots", "Shot map"], ["video", "Video"]];
   function route() {
     var parts = location.hash.replace(/^#\/?/, "").split("/");
     var base = parts[0] || "";
@@ -500,7 +838,9 @@ svg .ax { stroke: var(--line); stroke-width: 1; }
     $("rec").textContent = D.games.length ? t.w + "-" + t.l + "-" + t.t + (D.sample ? " (sample)" : "") : "";
     document.title = "Kings HUDL";
     var h = D.sample ? '<div class="banner">This is sample data to show how the site looks. It is not real.</div>' : "";
-    if (!D.games.length) h += vEmpty();
+    if (base === "clips") h += vClips(parts[1]);
+    else if (base === "shots") h += vShots(parts[1]);
+    else if (!D.games.length) h += vEmpty();
     else if (base === "players") h += vPlayers();
     else if (base === "player") h += vPlayer(+parts[1]);
     else if (base === "games") h += vGames();
@@ -509,6 +849,8 @@ svg .ax { stroke: var(--line); stroke-width: 1; }
     else if (base === "video") h += vVideo();
     else h += vOverview();
     $("app").innerHTML = h;
+    if (base === "clips") bindClips(parts[1]);
+    if (base === "shots") bindShots(parts[1]);
     var sb = $("sampleBtn"); if (sb) sb.addEventListener("click", function () { sampleData(); route(); });
     Array.prototype.forEach.call(document.querySelectorAll("th.sort"), function (th) {
       th.addEventListener("click", function () { var k = th.getAttribute("data-k"); if (k === sortKey) sortDir = -sortDir; else { sortKey = k; sortDir = -1; } route(); });

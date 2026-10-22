@@ -18,6 +18,18 @@ The site finds every file in the games folder by itself. No list to edit.
 
 Goals and penalties then become links that jump to that moment in the YouTube video.
 
+## Player photos
+
+Put one photo per player in the **photos** folder, named by jersey number: `4.jpg`, `10.jpg` (`.png` and `.webp` also work). They show on player cards and player pages. Anyone with the site link can see them, so get permission first.
+
+## Highlights
+
+Open the **Highlights** tab, pick the game, load the YouTube link (or open a video file from the device), and tap **Highlight** whenever something happens. Label it, tag it and add player numbers afterwards. Then Save file and upload it to the games folder as `clips_2026-10-24.txt`. The site does not store video.
+
+## Shot map
+
+Open **Shot map**, then **Mark shots**. Tap where the shot was taken, pick the player, then tap Goal or Saved. Mark every shot as if attacking the net on the right. Save the file and upload it as `shots_2026-10-24.txt`. The Shot map tab then shows dots and heat by game, player and result.
+
 ## Names
 
 Player names come from `roster.json`. Edit it to add or fix names. Goalies can go in a `goalies` list with the same `n` and `name` fields.
