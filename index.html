@@ -112,6 +112,9 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
 .clip .f input.pl { grid-column: 1 / 3; }
 @media (max-width: 520px) { .clip .f { grid-template-columns: 1fr; } .clip .f input.pl { grid-column: auto; } }
 .stickybar { position: sticky; bottom: 0; z-index: 3; justify-content: center; margin: 12px -14px 0; padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); background: var(--panel); border-top: 1px solid var(--line); }
+.tagbtns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tagbtns .btn { min-height: 72px; font-size: 24px; }
+.tagbtns .btn:first-child { grid-column: 1 / -1; background: var(--good); color: #02170d; }
 .steps { margin: 6px 0 0; padding-left: 20px; } .steps li { margin: 4px 0; }
 @media (max-width: 520px) { .score .s { font-size: 52px; } th, td { padding: 8px 6px; } }
 @media (prefers-reduced-motion: no-preference) { .pcard { transition: border-color .15s; } }
@@ -633,11 +636,13 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       '<div class="fld"><label for="clFile">Or open a video file from this device</label><input type="file" id="clFile" accept="video/*"></div>' +
       '<p class="note">The site does not store video. Footage stays on YouTube or on your device. Only the highlight times and labels are saved.</p></div>' +
       '<div id="clVideo" style="margin-top:12px"></div>' +
-      '<div class="card" style="margin-top:12px"><div class="fld"><label for="clLead">Start each highlight this many seconds earlier</label><select id="clLead"><option>0</option><option>5</option><option selected>8</option><option>10</option><option>15</option></select></div>' +
-      '<button class="btn" id="clMark" disabled style="width:100%;min-height:60px;font-size:22px">Highlight</button><p class="note" id="clNote" aria-live="polite">Load a video, then tap Highlight whenever something happens. Label it after.</p></div>' +
+      '<div class="card" style="margin-top:12px"><p class="note" style="margin-top:0">Watch the video and tap a button when it happens. That is all. Each tap saves the moment a few seconds earlier.</p>' +
+      '<div class="tagbtns" id="clTags">' + ["Goal", "Save", "Chance", "Good play", "To fix"].map(function (t) { return '<button class="btn" data-tag="' + t + '" disabled>' + t + "</button>"; }).join("") + "</div>" +
+      '<p class="note" id="clNote" aria-live="polite">Load a video to start.</p>' +
+      '<details><summary class="note">Settings</summary><div class="fld"><label for="clLead">Save each moment this many seconds earlier</label><select id="clLead"><option>0</option><option>5</option><option selected>8</option><option>10</option><option>15</option></select></div></details></div>' +
       "<h2>Marked highlights</h2><div class='card' id='clList'></div>" +
-      '<h2>Share with the coaches</h2><div class="card"><ol class="steps"><li>Tap Save file (or Copy text).</li><li>On GitHub, open the games folder and upload the file, named like <b>clips_' + date + '.txt</b>.</li><li>Everyone then sees the highlights on the game page, with links to the video.</li></ol>' +
-      '<div class="seg"><button id="clSave">Save file</button><button id="clCopy">Copy text</button></div><p class="note" id="clShare" aria-live="polite"></p></div>';
+      '<h2>Share with the coaches</h2><div class="card"><ol class="steps"><li>Coaches: tap <b>Send to Erica</b> and pick Messages. That is all.</li><li>Erica: on GitHub, open the games folder and upload the file, named like <b>clips_' + date + '.txt</b>.</li><li>Then everyone sees the highlights on the game page, with links to the video.</li></ol>' +
+      '<div class="seg"><button id="clSend">Send to Erica</button><button id="clSave">Save file</button><button id="clCopy">Copy text</button></div><p class="note" id="clShare" aria-live="polite"></p></div>';
   }
   function bindClips(dateParam) {
     var dates = dateChoices(), date = $("clDate").value, list = getClips(date), cur = null, focusIdx = -1;
@@ -666,7 +671,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       if (act === "del") { list.splice(i, 1); persist(); renderList(); }
     });
     renderList();
-    function ready(c) { cur = c; $("clMark").disabled = false; $("clNote").textContent = "Video loaded. Tap Highlight whenever something happens."; }
+    function ready(c) { cur = c; Array.prototype.forEach.call($("clTags").children, function (b) { b.disabled = false; }); $("clNote").textContent = "Video loaded. Tap a button when something happens."; }
     function loadFile(file) {
       var v = document.createElement("video"); v.controls = true; v.playsInline = true; v.src = URL.createObjectURL(file);
       $("clVideo").innerHTML = ""; $("clVideo").appendChild(v);
@@ -691,13 +696,25 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     }
     $("clLoad").addEventListener("click", function () { loadYT($("clUrl").value.trim()); });
     $("clFile").addEventListener("change", function () { if ($("clFile").files[0]) loadFile($("clFile").files[0]); });
-    $("clMark").addEventListener("click", function () {
-      if (!cur) return;
-      var lead = +$("clLead").value, t = Math.max(0, Math.floor(cur.get()) - lead);
-      list.push({sec: t, tag: "Highlight", players: [], label: ""});
+    $("clTags").addEventListener("click", function (e) {
+      var btn = e.target.closest("button"); if (!btn || !cur) return;
+      var lead = +$("clLead").value, t = Math.max(0, Math.floor(cur.get()) - lead), tag = btn.getAttribute("data-tag");
+      list.push({sec: t, tag: tag, players: [], label: ""});
       list.sort(function (a, b) { return a.sec - b.sec; });
-      focusIdx = list.map(function (c) { return c.sec; }).lastIndexOf(t);
-      persist(); renderList(); $("clNote").textContent = "Marked " + hms(t) + ". Add a label below, or keep watching.";
+      persist(); renderList(); $("clNote").textContent = "Saved: " + tag + " at " + hms(t) + ". " + list.length + " marked so far.";
+    });
+    $("clSend").addEventListener("click", function () {
+      if (!list.length) { $("clShare").textContent = "Nothing marked yet."; return; }
+      var text = fmtClips(list), name = "clips_" + date + ".txt";
+      try {
+        var file = new File([text], name, {type: "text/plain"});
+        if (navigator.canShare && navigator.canShare({files: [file]})) {
+          navigator.share({files: [file], title: name}).then(function () { $("clShare").textContent = "Sent."; }, function (err) { $("clShare").textContent = err && err.name === "AbortError" ? "Cancelled." : "Sending did not work. Try Copy text."; });
+          return;
+        }
+      } catch (e) {}
+      if (navigator.share) { navigator.share({title: name, text: text}).then(function () { $("clShare").textContent = "Sent."; }, function () { $("clShare").textContent = "Cancelled."; }); return; }
+      plainCopy(text, $("clShare"));
     });
     $("clSave").addEventListener("click", function () { if (!list.length) { $("clShare").textContent = "Nothing to save yet."; return; } saveFile("clips_" + date + ".txt", fmtClips(list), $("clShare")); });
     $("clCopy").addEventListener("click", function () { if (!list.length) { $("clShare").textContent = "Nothing to copy yet."; return; } plainCopy(fmtClips(list), $("clShare")); });
