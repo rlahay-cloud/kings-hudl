@@ -1,0 +1,2 @@
+# One line per game: the date, a space, then the YouTube link.
+# 2026-10-24 https://youtu.be/yourvideo

@@ -1,0 +1,29 @@
+# Rink Stats
+
+A season stats website for the team. Open it on a phone or computer to see the record, leaders, player cards, game box scores, goalies and video moments.
+
+## After each game
+
+1. In Streamn, press End Game. Streamn writes files into its output folder.
+2. Open the **games** folder in this repository on GitHub, choose Add file, then Upload files.
+3. Drag in the dated file named like `game_summary_2026-10-24_193000.txt`. Do not use the plain `game_summary.txt`, it has no date.
+4. Choose Commit changes. The site updates in about a minute.
+
+The site finds every file in the games folder by itself. No list to edit.
+
+## Video moments (optional)
+
+1. Copy Streamn's `timestamps.txt` and rename the copy to `timestamps_2026-10-24.txt` (use the game date). Upload it to the games folder.
+2. Open `videos.txt` here and add a line: `2026-10-24 https://youtu.be/yourvideo`
+
+Goals and penalties then become links that jump to that moment in the YouTube video.
+
+## Names
+
+Player names come from `roster.json`. Edit it to add or fix names. Goalies can go in a `goalies` list with the same `n` and `name` fields.
+
+## Notes
+
+- Stats are added up from the game files, so the season only counts games that were uploaded.
+- Two games on the same date share one video link and one timestamps file.
+- Add `?sample` to the site address to preview it with made up data.

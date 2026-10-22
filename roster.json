@@ -1,0 +1,66 @@
+{
+ "version": 2,
+ "home": "Rideau St. Lawrence Kings",
+ "roster": [
+  {
+   "n": 4,
+   "name": "Caleb Aubin"
+  },
+  {
+   "n": 10,
+   "name": "Van Clemo"
+  },
+  {
+   "n": 11,
+   "name": "Louis Drury"
+  },
+  {
+   "n": 13,
+   "name": "Connor Chambers"
+  },
+  {
+   "n": 14,
+   "name": "Lincoln Dawson"
+  },
+  {
+   "n": 17,
+   "name": "Camden Hudson"
+  },
+  {
+   "n": 18,
+   "name": "Grant Jordan"
+  },
+  {
+   "n": 19,
+   "name": "Wesley Johnston"
+  },
+  {
+   "n": 38,
+   "name": "Zachary Chambers"
+  },
+  {
+   "n": 72,
+   "name": "Lucas Dillabough"
+  },
+  {
+   "n": 86,
+   "name": "Wyatt Stephenson"
+  },
+  {
+   "n": 88,
+   "name": "Colton Nizman"
+  },
+  {
+   "n": 91,
+   "name": "Owen Smith"
+  },
+  {
+   "n": 93,
+   "name": "Monty Marriner"
+  },
+  {
+   "n": 97,
+   "name": "Everett Lalonde"
+  }
+ ]
+}
