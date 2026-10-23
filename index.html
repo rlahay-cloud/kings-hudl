@@ -603,13 +603,13 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
 
   function playerVideoStats(n) {
     var dates = {}; Object.keys(D.review).concat(Object.keys(lget(RK))).forEach(function (d) { dates[d] = 1; });
-    var T = {att: 0, sog: 0, miss: 0, blk: 0, blocks: 0, fow: 0, fol: 0, en: {}, ex: {}, pen: 0, gf: 0, ga: 0, games: []};
+    var T = {att: 0, sog: 0, miss: 0, blk: 0, blocks: 0, fow: 0, fol: 0, en: {}, ex: {}, pen: 0, gf: 0, ga: 0, ppg: 0, shg: 0, games: []};
     RV_MOVES.forEach(function (m) { T.en[m] = 0; T.ex[m] = 0; });
     Object.keys(dates).sort().forEach(function (d) {
       var G = {att: 0, sog: 0, miss: 0, blk: 0, blocks: 0, fow: 0, fol: 0, en: 0, ex: 0, pen: 0, gf: 0, ga: 0, any: false};
       allReview(d).forEach(function (c) {
         var a = c.assists || [], me = c.players.indexOf(n) >= 0, t = c.tag, ice = (c.ice || []).indexOf(n) >= 0;
-        if (t === "For: Goal") { if (ice || me) { G.gf++; G.any = true; } if (me && a.indexOf(n) < 0) { G.att++; G.sog++; } return; }
+        if (t === "For: Goal") { if (ice || me) { G.gf++; G.any = true; } if (me && a.indexOf(n) < 0) { G.att++; G.sog++; var sit0 = goalSit(allReview(d), c); if (sit0 === "PP") T.ppg++; else if (sit0 === "SH") T.shg++; } return; }
         if (t === "Against: Goal") { if (ice) { G.ga++; G.any = true; } return; }
         if (!me) return; G.any = true;
         if (t === "For: Shot on goal") { G.att++; G.sog++; }
@@ -634,7 +634,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var h = "<h2>From video review<small>marked in Coaches corner, " + T.games.length + (T.games.length === 1 ? " game" : " games") + "</small></h2><div class='kpis'>" +
       kpi(T.att, "Shot attempts") + kpi(T.sog, "Shots on goal") + kpi(T.miss, "Missed shots") + kpi(T.blk, "Shots blocked") + kpi(T.blocks, "Shots blocked for us") +
       kpi(T.fow + "-" + T.fol, "Faceoffs W-L") + kpi(pct(T.fow, fo), "Faceoff win %") + kpi(en, "Zone entries") + kpi(pct(T.en.Carry + T.en.Pass, en), "Controlled entries") + kpi(ex, "Zone exits") + kpi(pct(T.ex.Carry + T.ex.Pass, ex), "Controlled exits") +
-      kpi(T.pen, "Penalties") + kpi(T.gf, "Goals for on ice") + kpi(T.ga, "Goals against on ice") + "</div>";
+      kpi(T.pen, "Penalties") + kpi(T.ppg, "Power play goals") + kpi(T.shg, "Short handed goals") + kpi(T.gf, "Goals for on ice") + kpi(T.ga, "Goals against on ice") + "</div>";
     h += "<div class='card scroll' style='margin-top:12px'><table><thead><tr><th>Game</th><th>Att</th><th>SOG</th><th>Miss</th><th>Blk</th><th>FO</th><th>FO%</th><th>En</th><th>Ex</th><th>Pen</th><th>GF</th><th>GA</th></tr></thead><tbody>" +
       T.games.slice().reverse().map(function (x) {
         var gm = D.games.filter(function (q) { return q.date === x.date; })[0], g = x.g;
@@ -694,7 +694,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       (g.fo ? '<div class="cmp"><b class="l">' + esc(g.fo) + '</b><span class="c">Faceoffs won</span><b></b></div>' : "") + "</div>";
     if (g.adjusted) h += '<div class="card"><h3 style="margin-top:0">Adjusted from video review</h3><p class="note" style="margin-top:0">Anything marked in Coaches corner replaces what the scoreboard recorded. Worth a look:</p><ul style="margin:0;padding-left:20px">' + g.notes.map(function (t) { return "<li>" + esc(t) + "</li>"; }).join("") + "</ul></div>";
     if (g.goals.length) h += "<h2>Goals</h2><div class='card'>" + g.goals.map(function (x) {
-      return '<div class="ev ' + (x.home ? "goal" : "pen") + '"><span class="t" style="font-family:var(--display);font-weight:700;font-size:18px;min-width:90px">' + (x.per === "" ? "Video " + hms(x.vsec) : "P" + esc(x.per) + " " + Math.floor(x.sec / 60) + ":" + ("0" + x.sec % 60).slice(-2)) + '</span><span class="lb">' +
+      return '<div class="ev ' + (x.home ? "goal" : "pen") + '"><span class="t" style="font-family:var(--display);font-weight:700;font-size:18px;min-width:90px">' + (x.per === "" ? "Video " + hms(x.vsec) : "P" + esc(x.per) + " " + Math.floor(x.sec / 60) + ":" + ("0" + x.sec % 60).slice(-2)) + '</span><span class="lb">' + (x.sit ? '<span class="pill W">' + x.sit + "</span> " : "") +
         (x.home ? (x.scorer !== null ? esc(label(x.scorer)) + (x.assists.length ? ' <span class="mut">from ' + x.assists.map(function (n) { return esc(label(n)); }).join(", ") + "</span>" : ' <span class="mut">unassisted</span>') : esc(g.home)) : esc(g.away)) + "</span></div>";
     }).join("") + "</div>";
     h += "<h2>Skaters</h2><div class='card scroll'><table><thead><tr><th>Player</th><th>G</th><th>A</th><th>P</th><th>+/-</th><th>SOG</th><th>PIM</th></tr></thead><tbody>" +
@@ -1267,25 +1267,25 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       var tag = a[1].trim();
       var tk = a[2].match(/[ai]?\d+/gi) || [], ps = [], as = [], ice = [];
       tk.forEach(function (t) { var n = +t.replace(/\D/g, ""); if (/^i/i.test(t)) { if (ice.indexOf(n) < 0) ice.push(n); return; } if (ps.indexOf(n) < 0) ps.push(n); if (/^a/i.test(t) && as.indexOf(n) < 0) as.push(n); });
-      var m = /^([\d.]*),([\d.]*),(\d)(?:,(f))?$/.exec(a[3].trim());
+      var m = /^([\d.]*),([\d.]*),(\d)(?:,(f))?(?:,e(\d+))?$/.exec(a[3].trim());
       var x = m && m[1] !== "" ? +m[1] : null, y = m && m[2] !== "" ? +m[2] : null;
       if (x !== null && y !== null && !(m && m[4])) {
         // older marks were on a single attacking zone: move them onto the full rink
         if (/^Against:/.test(tag)) { x = (100 - x * 100) / 200; y = 1 - y; } else x = (100 + x * 100) / 200;
       }
-      out.push({sec: sec, tag: tag, players: ps, assists: as, ice: ice, x: x, y: y, p: m ? +m[3] : 1});
+      out.push({sec: sec, tag: tag, players: ps, assists: as, ice: ice, x: x, y: y, p: m ? +m[3] : 1, until: m && m[5] ? +m[5] : null});
     });
     return out;
   }
   function fmtReview(list) {
     return list.slice().sort(function (a, b) { return a.sec - b.sec; }).map(function (c) {
-      return hms(c.sec) + "|" + c.tag + "|" + [clipPlayersField(c)].concat((c.ice || []).map(function (n) { return "i" + n; })).join(" ").trim() + "|" + (c.x == null ? "" : (+c.x).toFixed(3)) + "," + (c.y == null ? "" : (+c.y).toFixed(3)) + "," + (c.p || 1) + ",f";
+      return hms(c.sec) + "|" + c.tag + "|" + [clipPlayersField(c)].concat((c.ice || []).map(function (n) { return "i" + n; })).join(" ").trim() + "|" + (c.x == null ? "" : (+c.x).toFixed(3)) + "," + (c.y == null ? "" : (+c.y).toFixed(3)) + "," + (c.p || 1) + ",f" + (c.until != null ? ",e" + c.until : "");
     }).join("\n") + "\n";
   }
   function getMyReview(date) {
     var l = lget(RK); if (l[date]) return l[date].slice();
     var sent = (D.review[date] || {}).game;
-    return sent ? sent.map(function (x) { return {sec: x.sec, tag: x.tag, players: x.players.slice(), assists: x.assists.slice(), ice: (x.ice || []).slice(), x: x.x, y: x.y, p: x.p}; }) : [];
+    return sent ? sent.map(function (x) { return {sec: x.sec, tag: x.tag, players: x.players.slice(), assists: x.assists.slice(), ice: (x.ice || []).slice(), until: x.until == null ? null : x.until, x: x.x, y: x.y, p: x.p}; }) : [];
   }
   function putReview(date, list) { var l = lget(RK); l[date] = list; lset(RK, l); }
   function allReview(date) {
@@ -1305,6 +1305,14 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       return {p: c.p || 1, x: Math.min(1, Math.max(0, x)), y: Math.min(1, Math.max(0, y)), n: m[1] === "H" && sc !== undefined ? sc : null, r: m[0], t: m[1], coach: c.coach};
     });
   }
+  // Which penalties are on at a moment in the video, and so whether a goal was at even strength, on the power play or short handed.
+  function goalSit(list, c) {
+    var u = 0, th = 0;
+    list.forEach(function (p) { if ((p.tag === "Penalty" || p.tag === "Away Penalty") && p.until != null && p.sec <= c.sec && c.sec <= p.until) { if (p.tag === "Penalty") u++; else th++; } });
+    if (c.tag === "For: Goal") return th > u ? "PP" : u > th ? "SH" : "";
+    if (c.tag === "Against: Goal") return u > th ? "PP" : th > u ? "SH" : "";
+    return "";
+  }
   function reviewStats(list) {
     var n = function (t) { return list.filter(function (c) { return c.tag === t; }).length; };
     var st = {};
@@ -1318,20 +1326,22 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     RV_MOVES.forEach(function (m) { st.en[m] = n("Entry: " + m); st.ex[m] = n("Exit: " + m); });
     return st;
   }
+  function sitN(list, tag, sit) { return list.filter(function (c) { return c.tag === tag && goalSit(list, c) === sit; }).length; }
   function reviewSummaryHtml(list) {
     var s = reviewStats(list), pct = function (a, b) { return b ? Math.round(a * 100 / b) + "%" : "-"; };
     var fw = 0, fl = 0; Object.keys(s.fo).forEach(function (z) { fw += s.fo[z][0]; fl += s.fo[z][1]; });
     var en = RV_MOVES.reduce(function (a, m) { return a + s.en[m]; }, 0), ex = RV_MOVES.reduce(function (a, m) { return a + s.ex[m]; }, 0);
     var row = function (l, a, b) { return "<tr><td>" + l + "</td><td>" + a + "</td><td>" + b + "</td></tr>"; };
     return "<div class='card scroll'><table><thead><tr><th></th><th>Us</th><th>Them</th></tr></thead><tbody>" +
-      row("Shot attempts", s.For.att, s.Against.att) + row("Shots on goal", s.For.sog, s.Against.sog) + row("Goals", s.For.goals, s.Against.goals) +
+      row("Shot attempts", s.For.att, s.Against.att) + row("Shots on goal", s.For.sog, s.Against.sog) + row("Goals", s.For.goals, s.Against.goals) + row("Power play goals", sitN(list, "For: Goal", "PP"), sitN(list, "Against: Goal", "PP")) + row("Short handed goals", sitN(list, "For: Goal", "SH"), sitN(list, "Against: Goal", "SH")) +
       row("Missed", s.For.miss, s.Against.miss) + row("Blocked", s.For.blk, s.Against.blk) + "</tbody></table></div>" +
       "<div class='card scroll' style='margin-top:12px'><table><thead><tr><th></th><th>OZ</th><th>NZ</th><th>DZ</th><th>All</th></tr></thead><tbody>" +
       "<tr><td>Faceoffs won</td>" + ["OZ", "NZ", "DZ"].map(function (z) { return "<td>" + s.fo[z][0] + "/" + (s.fo[z][0] + s.fo[z][1]) + "</td>"; }).join("") + "<td><b>" + fw + "/" + (fw + fl) + " (" + pct(fw, fw + fl) + ")</b></td></tr></tbody></table></div>" +
       "<div class='card scroll' style='margin-top:12px'><table><thead><tr><th></th>" + RV_MOVES.map(function (m) { return "<th>" + m + "</th>"; }).join("") + "<th>Total</th><th>Controlled</th></tr></thead><tbody>" +
       "<tr><td>Zone entries</td>" + RV_MOVES.map(function (m) { return "<td>" + s.en[m] + "</td>"; }).join("") + "<td>" + en + "</td><td>" + pct(s.en.Carry + s.en.Pass, en) + "</td></tr>" +
       "<tr><td>Zone exits</td>" + RV_MOVES.map(function (m) { return "<td>" + s.ex[m] + "</td>"; }).join("") + "<td>" + ex + "</td><td>" + pct(s.ex.Carry + s.ex.Pass, ex) + "</td></tr></tbody></table></div>" +
-      "<p class='note'>Controlled means the puck was carried or passed, not dumped or turned over.</p>";
+      "<p class='note'>Controlled means the puck was carried or passed, not dumped or turned over.</p>" +
+      (list.some(function (c) { return (c.tag === "Penalty" || c.tag === "Away Penalty") && c.until == null; }) ? "<p class='note'>Some penalties have no end time yet, so goals during them are counted as even strength. Tap a penalty and use Penalty ends now.</p>" : "");
   }
   function reviewBlock(date) {
     var l = allReview(date); if (!l.length) return "";
@@ -1380,7 +1390,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       $("geList").innerHTML = f.length ? f.map(function (c) {
         var i = GE.items.indexOf(c);
         var tl = hasVid ? '<button class="tm" style="background:none;border:0;color:var(--accent);font-family:var(--display);font-weight:700;font-size:18px;min-width:70px;text-align:left;padding:0" data-ge="' + i + '">' + hms(c.sec) + "</button>" : '<span class="t" style="font-family:var(--display);font-weight:700;font-size:18px;min-width:70px">' + hms(c.sec) + "</span>";
-        return '<div class="ev ' + (c.cat === "Goals" ? "goal" : c.cat === "Penalties" ? "pen" : "") + '">' + tl + '<span class="lb"><b>' + esc(geName(c.tag)) + "</b>" + whoHtml(c) + "</span></div>";
+        return '<div class="ev ' + (c.cat === "Goals" ? "goal" : c.cat === "Penalties" ? "pen" : "") + '">' + tl + '<span class="lb"><b>' + esc(geName(c.tag)) + "</b>" + (/: Goal$/.test(c.tag) && goalSit(GE.items, c) ? ' <span class="pill W">' + goalSit(GE.items, c) + "</span>" : "") + (c.until != null ? ' <span class="mut">ends ' + hms(c.until) + "</span>" : "") + whoHtml(c) + "</span></div>";
       }).join("") : '<p class="note">Nothing matches these filters.</p>';
     }
     ["geCat", "geSort", "gePl"].forEach(function (id) { $(id).addEventListener("change", render); });
@@ -1513,6 +1523,8 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       if (!c) { box.innerHTML = '<p class="note" style="margin:0">Mark something, or tap a mark on the timeline, to add players to it.</p>'; return; }
       box.innerHTML = '<h3>' + esc(itemLabel(c)) + " at " + hms(mark(c)) + "</h3>" +
         (c.src === "hl" ? '<div class="fld"><label for="rvLabel">What happened? (optional)</label><input type="text" id="rvLabel" value="' + esc(c.label || "") + '"></div>' : "") +
+        (c.src === "rv" && (c.tag === "Penalty" || c.tag === "Away Penalty") ? '<div class="seg"><button data-act="pend">Penalty ends now</button><button data-act="pendx">Clear end</button></div><p class="note" style="margin:4px 0">' + (c.until != null ? "Penalty runs " + hms(c.sec) + " to " + hms(c.until) + "." : "No end time yet. Play the video to where the penalty ends, then tap Penalty ends now.") + "</p>" : "") +
+        (c.src === "rv" && /: Goal$/.test(c.tag) && goalSit(allReview(date), c) ? '<p class="note" style="margin:4px 0"><b>' + (goalSit(allReview(date), c) === "PP" ? "Power play goal" : "Short handed goal") + "</b> (from the penalty times)</p>" : "") +
         '<div class="pickwrap">' + pickHtml(c) + '</div><div class="seg" style="margin-top:8px"><button data-act="seek">Play from here</button><button data-act="del">Delete</button></div><p class="note" id="rvSelNote" aria-live="polite"></p>';
     }
     function zoneOf(x) { return x < 75 / 200 ? "DZ" : x > 125 / 200 ? "OZ" : "NZ"; }
@@ -1549,7 +1561,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       $("rvCount").textContent = view.length + (view.length === 1 ? " event" : " events");
       $("rvList").innerHTML = view.length ? view.map(function (c, i) {
         var g = itemGroup(c);
-        return '<div class="ev" data-i="' + i + '"><button class="tm" style="background:none;border:0;color:var(--accent);font-family:var(--display);font-weight:700;font-size:18px;min-width:70px;text-align:left;padding:0">' + hms(mark(c)) + '</button><span class="lb"><i class="dot" style="background:' + (g ? g.c : "#93a1bd") + '"></i><b>' + esc(itemLabel(c)) + "</b>" + (c.src === "rv" ? " P" + (c.p || 1) : "") + whoHtml(c) + (c.x != null ? ' <span class="mut">spot</span>' : "") + (c.label ? " " + esc(c.label) : "") + "</span></div>";
+        return '<div class="ev" data-i="' + i + '"><button class="tm" style="background:none;border:0;color:var(--accent);font-family:var(--display);font-weight:700;font-size:18px;min-width:70px;text-align:left;padding:0">' + hms(mark(c)) + '</button><span class="lb"><i class="dot" style="background:' + (g ? g.c : "#93a1bd") + '"></i><b>' + esc(itemLabel(c)) + "</b>" + (c.src === "rv" ? " P" + (c.p || 1) : "") + (c.src === "rv" && /: Goal$/.test(c.tag) && goalSit(allReview(date), c) ? ' <span class="pill W">' + goalSit(allReview(date), c) + "</span>" : "") + (c.src === "rv" && c.until != null ? ' <span class="mut">to ' + hms(c.until) + "</span>" : "") + whoHtml(c) + (c.x != null ? ' <span class="mut">spot</span>' : "") + (c.label ? " " + esc(c.label) : "") + "</span></div>";
       }).join("") : '<p class="note">Nothing marked yet.</p>';
       $("rvSum").innerHTML = RV.length ? reviewSummaryHtml(RV) : '<div class="card empty"><p class="note">Review numbers appear here as you mark.</p></div>';
     }
@@ -1643,6 +1655,11 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       var b = e.target.closest("button"); if (!b) return; var c = st.sel; if (!c) return;
       var act = b.getAttribute("data-act");
       if (act === "seek") { if (cur) cur.seek(c.src === "rv" ? c.sec - 3 : c.sec); return; }
+      if (act === "pend" || act === "pendx") {
+        var t0 = 0; try { t0 = Math.floor(cur ? cur.get() : 0); } catch (e2) {}
+        if (act === "pend" && t0 < c.sec) { var nt0 = $("rvSelNote"); if (nt0) nt0.textContent = "The video is before the penalty. Play to where it ends first."; return; }
+        c.until = act === "pend" ? t0 : null; persist(); drawSel(); drawList(); return;
+      }
       if (act === "del") { var l = store(c.src); l.splice(l.indexOf(c), 1); st.sel = null; persist(); drawAll(); return; }
       if (act === "pick") {
         var msg = applyPick(c, b.getAttribute("data-role"), +b.getAttribute("data-n"));
@@ -1833,7 +1850,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       marks.forEach(function (c, i) {
         var a = (c.assists || []).slice(), sc = home ? scorerOf(c) : null, was = same ? old[i] : null;
         if (home && was && (was.scorer !== sc || was.assists.join() !== a.join())) note("Goal " + (i + 1) + ": scoreboard had " + tn([was.scorer].concat(was.assists).filter(function (n) { return n !== null; })) + ", video review has " + tn([sc].concat(a).filter(function (n) { return n !== null; })) + ".");
-        keep.push({per: was ? was.per : "", sec: was ? was.sec : 0, vsec: c.sec, home: home, scorer: sc, assists: a, rv: true});
+        keep.push({per: was ? was.per : "", sec: was ? was.sec : 0, vsec: c.sec, home: home, scorer: sc, assists: a, rv: true, sit: goalSit(R, c)});
       });
     });
     var anyG = fG.length || aG.length;
