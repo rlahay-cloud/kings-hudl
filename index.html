@@ -659,7 +659,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (g.dnp.length) h += '<p class="note">Did not play: ' + g.dnp.map(function (n) { return esc(label(n)); }).join(", ") + "</p>";
     if (g.goalies.length) h += "<h2>Goalies</h2><div class='card scroll'><table><thead><tr><th>Goalie</th><th>SA</th><th>GA</th><th>SV%</th></tr></thead><tbody>" +
       g.goalies.map(function (x) { return "<tr><td>" + esc(label(x.n)) + "</td><td>" + x.sa + "</td><td>" + x.ga + "</td><td>" + svText(svp(x.sa, x.ga)) + "</td></tr>"; }).join("") + "</tbody></table></div>";
-    h += reviewBlock(g.date) + videoBlock(g) + clipsBlock(g.date, D.videos[g.date]);
+    h += reviewBlock(g.date) + videoBlock(g) + clipsBlock(g.date, D.videos[g.date]) + gameEventsBlock(g);
     return h;
   }
   function videoBlock(g) {
@@ -1262,6 +1262,61 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var l = allReview(date); if (!l.length) return "";
     return "<h2>Coach review<small>marked by coaches in Coaches corner</small></h2>" + reviewSummaryHtml(l);
   }
+  // Every event marked in the Review screen, listed on the game page with a filter and a sort.
+  var GE_CATS = ["Goals", "Shots", "Penalties", "Faceoffs", "Entries and exits", "Special teams", "Coach notes"];
+  function geCat(tag) {
+    if (/: Goal$/.test(tag)) return "Goals";
+    if (/^(For|Against):/.test(tag)) return "Shots";
+    if (tag === "Penalty" || tag === "Away Penalty") return "Penalties";
+    if (/^Faceoff:/.test(tag)) return "Faceoffs";
+    if (/^(Entry|Exit):/.test(tag)) return "Entries and exits";
+    if (/^Special:/.test(tag)) return "Special teams";
+    return "Coach notes";
+  }
+  function geName(tag) {
+    var m = /^(For|Against): (.*)$/.exec(tag); if (m) return (m[1] === "For" ? "Us" : "Them") + ": " + m[2];
+    return tag.replace(/^Special: /, "").replace(/^Note: /, "");
+  }
+  var GE = {items: [], url: "", game: ""};
+  function gameEventsBlock(g) {
+    var list = allReview(g.date).map(function (c) { c.cat = geCat(c.tag); return c; });
+    if (!list.length) return "";
+    GE = {items: list, url: D.videos[g.date] || lget(VK)[g.date] || "", game: fmtDate(g.date) + " vs " + g.away, date: g.date};
+    var h = "<h2>Game events<small>everything marked in Coaches corner</small></h2>";
+    if (!allClips(g.date).length) { vp.player = null; vp.id = null; h += playCard(); }
+    var nums = {}; list.forEach(function (c) { c.players.forEach(function (n) { nums[n] = 1; }); });
+    h += '<div class="card"><div class="fld"><label for="geCat">Show</label><select id="geCat"><option value="">All events</option>' + GE_CATS.filter(function (k) { return list.some(function (c) { return c.cat === k; }); }).map(function (k) { return "<option>" + k + "</option>"; }).join("") + "</select></div>" +
+      '<div class="fld"><label for="geSort">Sort by</label><select id="geSort"><option value="time">Time in game</option><option value="type">Type of event</option><option value="player">Player number</option></select></div>' +
+      '<div class="fld"><label for="gePl">Player</label><select id="gePl"><option value="">Everyone</option>' + Object.keys(nums).map(Number).sort(function (a, b) { return a - b; }).map(function (n) { return '<option value="' + n + '">' + esc(label(n)) + "</option>"; }).join("") + "</select></div>" +
+      '<p class="note" id="geCount"></p><div id="geList"></div></div>';
+    return h;
+  }
+  function bindGameEvents() {
+    if (!$("geList")) return;
+    var hasVid = !!ytId(GE.url);
+    function render() {
+      var cat = $("geCat").value, pl = $("gePl").value, sort = $("geSort").value;
+      var f = GE.items.filter(function (c) { return (!cat || c.cat === cat) && (!pl || c.players.indexOf(+pl) >= 0); });
+      f = f.slice().sort(function (a, b) {
+        if (sort === "type") return GE_CATS.indexOf(a.cat) - GE_CATS.indexOf(b.cat) || (a.tag < b.tag ? -1 : a.tag > b.tag ? 1 : 0) || a.sec - b.sec;
+        if (sort === "player") { var pa = a.players.length ? a.players[0] : 9999, pb = b.players.length ? b.players[0] : 9999; return pa - pb || a.sec - b.sec; }
+        return a.sec - b.sec;
+      });
+      $("geCount").textContent = f.length + (f.length === 1 ? " event" : " events");
+      $("geList").innerHTML = f.length ? f.map(function (c) {
+        var i = GE.items.indexOf(c);
+        var tl = hasVid ? '<button class="tm" style="background:none;border:0;color:var(--accent);font-family:var(--display);font-weight:700;font-size:18px;min-width:70px;text-align:left;padding:0" data-ge="' + i + '">' + hms(c.sec) + "</button>" : '<span class="t" style="font-family:var(--display);font-weight:700;font-size:18px;min-width:70px">' + hms(c.sec) + "</span>";
+        return '<div class="ev ' + (c.cat === "Goals" ? "goal" : c.cat === "Penalties" ? "pen" : "") + '">' + tl + '<span class="lb"><b>' + esc(geName(c.tag)) + "</b>" + whoHtml(c) + "</span></div>";
+      }).join("") : '<p class="note">Nothing matches these filters.</p>';
+    }
+    ["geCat", "geSort", "gePl"].forEach(function (id) { $(id).addEventListener("change", render); });
+    $("geList").addEventListener("click", function (e) {
+      var b = e.target.closest("button[data-ge]"); if (!b) return;
+      var c = GE.items[+b.getAttribute("data-ge")];
+      playItem({date: GE.date, game: GE.game, sec: Math.max(0, c.sec - 8), end: c.sec + 2, tag: geName(c.tag)});
+    });
+    render();
+  }
   function reviewPick(c) {
     var all = everyoneNums(), isG = {};
     Object.keys(D.goalieNums).forEach(function (k) { isG[k] = 1; });
@@ -1703,6 +1758,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (base === "clips") bindClips(parts[1], "watch");
     if (base === "video") bindVideo();
     if (base === "player") bindPlayerClips(+parts[1]);
+    if (base === "game") bindGameEvents();
     if (base === "shots") bindShots();
     var sb = $("sampleBtn"); if (sb) sb.addEventListener("click", function () { sampleData(); route(); });
     Array.prototype.forEach.call(document.querySelectorAll("th.sort"), function (th) {
