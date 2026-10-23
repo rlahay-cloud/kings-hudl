@@ -659,8 +659,40 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (g.dnp.length) h += '<p class="note">Did not play: ' + g.dnp.map(function (n) { return esc(label(n)); }).join(", ") + "</p>";
     if (g.goalies.length) h += "<h2>Goalies</h2><div class='card scroll'><table><thead><tr><th>Goalie</th><th>SA</th><th>GA</th><th>SV%</th></tr></thead><tbody>" +
       g.goalies.map(function (x) { return "<tr><td>" + esc(label(x.n)) + "</td><td>" + x.sa + "</td><td>" + x.ga + "</td><td>" + svText(svp(x.sa, x.ga)) + "</td></tr>"; }).join("") + "</tbody></table></div>";
-    h += reviewBlock(g.date) + videoBlock(g) + clipsBlock(g.date, D.videos[g.date]) + gameEventsBlock(g);
+    h += reviewBlock(g.date) + highlightsBlock(g) + gameEventsBlock(g);
     return h;
+  }
+  // One Highlights list per game: coach clips, the Streamn timestamps, and every Us goal marked in the Review screen (added automatically).
+  function highlightsBlock(g) {
+    var url = D.videos[g.date] || lget(VK)[g.date] || "", ev = D.events[g.date] || [], clips = allClips(g.date);
+    var gl = fmtDate(g.date) + " vs " + g.away, rows = [];
+    var goalEv = ev.filter(function (e) { return /^Goal|^Try/i.test(e.label); }).length, match = goalEv === g.goals.length, gi = 0;
+    ev.forEach(function (e) {
+      var lb = e.label;
+      if (match && /^Goal|^Try/i.test(e.label)) {
+        var gx = g.goals[gi++];
+        lb = (gx.home ? "Goal: " + (gx.scorer !== null ? label(gx.scorer) : g.home) : "Goal against: " + g.away) + (gx.home && gx.assists.length ? " (from " + gx.assists.map(label).join(", ") + ")" : "");
+      }
+      rows.push({sec: e.sec, tag: lb, html: "", goal: /^Goal|^Try/i.test(e.label), pen: /^Penalty/i.test(e.label)});
+    });
+    clips.forEach(function (c) { rows.push({sec: c.sec, end: c.end, tag: c.tag, html: " " + esc(c.label) + whoHtml(c) + coachSpan(c), goal: c.tag === "Goal", pen: /Penalty/.test(c.tag)}); });
+    var have = rows.filter(function (r) { return r.goal; });
+    allReview(g.date).filter(function (c) { return c.tag === "For: Goal"; }).forEach(function (c) {
+      if (have.some(function (r) { return Math.abs((r.end ? r.end - 2 : r.sec + 8) - c.sec) <= 25 || Math.abs(r.sec - c.sec) <= 25; })) return;
+      rows.push({sec: Math.max(0, c.sec - 8), end: c.sec + 2, tag: "Goal", html: whoHtml(c) + ' <span class="mut">(automatic)</span>', goal: true});
+    });
+    if (!rows.length && !url) return "";
+    rows.sort(function (a, b) { return a.sec - b.sec; });
+    vp.player = null; vp.id = null; PL = [];
+    var h = "<h2>Highlights<small><a href='#/clips/" + g.date + "'>filter and watch</a></small></h2>";
+    h += playCard() + "<div class='card'>";
+    if (!url) h += '<p class="note">Add this game\'s YouTube link in videos.txt or on the Highlights page to make these times clickable.</p>';
+    if (!rows.length) h += '<p class="note">No highlights yet. Our goals show up here by themselves once they are marked in Coaches corner.</p>';
+    h += rows.map(function (r) {
+      var tl = timeBtn({date: g.date, game: gl, sec: r.sec, end: r.end, tag: r.tag}, !!ytId(url));
+      return '<div class="ev ' + (r.goal ? "goal" : r.pen ? "pen" : "") + '">' + tl + '<span class="lb"><b>' + esc(r.tag) + "</b>" + r.html + "</span></div>";
+    }).join("");
+    return h + "</div>";
   }
   function videoBlock(g) {
     var url = D.videos[g.date], ev = D.events[g.date];
@@ -1283,7 +1315,6 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (!list.length) return "";
     GE = {items: list, url: D.videos[g.date] || lget(VK)[g.date] || "", game: fmtDate(g.date) + " vs " + g.away, date: g.date};
     var h = "<h2>Game events<small>everything marked in Coaches corner</small></h2>";
-    if (!allClips(g.date).length) { vp.player = null; vp.id = null; h += playCard(); }
     var nums = {}; list.forEach(function (c) { c.players.forEach(function (n) { nums[n] = 1; }); });
     h += '<div class="card"><div class="fld"><label for="geCat">Show</label><select id="geCat"><option value="">All events</option>' + GE_CATS.filter(function (k) { return list.some(function (c) { return c.cat === k; }); }).map(function (k) { return "<option>" + k + "</option>"; }).join("") + "</select></div>" +
       '<div class="fld"><label for="geSort">Sort by</label><select id="geSort"><option value="time">Time in game</option><option value="type">Type of event</option><option value="player">Player number</option></select></div>' +
