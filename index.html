@@ -2157,13 +2157,13 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     return "<h2>Shot map</h2>" +
       '<div class="card"><div class="filters"><div class="fld"><label for="mpGame">Game</label><select id="mpGame"><option value="">All games</option>' + ds.map(function (d) { return '<option value="' + d + '">' + fmtDate(d) + "</option>"; }).join("") + "</select></div>" +
       '<div class="fld"><label for="mpPl">Player</label><select id="mpPl"><option value="">Everyone</option>' + nums.map(function (n) { return '<option value="' + n + '">' + esc(label(n)) + "</option>"; }).join("") + "</select></div>" +
-      '<div class="fld"><label for="mpRes">Result</label><select id="mpRes"><option value="">All shots</option><option value="G">Goals</option><option value="S">Saved</option><option value="M">Missed</option><option value="B">Blocked</option></select></div>' +
+      '<div class="fld"><label for="mpRes">Result</label><select id="mpRes"><option value="">All shots</option><option value="G">Goals</option><option value="S">Saved</option><option value="B">Blocked</option></select></div>' +
       '<div class="fld"><label for="mpTeam">Team</label><select id="mpTeam"><option value="">Both teams</option><option value="H">Us</option><option value="A">Opponent</option></select></div>' +
       '<div class="fld"><label for="mpCoach">Marked by</label><select id="mpCoach"><option value="">Everyone</option>' + coachesWithShots().map(function (c) { return "<option>" + esc(c) + "</option>"; }).join("") + "</select></div></div>" +
       '<label class="note"><input type="checkbox" id="mpHeat" checked> Show heat</label>' +
       '<div class="kpis" id="mpKpi"></div>' + '<div class="seg" role="group" aria-label="Zoom the rink"><button id="mpZin">Zoom in</button><button id="mpZout">Zoom out</button><button id="mpZreset">Reset view</button></div>' + fullRink() +
       '<div class="leg"><span><i style="background:#a974ff;border-radius:50%"></i>Our goal</span><span><i style="background:#e5484d;border-radius:50%"></i>Their goal</span><span><i style="border:2px solid #1e5fd0;border-radius:50%"></i>Our shot</span><span><i style="border:2px dashed #e5484d;border-radius:50%"></i>Their shot</span></div>' +
-      '<p class="note">We attack the net on the right. Older shots marked on one end only are placed on the correct end. Missed and blocked shots are small dots.</p>' +
+      '<p class="note">We attack the net on the right. Older shots marked on one end only are placed on the correct end. Blocked shots are small dots. Missed shots are not shown.</p>' +
       (ds.length ? "" : '<p class="note">No shots marked yet. Coaches can add shots in Coaches corner.</p>') + "</div>";
   }
   var PERIODS_LABEL = ["1", "2", "3", "OT"];
@@ -2220,7 +2220,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       });
       return out;
     }
-    var data = all(), lastT = null;
+    var data = all().filter(function (s0) { return s0.r !== "M"; }), lastT = null;
     function draw() {
       var g = $("mpGame").value, pl = $("mpPl").value, r = $("mpRes").value, t = $("mpTeam").value, co = $("mpCoach").value, heat = $("mpHeat").checked;
       if (t !== lastT) {
