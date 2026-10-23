@@ -56,3 +56,7 @@ Player names come from `roster.json`. Edit it to add or fix names. Goalies can g
 ## Game events (no name)
 
 In Coaches corner, the Game events tab marks basic moments: Goal, Goal against, Penalty and Away Penalty. Goals take a scorer and up to two assists, penalties take the player. These are saved with no coach name and show in the Video tab under "Game events". The passcode is still needed so strangers cannot write to the repo.
+
+## Review (coaches)
+
+Coaches corner has a Review tab, similar to the Hudl coach screen. It has the game video, a timeline with a colored mark for every event, button panels (shots for and against, zone entries and exits, faceoffs, power play and penalty kill), and a rink for shot locations. Tap the rink first, then a shot button, to save where the shot came from. Review events save as `games/review_DATE_NAME.txt` and feed a Coach review summary on each game page and the Shot map.

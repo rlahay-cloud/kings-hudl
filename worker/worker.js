@@ -7,6 +7,7 @@
 //   ALLOWED_ORIGIN text     https://rlahay-cloud.github.io
 
 const CLIP_LINE = /^\d+:\d{2}:\d{2}\|[^|\n]{1,30}\|[\da ]{0,60}\|[^|\n]{0,200}(\|\d{1,7})?$/;
+const REVIEW_LINE = /^\d+:\d{2}:\d{2}\|[^|\n]{1,40}\|[\da ]{0,60}\|(\d(\.\d{1,3})?)?,(\d(\.\d{1,3})?)?,\d$/;
 const SHOT_LINE = /^P\d+\|[\d.]+\|[\d.]+\|(-|\d+)\|(G|S)\|(H|A)$/;
 const MAX_BYTES = 60000;
 
@@ -40,7 +41,7 @@ function b64(text) {
 function check(body, env) {
   if (!body || typeof body !== "object") return {error: "Bad request"};
   if (!same(body.passcode, env.PASSCODE || "")) return {error: "Wrong passcode"};
-  if (body.kind !== "clips" && body.kind !== "shots" && body.kind !== "video") return {error: "Unknown kind"};
+  if (body.kind !== "clips" && body.kind !== "shots" && body.kind !== "video" && body.kind !== "review") return {error: "Unknown kind"};
   if (!/^\d{4}-\d{2}-\d{2}$/.test(body.date || "")) return {error: "Bad date"};
   if (body.kind === "video") {
     const u = String(body.text || "").trim();
@@ -52,7 +53,7 @@ function check(body, env) {
   if (text.length > MAX_BYTES) return {error: "File is too big"};
   const lines = text.split(/\r?\n/).filter(function (l) { return l.trim() !== ""; });
   if (lines.length > 3000) return {error: "Too many lines"};
-  const re = body.kind === "clips" ? CLIP_LINE : SHOT_LINE;
+  const re = body.kind === "clips" ? CLIP_LINE : body.kind === "review" ? REVIEW_LINE : SHOT_LINE;
   for (const l of lines) if (!re.test(l)) return {error: "A line was not in the right format"};
   return {path: "games/" + body.kind + "_" + body.date + "_" + coach + ".txt", text: lines.join("\n") + "\n", coach: coach};
 }
@@ -91,7 +92,7 @@ export default {
     const r = check(body, env);
     if (r.error) return reply(env, r.error === "Wrong passcode" ? 401 : 400, {ok: false, error: r.error});
     try {
-      await saveToGitHub(env, r.path, r.text, (body.kind === "clips" ? "Highlights" : body.kind === "video" ? "Video link" : "Shots") + " from " + r.coach + " for " + body.date);
+      await saveToGitHub(env, r.path, r.text, (body.kind === "clips" ? "Highlights" : body.kind === "video" ? "Video link" : body.kind === "review" ? "Review" : "Shots") + " from " + r.coach + " for " + body.date);
     } catch (e) {
       const why = String(e && e.message || e);
       let hint = "";

@@ -111,6 +111,24 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
 .clip .f { grid-column: 1 / -1; display: grid; grid-template-columns: 130px 1fr auto; gap: 6px; }
 .clip .f input.pl { grid-column: 1 / 3; }
 .clip .pick { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
+.rv { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); margin-top: 12px; }
+@media (min-width: 900px) { .rv { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); align-items: start; } .rvl { position: sticky; top: 96px; } }
+.rvl { display: grid; gap: 12px; }
+@media (max-width: 899px) { .rvl { display: contents; } }
+.rvvideo { position: sticky; top: 96px; z-index: 4; } @media (min-width: 900px) { .rvvideo { position: static; } }
+.rvr { display: grid; gap: 12px; }
+.rvgrp { border-left: 4px solid var(--c); }
+.rvbtns { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; } .rvbtns.fo { grid-template-columns: repeat(2, 1fr); }
+.rvb { min-height: 48px; border: 0; border-radius: 10px; background: var(--c); color: #0b1220; font-family: var(--display); font-weight: 700; font-size: 18px; letter-spacing: .04em; }
+.rvb:disabled { opacity: .45; }
+.tlwrap { position: relative; display: grid; gap: 4px; }
+.tlrow { display: grid; grid-template-columns: 88px 1fr; align-items: center; gap: 8px; }
+.tlname { font-family: var(--display); font-weight: 600; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.tltrack { position: relative; height: 22px; background: var(--panel2); border-radius: 6px; cursor: pointer; }
+.tick { position: absolute; top: 2px; width: 8px; height: 18px; border: 0; border-radius: 3px; padding: 0; transform: translateX(-50%); } .tick.on { outline: 2px solid #fff; z-index: 2; }
+.tlover { position: absolute; left: 96px; right: 0; top: 0; bottom: 0; pointer-events: none; }
+.tlhead { position: absolute; top: 0; bottom: 0; width: 2px; background: #fff; opacity: .85; left: 0; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
 .pickwrap { grid-column: 1 / -1; display: grid; gap: 4px; }
 .chip.pk { min-height: 40px; min-width: 44px; padding: 4px 10px; font-size: 16px; }
 @media (max-width: 520px) { .clip .f { grid-template-columns: 1fr; } .clip .f input.pl { grid-column: auto; } }
@@ -135,7 +153,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
 (function () {
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
-  var D = {games: [], roster: {}, goalieNums: {}, home: "", videos: {}, events: {}, clips: {}, shots: {}, cfg: {}, sample: false, error: ""};
+  var D = {games: [], roster: {}, goalieNums: {}, home: "", videos: {}, events: {}, clips: {}, shots: {}, review: {}, cfg: {}, sample: false, error: ""};
 
   // ---------- helpers ----------
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return {"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]; }); }
@@ -269,6 +287,10 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       names.filter(function (n) { return /^video_\d{4}-\d{2}-\d{2}\.txt$/.test(n); }).forEach(function (n) {
         var d = /(\d{4}-\d{2}-\d{2})/.exec(n)[1];
         videoJobs.push(getText("games/" + n).then(function (t) { var u = (t.split(/\r?\n/)[0] || "").trim(); if (u) D.videos[d] = u; }).catch(function () {}));
+      });
+      names.filter(function (n) { return /^review_\d{4}-\d{2}-\d{2}(_[a-z0-9-]+)?\.txt$/.test(n); }).forEach(function (n) {
+        var m = /(\d{4}-\d{2}-\d{2})(?:_([a-z0-9-]+))?\.txt$/.exec(n), d = m[1], slug = m[2] || "coach";
+        videoJobs.push(getText("games/" + n).then(function (t) { (D.review[d] = D.review[d] || {})[slug] = parseReview(t); }).catch(function () {}));
       });
       var shotFiles = names.filter(function (n) { return /^shots_\d{4}-\d{2}-\d{2}(_[a-z0-9-]+)?\.txt$/.test(n); });
       var jobs = sums.map(function (n) {
@@ -581,7 +603,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (g.dnp.length) h += '<p class="note">Did not play: ' + g.dnp.map(function (n) { return esc(label(n)); }).join(", ") + "</p>";
     if (g.goalies.length) h += "<h2>Goalies</h2><div class='card scroll'><table><thead><tr><th>Goalie</th><th>SA</th><th>GA</th><th>SV%</th></tr></thead><tbody>" +
       g.goalies.map(function (x) { return "<tr><td>" + esc(label(x.n)) + "</td><td>" + x.sa + "</td><td>" + x.ga + "</td><td>" + svText(svp(x.sa, x.ga)) + "</td></tr>"; }).join("") + "</tbody></table></div>";
-    h += videoBlock(g) + clipsBlock(g.date, D.videos[g.date]);
+    h += reviewBlock(g.date) + videoBlock(g) + clipsBlock(g.date, D.videos[g.date]);
     return h;
   }
   function videoBlock(g) {
@@ -787,10 +809,10 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     return out.sort(function (a, b) { return a.sec - b.sec; });
   }
   function coachSpan(x) { return x.coach === GAME_LABEL ? "" : ' <span class="mut">' + esc(x.coach) + "</span>"; }
-  function allShots(date) { var l = lget(SK); return mergeBy(D.shots[date], l[date]); }
+  function allShots(date) { var l = lget(SK); return mergeBy(D.shots[date], l[date]).concat(reviewShots(date)); }
   function shotDates() {
     var seen = {}, out = [];
-    Object.keys(D.shots).concat(Object.keys(lget(SK))).forEach(function (d) { if (!seen[d]) { seen[d] = 1; out.push(d); } });
+    Object.keys(D.shots).concat(Object.keys(lget(SK)), Object.keys(D.review), Object.keys(lget(RK))).forEach(function (d) { if (!seen[d]) { seen[d] = 1; out.push(d); } });
     return out.sort().reverse();
   }
   function shareSheet(name, text, noteEl) {
@@ -893,7 +915,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   }
   function coachSubTabs(active) {
     function b(h, label, key) { return '<button onclick="location.hash=\'' + h + '\'" aria-pressed="' + (active === key) + '">' + label + "</button>"; }
-    return '<div class="seg" role="group">' + b("#/coach", "Highlights", "clips") + b("#/coach/events", "Game events", "events") + b("#/coach/shots", "Mark shots", "shots") + "</div>";
+    return '<div class="seg" role="group">' + b("#/coach", "Highlights", "clips") + b("#/coach/events", "Game events", "events") + b("#/coach/review", "Review", "review") + b("#/coach/shots", "Mark shots", "shots") + "</div>";
   }
   function vClips(dateParam, mode) {
     var dates = dateChoices(), date = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : (D.games.length ? D.games[D.games.length - 1].date : dates[0]);
@@ -1079,6 +1101,250 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     renderAll();
   }
 
+  // ---------- game review (coaches corner) ----------
+  var RK = "kh-review-v1";
+  var RV_SHOTS = ["Goal", "Shot on goal", "Missed shot", "Blocked shot"], RV_MOVES = ["Carry", "Dump", "Pass", "Turnover"];
+  var RVG = [
+    {k: "for", name: "Shots for", pre: "For", c: "#3ddc97", loc: true, tags: RV_SHOTS},
+    {k: "ag", name: "Shots against", pre: "Against", c: "#5aa9ff", loc: true, tags: RV_SHOTS},
+    {k: "en", name: "Zone entry", pre: "Entry", c: "#2ec4b6", tags: RV_MOVES},
+    {k: "ex", name: "Zone exit", pre: "Exit", c: "#f5c542", tags: RV_MOVES},
+    {k: "fo", name: "Faceoff", pre: "Faceoff", c: "#b4c0d6", tags: ["OZ Win", "OZ Loss", "NZ Win", "NZ Loss", "DZ Win", "DZ Loss"]},
+    {k: "sp", name: "Special teams", pre: "Special", c: "#a974ff", tags: ["Power play", "Penalty kill"]}
+  ];
+  function rvGroup(tag) { var p = String(tag).split(":")[0]; return RVG.filter(function (g) { return g.pre === p; })[0] || null; }
+  function rvName(tag) { var g = rvGroup(tag); return g ? String(tag).slice(g.pre.length + 1).trim() : String(tag); }
+  function parseReview(text) {
+    var out = [];
+    text.split(/\r?\n/).forEach(function (line) {
+      var a = line.split("|"); if (a.length < 4) return;
+      var sec = parseHms(a[0]); if (sec === null) return;
+      var tk = a[2].match(/a?\d+/gi) || [], ps = [], as = [];
+      tk.forEach(function (t) { var n = +t.replace(/\D/g, ""); if (ps.indexOf(n) < 0) ps.push(n); if (/^a/i.test(t) && as.indexOf(n) < 0) as.push(n); });
+      var m = /^([\d.]*),([\d.]*),(\d)$/.exec(a[3].trim());
+      out.push({sec: sec, tag: a[1].trim(), players: ps, assists: as, x: m && m[1] !== "" ? +m[1] : null, y: m && m[2] !== "" ? +m[2] : null, p: m ? +m[3] : 1});
+    });
+    return out;
+  }
+  function fmtReview(list) {
+    return list.slice().sort(function (a, b) { return a.sec - b.sec; }).map(function (c) {
+      return hms(c.sec) + "|" + c.tag + "|" + clipPlayersField(c) + "|" + (c.x == null ? "" : (+c.x).toFixed(3)) + "," + (c.y == null ? "" : (+c.y).toFixed(3)) + "," + (c.p || 1);
+    }).join("\n") + "\n";
+  }
+  function getMyReview(date) {
+    var l = lget(RK); if (l[date]) return l[date].slice();
+    var sent = (D.review[date] || {})[mySlug()];
+    return sent ? sent.map(function (x) { return {sec: x.sec, tag: x.tag, players: x.players.slice(), assists: x.assists.slice(), x: x.x, y: x.y, p: x.p}; }) : [];
+  }
+  function putReview(date, list) { var l = lget(RK); l[date] = list; lset(RK, l); }
+  function allReview(date) { return mergeBy(D.review[date], lget(RK)[date], "sec"); }
+  var RV_SHOT_MAP = {"For: Goal": ["G", "H"], "For: Shot on goal": ["S", "H"], "Against: Goal": ["G", "A"], "Against: Shot on goal": ["S", "A"]};
+  function reviewShots(date) {
+    return allReview(date).filter(function (c) { return RV_SHOT_MAP[c.tag] && c.x != null && c.y != null; }).map(function (c) {
+      var m = RV_SHOT_MAP[c.tag], sc = c.players.filter(function (n) { return (c.assists || []).indexOf(n) < 0; })[0];
+      return {p: c.p || 1, x: c.x, y: c.y, n: m[1] === "H" && sc !== undefined ? sc : null, r: m[0], t: m[1], coach: c.coach};
+    });
+  }
+  function reviewStats(list) {
+    var n = function (t) { return list.filter(function (c) { return c.tag === t; }).length; };
+    var st = {};
+    ["For", "Against"].forEach(function (s) {
+      var g = n(s + ": Goal"), sog = n(s + ": Shot on goal") + g;
+      st[s] = {goals: g, sog: sog, miss: n(s + ": Missed shot"), blk: n(s + ": Blocked shot"), att: sog + n(s + ": Missed shot") + n(s + ": Blocked shot")};
+    });
+    st.fo = {};
+    ["OZ", "NZ", "DZ"].forEach(function (z) { st.fo[z] = [n("Faceoff: " + z + " Win"), n("Faceoff: " + z + " Loss")]; });
+    st.en = {}; st.ex = {};
+    RV_MOVES.forEach(function (m) { st.en[m] = n("Entry: " + m); st.ex[m] = n("Exit: " + m); });
+    return st;
+  }
+  function reviewSummaryHtml(list) {
+    var s = reviewStats(list), pct = function (a, b) { return b ? Math.round(a * 100 / b) + "%" : "-"; };
+    var fw = 0, fl = 0; Object.keys(s.fo).forEach(function (z) { fw += s.fo[z][0]; fl += s.fo[z][1]; });
+    var en = RV_MOVES.reduce(function (a, m) { return a + s.en[m]; }, 0), ex = RV_MOVES.reduce(function (a, m) { return a + s.ex[m]; }, 0);
+    var row = function (l, a, b) { return "<tr><td>" + l + "</td><td>" + a + "</td><td>" + b + "</td></tr>"; };
+    return "<div class='card scroll'><table><thead><tr><th></th><th>Us</th><th>Them</th></tr></thead><tbody>" +
+      row("Shot attempts", s.For.att, s.Against.att) + row("Shots on goal", s.For.sog, s.Against.sog) + row("Goals", s.For.goals, s.Against.goals) +
+      row("Missed", s.For.miss, s.Against.miss) + row("Blocked", s.For.blk, s.Against.blk) + "</tbody></table></div>" +
+      "<div class='card scroll' style='margin-top:12px'><table><thead><tr><th></th><th>OZ</th><th>NZ</th><th>DZ</th><th>All</th></tr></thead><tbody>" +
+      "<tr><td>Faceoffs won</td>" + ["OZ", "NZ", "DZ"].map(function (z) { return "<td>" + s.fo[z][0] + "/" + (s.fo[z][0] + s.fo[z][1]) + "</td>"; }).join("") + "<td><b>" + fw + "/" + (fw + fl) + " (" + pct(fw, fw + fl) + ")</b></td></tr></tbody></table></div>" +
+      "<div class='card scroll' style='margin-top:12px'><table><thead><tr><th></th>" + RV_MOVES.map(function (m) { return "<th>" + m + "</th>"; }).join("") + "<th>Total</th><th>Controlled</th></tr></thead><tbody>" +
+      "<tr><td>Zone entries</td>" + RV_MOVES.map(function (m) { return "<td>" + s.en[m] + "</td>"; }).join("") + "<td>" + en + "</td><td>" + pct(s.en.Carry + s.en.Pass, en) + "</td></tr>" +
+      "<tr><td>Zone exits</td>" + RV_MOVES.map(function (m) { return "<td>" + s.ex[m] + "</td>"; }).join("") + "<td>" + ex + "</td><td>" + pct(s.ex.Carry + s.ex.Pass, ex) + "</td></tr></tbody></table></div>" +
+      "<p class='note'>Controlled means the puck was carried or passed, not dumped or turned over.</p>";
+  }
+  function reviewBlock(date) {
+    var l = allReview(date); if (!l.length) return "";
+    return "<h2>Coach review<small>marked by coaches in Coaches corner</small></h2>" + reviewSummaryHtml(l);
+  }
+  function reviewPick(c) {
+    var all = everyoneNums(), isG = {};
+    Object.keys(D.goalieNums).forEach(function (k) { isG[k] = 1; });
+    D.games.forEach(function (g) { g.goalies.forEach(function (x) { isG[x.n] = 1; }); g.players.forEach(function (p) { delete isG[p.n]; }); });
+    var goalies = all.filter(function (n) { return isG[n]; }), skaters = all.filter(function (n) { return !isG[n]; });
+    c.players.forEach(function (n) { if (all.indexOf(n) < 0) skaters.push(n); });
+    var a = c.assists || [], inP = function (n) { return c.players.indexOf(n) >= 0; };
+    if (c.tag === "For: Goal") return chipRow("Scored by", skaters, c, "scorer", function (n) { return inP(n) && a.indexOf(n) < 0; }) + chipRow("Assists (up to 2)", skaters, c, "assist", function (n) { return a.indexOf(n) >= 0; });
+    var g = rvGroup(c.tag); if (!g || g.k === "sp") return "";
+    if (g.k === "ag") return goalies.length ? chipRow("Goalie", goalies, c, "any", inP) : "";
+    return chipRow(g.k === "for" ? "Shooter" : g.k === "fo" ? "Taker" : "Player", skaters, c, "any", inP);
+  }
+  function applyPick(c, role, n) {
+    var as = c.assists = c.assists || [], isA = as.indexOf(n) >= 0, isP = c.players.indexOf(n) >= 0;
+    if (role === "scorer") {
+      c.players = c.players.filter(function (x) { return as.indexOf(x) >= 0; });
+      if (!(isP && !isA)) { if (isA) as.splice(as.indexOf(n), 1); else c.players.unshift(n); }
+    } else if (role === "assist") {
+      if (isA) { as.splice(as.indexOf(n), 1); c.players.splice(c.players.indexOf(n), 1); }
+      else if (as.length >= 2) return "A goal can have up to two assists.";
+      else { if (isP) c.players.splice(c.players.indexOf(n), 1); as.push(n); c.players.push(n); }
+    } else if (isP) c.players.splice(c.players.indexOf(n), 1); else c.players.push(n);
+    return "";
+  }
+  function vReview(dateParam) {
+    var dates = dateChoices(), date = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : (D.games.length ? D.games[D.games.length - 1].date : dates[0]);
+    if (dates.indexOf(date) < 0) dates.unshift(date);
+    var url = D.videos[date] || lget(VK)[date] || "";
+    var h = "<h2>Coaches corner</h2>" + coachSubTabs("review");
+    h += '<div class="card" style="margin-top:12px"><div class="filters"><div class="fld"><label for="rvDate">Game</label>' + dateSelect("rvDate", dates, date) + "</div>" +
+      '<div class="fld"><label for="clUrl">YouTube link for this game</label><input type="url" id="clUrl" placeholder="https://youtu.be/..." value="' + esc(url) + '"></div></div>' +
+      '<div class="seg"><button id="clLoad">Load video</button></div>' +
+      '<div class="fld"><label for="clFile">Or open a video file from this device</label><input type="file" id="clFile" accept="video/*"></div>' +
+      '<p class="note" id="clNote" aria-live="polite">' + (url ? "Loading the video." : "Load the game video to start.") + "</p></div>";
+    h += '<div class="rv"><div class="rvl"><div id="clVideo" class="rvvideo"></div><div class="card rvtl" id="rvTl"></div><div class="card" id="rvSel"></div></div>' +
+      '<div class="rvr"><div class="card"><div class="fld"><label>Period</label><div class="seg" id="rvPer">' + [1, 2, 3, 4].map(function (p, i) { return '<button data-v="' + p + '" aria-pressed="' + (i === 0) + '">' + PERIODS_LABEL[i] + "</button>"; }).join("") + "</div></div>" +
+      '<p class="note" style="margin:0">Tap a button when it happens. Shots can also take a spot on the rink: tap the rink first, then the shot button.</p></div>' +
+      RVG.map(function (g) {
+        return '<div class="card rvgrp" style="--c:' + g.c + '"><h3>' + g.name + '</h3><div class="rvbtns' + (g.k === "fo" ? " fo" : "") + '">' + g.tags.map(function (t) { return '<button class="rvb" data-tag="' + g.pre + ": " + t + '" disabled>' + t + "</button>"; }).join("") + "</div></div>";
+      }).join("") +
+      '<div class="card"><h3>Shot location</h3><p class="note" style="margin-top:0">Mark every shot as if we are attacking the net on the right.</p>' + rinkSvg() + '<p class="note" id="rvRinkNote"></p></div></div></div>';
+    h += '<h2>Review summary</h2><div id="rvSum"></div>' +
+      '<h2>Events<small id="rvCount"></small></h2><div class="card" id="rvList"></div>' +
+      '<div class="seg" style="margin-top:12px"><button class="btn" id="rvUndo">Undo last</button><button class="btn" id="rvClear">Delete all of mine for this game</button></div>' +
+      '<div class="seg" style="margin-top:12px"><button class="btn" id="rvSend" style="width:100%">Share to Kings HUDL</button></div><p class="note" id="rvShare" aria-live="polite"></p>';
+    return h;
+  }
+  function bindReview() {
+    if (window.__rvT) { clearInterval(window.__rvT); window.__rvT = null; }
+    var date = $("rvDate").value, list = getMyReview(date), cur = null, st = {p: 1, pend: null, sel: -1}, ytPl = null;
+    $("rvDate").addEventListener("change", function () { location.hash = "#/coach/review/" + $("rvDate").value; });
+    function persist() { putReview(date, list); }
+    function dur() { var d = cur && cur.dur ? cur.dur() : 0; if (d > 0) return d; var mx = list.reduce(function (m, c) { return Math.max(m, c.sec); }, 0); return Math.max(600, mx + 120); }
+    function colorOf(tag) { var g = rvGroup(tag); return g ? g.c : "#93a1bd"; }
+    function drawTl() {
+      var d = dur();
+      $("rvTl").innerHTML = '<div class="tlwrap">' + RVG.map(function (g) {
+        return '<div class="tlrow"><span class="tlname">' + g.name + '</span><div class="tltrack" data-k="' + g.k + '">' +
+          list.map(function (c, i) { return rvGroup(c.tag) === g ? '<button class="tick' + (i === st.sel ? " on" : "") + '" style="left:' + Math.min(99.5, c.sec * 100 / d) + "%;background:" + g.c + '" data-i="' + i + '" aria-label="' + esc(c.tag) + " at " + hms(c.sec) + '"></button>' : ""; }).join("") + "</div></div>";
+      }).join("") + '<div class="tlover"><div class="tlhead" id="rvHead"></div></div></div><p class="note" style="margin:6px 0 0" id="rvTime">Tap the timeline to jump. Tap a mark to select it.</p>';
+    }
+    function drawSel() {
+      var c = list[st.sel], box = $("rvSel");
+      if (!c) { box.innerHTML = '<p class="note" style="margin:0">Mark something, or tap a mark on the timeline, to add players to it.</p>'; return; }
+      box.innerHTML = '<h3>' + esc(c.tag) + " at " + hms(c.sec) + '</h3><div class="pickwrap">' + reviewPick(c) + '</div><div class="seg" style="margin-top:8px"><button data-act="seek">Play from here</button><button data-act="del">Delete</button></div><p class="note" id="rvSelNote" aria-live="polite"></p>';
+    }
+    function drawRink() {
+      var shots = list.filter(function (c) { return RV_SHOT_MAP[c.tag] && c.x != null; }).map(function (c) { var m = RV_SHOT_MAP[c.tag]; return {x: c.x, y: c.y, r: m[0]}; });
+      var pend = st.pend ? '<circle cx="' + st.pend.x * 100 + '" cy="' + st.pend.y * 85 + '" r="2.6" fill="none" stroke="#d33" stroke-width=".9" stroke-dasharray="1.2 1"/>' : "";
+      $("rinkMarks").innerHTML = marksSvg(shots, false).marks + pend;
+      $("rvRinkNote").textContent = st.pend ? "Spot chosen. Now tap a shot button." : "No spot chosen. Shots will be saved without a location.";
+    }
+    function drawList() {
+      $("rvCount").textContent = list.length + (list.length === 1 ? " event" : " events");
+      $("rvList").innerHTML = list.length ? list.map(function (c, i) {
+        return '<div class="ev" data-i="' + i + '"><button class="tm" data-act="pick" style="background:none;border:0;color:var(--accent);font-family:var(--display);font-weight:700;font-size:18px;min-width:70px;text-align:left;padding:0">' + hms(c.sec) + '</button><span class="lb"><i class="dot" style="background:' + colorOf(c.tag) + '"></i><b>' + esc(c.tag) + "</b> P" + (c.p || 1) + whoHtml(c) + (c.x != null ? ' <span class="mut">spot</span>' : "") + "</span></div>";
+      }).join("") : '<p class="note">Nothing marked yet.</p>';
+      $("rvSum").innerHTML = list.length ? reviewSummaryHtml(list) : '<div class="card empty"><p class="note">Numbers appear here as you mark.</p></div>';
+    }
+    function drawAll() { drawTl(); drawSel(); drawRink(); drawList(); }
+    function enable() { Array.prototype.forEach.call(document.querySelectorAll(".rvb"), function (b) { b.disabled = false; }); }
+    function ready(c) { cur = c; enable(); $("clNote").textContent = "Video loaded. Tap a button when something happens."; drawTl(); }
+    function loadFile(file) {
+      var v = document.createElement("video"); v.controls = true; v.playsInline = true; v.src = URL.createObjectURL(file);
+      $("clVideo").innerHTML = ""; $("clVideo").appendChild(v);
+      ready({get: function () { return v.currentTime; }, seek: function (s) { v.currentTime = Math.max(0, s); v.play(); }, dur: function () { return v.duration || 0; }});
+      v.addEventListener("loadedmetadata", drawTl);
+    }
+    function withYT(cb) {
+      if (window.YT && window.YT.Player) return cb();
+      var prev = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = function () { if (prev) prev(); cb(); };
+      if (!document.getElementById("yt-api")) { var sc = document.createElement("script"); sc.id = "yt-api"; sc.src = "https://www.youtube.com/iframe_api"; document.head.appendChild(sc); }
+      setTimeout(function () { if (!(window.YT && window.YT.Player)) $("clNote").textContent = "YouTube did not load. Check the connection, or open a video file from this device instead."; }, 9000);
+    }
+    function loadYT(url) {
+      var id = ytId(url);
+      if (!id) { $("clNote").textContent = "That does not look like a YouTube link."; return; }
+      var vk = lget(VK); vk[date] = url; lset(VK, vk);
+      if (D.cfg && D.cfg.submitUrl && D.videos[date] !== url && !needLock()) {
+        fetch(workerUrl(), {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({kind: "video", date: date, passcode: coachCfg().pass, text: url})})
+          .then(function (r) { return r.json().catch(function () { return {ok: false}; }); })
+          .then(function (j) { if (j.ok) { D.videos[date] = url; $("rvShare").textContent = "Video link saved for everyone."; } });
+      }
+      $("clVideo").innerHTML = '<div class="ytbox" id="ytp"></div>';
+      withYT(function () {
+        var pl = new window.YT.Player("ytp", {videoId: id, width: "100%", height: "100%", playerVars: {playsinline: 1, rel: 0},
+          events: {onReady: function () { ytPl = pl; ready({get: function () { return pl.getCurrentTime(); }, seek: function (s) { pl.seekTo(Math.max(0, s), true); pl.playVideo(); }, dur: function () { return pl.getDuration() || 0; }}); }}});
+      });
+    }
+    $("clLoad").addEventListener("click", function () { loadYT($("clUrl").value.trim()); });
+    $("clFile").addEventListener("change", function () { if ($("clFile").files[0]) loadFile($("clFile").files[0]); });
+    if ($("clUrl").value.trim()) loadYT($("clUrl").value.trim());
+    $("rvPer").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return; st.p = +b.getAttribute("data-v");
+      Array.prototype.forEach.call($("rvPer").children, function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+    });
+    $("rink").addEventListener("click", function (e) {
+      var svg = $("rink"), pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+      var q = pt.matrixTransform(svg.getScreenCTM().inverse());
+      st.pend = {x: Math.min(1, Math.max(0, q.x / 100)), y: Math.min(1, Math.max(0, q.y / 85))}; drawRink();
+    });
+    document.querySelector(".rv").addEventListener("click", function (e) {
+      var b = e.target.closest("button.rvb"); if (!b || !cur) return;
+      var tag = b.getAttribute("data-tag"), g = rvGroup(tag), now = Math.floor(cur.get());
+      var c = {sec: now, tag: tag, players: [], assists: [], x: null, y: null, p: st.p};
+      if (g.loc && st.pend) { c.x = st.pend.x; c.y = st.pend.y; st.pend = null; }
+      list.push(c); list.sort(function (a, b2) { return a.sec - b2.sec; }); st.sel = list.indexOf(c); persist(); drawAll();
+      $("clNote").textContent = "Saved " + tag + " at " + hms(now) + ". " + list.length + " so far.";
+    });
+    $("rvTl").addEventListener("click", function (e) {
+      var t = e.target.closest("button.tick");
+      if (t) { st.sel = +t.getAttribute("data-i"); if (cur) cur.seek(list[st.sel].sec - 3); drawTl(); drawSel(); return; }
+      var tr = e.target.closest(".tltrack"); if (!tr || !cur) return;
+      var r = tr.getBoundingClientRect(); cur.seek(Math.max(0, (e.clientX - r.left) / r.width * dur()));
+    });
+    $("rvSel").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return; var c = list[st.sel]; if (!c) return;
+      var act = b.getAttribute("data-act");
+      if (act === "seek") { if (cur) cur.seek(c.sec - 3); return; }
+      if (act === "del") { list.splice(st.sel, 1); st.sel = -1; persist(); drawAll(); return; }
+      if (act === "pick") {
+        var msg = applyPick(c, b.getAttribute("data-role"), +b.getAttribute("data-n"));
+        persist(); drawSel(); drawList(); var nt = $("rvSelNote"); if (nt) nt.textContent = msg; if (!msg) drawTl();
+      }
+    });
+    $("rvList").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return; var row = b.closest(".ev"); if (!row) return;
+      st.sel = +row.getAttribute("data-i"); if (cur) cur.seek(list[st.sel].sec - 3); drawTl(); drawSel();
+    });
+    $("rvUndo").addEventListener("click", function () { if (!list.length) return; list.pop(); st.sel = -1; persist(); drawAll(); });
+    $("rvClear").addEventListener("click", function () {
+      if (!list.length) { $("rvShare").textContent = "Nothing to delete."; return; }
+      if (!window.confirm("Delete all " + list.length + " of your review events for this game?")) return;
+      list.length = 0; st.sel = -1; persist(); drawAll(); $("rvShare").textContent = "Deleted here. Tap Share to Kings HUDL to remove them from the site too.";
+    });
+    $("rvSend").addEventListener("click", function () {
+      if (!list.length && !(D.review[date] || {})[mySlug()]) { $("rvShare").textContent = "Nothing marked yet."; return; }
+      submitFile("review", date, fmtReview(list), $("rvShare"));
+    });
+    window.__rvT = setInterval(function () {
+      var h = $("rvHead"); if (!h) { clearInterval(window.__rvT); window.__rvT = null; return; }
+      if (!cur) return; var t = 0; try { t = cur.get() || 0; } catch (e) {}
+      h.style.left = Math.min(100, t * 100 / dur()) + "%"; var tm = $("rvTime"); if (tm) tm.textContent = hms(Math.floor(t)) + " of " + hms(Math.floor(dur())) + " · tap the timeline to jump, tap a mark to select it";
+    }, 500);
+    drawAll();
+  }
+
   // ---------- shot map ----------
   function rinkSvg(extra) {
     return '<div class="rinkwrap"><svg id="rink" viewBox="0 0 100 85" role="img" aria-label="Offensive zone of the rink. The net is on the right.">' +
@@ -1206,6 +1472,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   // ---------- router ----------
   var tabs = [["", "Overview"], ["players", "Players"], ["games", "Games"], ["clips", "Highlights"], ["shots", "Shot map"], ["video", "Video"], ["coach", "Coaches corner"]];
   function route() {
+    if (window.__rvT) { clearInterval(window.__rvT); window.__rvT = null; }
     var parts = location.hash.replace(/^#\/?/, "").split("/");
     var base = parts[0] || "";
     var cur = base === "player" ? "players" : base === "game" ? "games" : base;
@@ -1218,7 +1485,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var h = D.sample ? '<div class="banner">This is sample data to show how the site looks. It is not real.</div>' : "";
     if (base === "shots" && parts[1] === "mark") { location.replace("#/coach/shots"); return; }
     if (base === "coach" && needLock()) h += lockView();
-    else if (base === "coach") h += parts[1] === "shots" ? vShots("mark") : parts[1] === "events" ? vClips(parts[2], "events") : vClips(parts[1], "mark");
+    else if (base === "coach") h += parts[1] === "shots" ? vShots("mark") : parts[1] === "events" ? vClips(parts[2], "events") : parts[1] === "review" ? vReview(parts[2]) : vClips(parts[1], "mark");
     else if (base === "clips") h += vClips(parts[1], "watch");
     else if (base === "shots") h += vShots();
     else if (!D.games.length) h += vEmpty();
@@ -1231,7 +1498,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     else h += vOverview();
     $("app").innerHTML = h;
     if (base === "coach" && needLock()) bindLock();
-    else if (base === "coach") { if (parts[1] === "shots") bindShots("mark"); else if (parts[1] === "events") bindClips(parts[2], "events"); else bindClips(parts[1], "mark"); }
+    else if (base === "coach") { if (parts[1] === "shots") bindShots("mark"); else if (parts[1] === "events") bindClips(parts[2], "events"); else if (parts[1] === "review") bindReview(); else bindClips(parts[1], "mark"); }
     if (base === "clips") bindClips(parts[1], "watch");
     if (base === "video") bindVideo();
     if (base === "shots") bindShots();
