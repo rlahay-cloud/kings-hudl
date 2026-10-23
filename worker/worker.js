@@ -9,6 +9,7 @@
 const CLIP_LINE = /^\d+:\d{2}:\d{2}\|[^|\n]{1,30}\|[\da ]{0,60}\|[^|\n]{0,200}(\|\d{0,7})?(\|[^|\n]{0,150})?$/;
 const REVIEW_LINE = /^\d+:\d{2}:\d{2}\|[^|\n]{1,40}\|[\dai ]{0,90}\|(\d(\.\d{1,3})?)?,(\d(\.\d{1,3})?)?,\d(,f)?(,s\d{1,6})?(,e\d{1,6})?(\|[^|\n]{0,150}){0,2}$/;
 const DRAW_LINE = /^\d{1,6}(\.\d{1,2})?\|\d{1,2}\|(pen|line|arrow|circle|text)\|#[0-9a-fA-F]{6}\|\d{1,2}\|\d(\.\d{1,3})?,\d(\.\d{1,3})?(;\d(\.\d{1,3})?,\d(\.\d{1,3})?){0,300}\|[^|\n]{0,60}$/;
+const SHIFT_LINE = /^\d{1,6}(\.\d{1,2})?\|((on|off)\|\d{1,3}|(stop|go)\|)$/;
 const SHOT_LINE = /^P\d+\|[\d.]+\|[\d.]+\|(-|\d+)\|(G|S)\|(H|A)$/;
 const MAX_BYTES = 60000;
 
@@ -50,6 +51,15 @@ function check(body, env) {
     if (ls.length > 400) return {error: "Too many lines"};
     for (const l of ls) if (!DRAW_LINE.test(l)) return {error: "A line was not in the right format"};
     return {path: "games/draw_" + body.date + "_" + String(body.start) + ".txt", text: ls.length ? ls.join("\n") + "\n" : "\n", coach: "drawings"};
+  }
+  if (body.kind === "shifts") {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(body.date || "")) return {error: "Bad date"};
+    const t = String(body.text || "");
+    if (t.length > 90000) return {error: "File is too big"};
+    const ls = t.split(/\r?\n/).filter(function (l) { return l.trim() !== ""; });
+    if (ls.length > 5000) return {error: "Too many lines"};
+    for (const l of ls) if (!SHIFT_LINE.test(l)) return {error: "A line was not in the right format"};
+    return {path: "games/shifts_" + body.date + ".txt", text: ls.length ? ls.join("\n") + "\n" : "\n", coach: "shifts"};
   }
   if (body.kind === "players") {
     const t = String(body.text || "");
@@ -110,7 +120,7 @@ export default {
     const r = check(body, env);
     if (r.error) return reply(env, r.error === "Wrong passcode" ? 401 : 400, {ok: false, error: r.error});
     try {
-      await saveToGitHub(env, r.path, r.text, (body.kind === "draw" ? "Drawings" : body.kind === "players" ? "Names and positions" : body.kind === "clips" ? "Highlights" : body.kind === "video" ? "Video link" : body.kind === "review" ? "Review" : "Shots") + " from " + r.coach + " for " + body.date);
+      await saveToGitHub(env, r.path, r.text, (body.kind === "draw" ? "Drawings" : body.kind === "shifts" ? "Shifts" : body.kind === "players" ? "Names and positions" : body.kind === "clips" ? "Highlights" : body.kind === "video" ? "Video link" : body.kind === "review" ? "Review" : "Shots") + " from " + r.coach + " for " + body.date);
     } catch (e) {
       const why = String(e && e.message || e);
       let hint = "";

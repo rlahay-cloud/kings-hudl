@@ -54,6 +54,15 @@ tbody tr.click { cursor: pointer; } tbody tr.click:hover { background: var(--pan
 .pcard:hover { border-color: var(--accent); }
 .pcard .n { font-family: var(--display); font-weight: 700; font-size: 38px; line-height: 1; color: var(--accent); }
 .pcard .nm { font-weight: 600; margin: 2px 0 8px; overflow-wrap: anywhere; }
+.shfgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 8px; }
+.shfp { min-height: 64px; border-radius: 12px; border: 2px solid var(--line); background: var(--panel2); color: var(--fg); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4px; }
+.shfp b { font-family: var(--display); font-size: 26px; line-height: 1; }
+.shfp span { font-size: 11px; color: var(--muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.shfp.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.shfp.on span { color: var(--accent-ink); }
+.shfstat { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 8px 0 2px; }
+#shfState { font-family: var(--display); font-size: 22px; letter-spacing: .1em; padding: 2px 12px; border-radius: 8px; }
+#shfState.go { background: #1f7a4d; color: #fff; } #shfState.stop { background: #c8372d; color: #fff; }
 .pcard .st { display: flex; flex-wrap: wrap; gap: 8px 12px; color: var(--muted); font-size: 13px; }
 .pcard .st b { display: block; color: var(--fg); font-size: 18px; font-family: var(--display); }
 .lead { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); text-decoration: none; color: inherit; }
@@ -158,7 +167,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
 (function () {
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
-  var D = {games: [], roster: {}, goalieNums: {}, home: "", videos: {}, events: {}, clips: {}, shots: {}, review: {}, cfg: {}, pos: {}, draws: {}, sample: false, error: ""};
+  var D = {games: [], roster: {}, goalieNums: {}, home: "", videos: {}, events: {}, clips: {}, shots: {}, review: {}, cfg: {}, pos: {}, draws: {}, shifts: {}, sample: false, error: ""};
 
   // ---------- helpers ----------
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return {"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]; }); }
@@ -314,6 +323,10 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       names.filter(function (n) { return /^draw_\d{4}-\d{2}-\d{2}_\d+\.txt$/.test(n); }).forEach(function (n) {
         var m = /^draw_(\d{4}-\d{2}-\d{2})_(\d+)\.txt$/.exec(n);
         videoJobs.push(getText("games/" + n).then(function (t) { D.draws[m[1] + "_" + m[2]] = parseDraw(t); }).catch(function () {}));
+      });
+      names.filter(function (n) { return /^shifts_\d{4}-\d{2}-\d{2}\.txt$/.test(n); }).forEach(function (n) {
+        var d = /(\d{4}-\d{2}-\d{2})/.exec(n)[1];
+        videoJobs.push(getText("games/" + n).then(function (t) { D.shifts[d] = parseShifts(t); }).catch(function () {}));
       });
       var shotFiles = names.filter(function (n) { return /^shots_\d{4}-\d{2}-\d{2}(_[a-z0-9-]+)?\.txt$/.test(n); });
       var jobs = sums.map(function (n) {
@@ -682,7 +695,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var cum = 0, cumPm = 0;
     var h = '<a class="back" href="#/players">&larr; All players</a><div class="phead">' + avatar(n, "lg") + "<h2 style='margin:18px 0 10px'>" + esc(label(n)) + "<small>" + (D.pos[n] ? esc(POS_NAME[D.pos[n]] || D.pos[n]) + ", " : "") + p.gp + " games played</small></h2></div>";
     h += '<div class="kpis">' + kpi(p.g, "Goals") + kpi(p.a, "Assists") + kpi(p.p, "Points") + kpi('<span class="' + pmCls(p.pm) + '">' + pmText(p.pm) + "</span>", "Plus / minus") + kpi(p.sog, "Shots") + kpi(p.shp === null ? "-" : Math.round(p.shp * 100) + "%", "Shooting %") + kpi(p.pim, "Penalty min") + kpi(p.ppg.toFixed(2), "Points / game") + kpi(p.gp ? (p.g / p.gp).toFixed(2) : "-", "Goals / game") + kpi(p.gp ? (p.sog / p.gp).toFixed(1) : "-", "Shots / game") + "</div>";
-    h += keyStatsHtml(n, p);
+    h += keyStatsHtml(n, p) + playerIceHtml(n);
     h += "<h2>Game by game</h2><div class='row g2'>" +
       "<div class='card'><h3>Points per game</h3>" + barChart(p.log.map(function (l) { return l.s.p; }), labels, {label: "Points per game"}) + "</div>" +
       "<div class='card'><h3>Shots per game</h3>" + barChart(p.log.map(function (l) { return l.s.sog; }), labels, {c: "var(--blue)", label: "Shots per game"}) + "</div></div>";
@@ -736,7 +749,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (g.dnp.length) h += '<p class="note">Did not play: ' + g.dnp.map(function (n) { return esc(label(n)); }).join(", ") + "</p>";
     if (g.goalies.length) h += "<h2>Goalies</h2><div class='card scroll'><table><thead><tr><th>Goalie</th><th>SA</th><th>GA</th><th>SV%</th></tr></thead><tbody>" +
       g.goalies.map(function (x) { return "<tr><td>" + esc(label(x.n)) + "</td><td>" + x.sa + "</td><td>" + x.ga + "</td><td>" + svText(svp(x.sa, x.ga)) + "</td></tr>"; }).join("") + "</tbody></table></div>";
-    h += reviewBlock(g.date) + gameEventsBlock(g);
+    h += shiftsBlock(g) + reviewBlock(g.date) + gameEventsBlock(g);
     return h;
   }
   // One Highlights list per game: coach clips, the Streamn timestamps, and every Us goal marked in the Review screen (added automatically).
@@ -1140,7 +1153,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   }
   function coachSubTabs(active) {
     function b(h, label, key) { return '<button onclick="location.hash=\'' + h + '\'" aria-pressed="' + (active === key) + '">' + label + "</button>"; }
-    return '<div class="seg" role="group" aria-label="Coaches corner sections">' + b("#/coach", "Clips", "clips") + b("#/coach/analysis", "Game analysis", "review") + b("#/coach/shots", "Shot marker", "shots") + b("#/coach/players", "Players", "players") + "</div>";
+    return '<div class="seg" role="group" aria-label="Coaches corner sections">' + b("#/coach", "Clips", "clips") + b("#/coach/analysis", "Game analysis", "review") + b("#/coach/shots", "Shot marker", "shots") + b("#/coach/players", "Players", "players") + b("#/coach/shifts", "Shifts", "shifts") + "</div>";
   }
   function vClips(dateParam, mode) {
     var dates = dateChoices(), date = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : (D.games.length ? D.games[D.games.length - 1].date : dates[0]);
@@ -1565,6 +1578,197 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     loadApi(function () {
       $("teYt").innerHTML = '<div id="teP"></div>';
       pl = new window.YT.Player("teP", {videoId: id, width: "100%", height: "100%", playerVars: {playsinline: 1, rel: 0, start: start}, events: {onReady: function () { ready = true; try { pl.seekTo(start, true); } catch (e) {} }}});
+    });
+  }
+
+  // ---------- shifts: who is on the ice, and for how long ----------
+  var SHK = "kh-shifts-v1";
+  function parseShifts(text) {
+    var out = [];
+    String(text || "").split(/\r?\n/).forEach(function (l) {
+      var m = /^(\d+(?:\.\d+)?)\|(on|off|stop|go)\|(\d*)$/.exec(l.trim()); if (!m) return;
+      out.push({t: +m[1], k: m[2], n: m[3] === "" ? null : +m[3]});
+    });
+    return out;
+  }
+  function fmtShifts(ev) {
+    return ev.map(function (e, i) { return {e: e, i: i}; }).sort(function (a, b) { return a.e.t - b.e.t || a.i - b.i; }).map(function (x) {
+      return (Math.round(x.e.t * 10) / 10).toFixed(1) + "|" + x.e.k + "|" + (x.e.n === null || x.e.n === undefined ? "" : x.e.n);
+    }).join("\n");
+  }
+  function shiftLocal(date) { var l = lget(SHK)[date]; return l && l.ev ? l : null; }
+  function getShifts(date) { var l = shiftLocal(date); return l ? l.ev : (D.shifts[date] || []); }
+  function mss(sec) { sec = Math.max(0, Math.round(sec)); return Math.floor(sec / 60) + ":" + ("0" + (sec % 60)).slice(-2); }
+  // Turns the taps into shifts. Time while play is stopped never counts.
+  function computeShifts(ev) {
+    var e = ev.map(function (x, i) { return {t: x.t, k: x.k, n: x.n, i: i}; }).sort(function (a, b) { return a.t - b.t || a.i - b.i; });
+    var stops = [], sOpen = null, last = 0;
+    e.forEach(function (x) {
+      last = Math.max(last, x.t);
+      if (x.k === "stop" && sOpen === null) sOpen = x.t;
+      else if (x.k === "go" && sOpen !== null) { stops.push([sOpen, x.t]); sOpen = null; }
+    });
+    if (sOpen !== null) stops.push([sOpen, Math.max(last, sOpen)]);
+    function play(a, b) { var d = b - a; stops.forEach(function (s) { var o = Math.min(b, s[1]) - Math.max(a, s[0]); if (o > 0) d -= o; }); return Math.max(0, d); }
+    var on = {}, P = {};
+    e.forEach(function (x) {
+      if (x.k === "on") { if (on[x.n] === undefined) on[x.n] = x.t; }
+      else if (x.k === "off" && on[x.n] !== undefined) {
+        var a = on[x.n]; delete on[x.n]; var len = play(a, x.t);
+        if (len >= 1) (P[x.n] = P[x.n] || []).push({a: a, b: x.t, len: len});
+      }
+    });
+    var rows = Object.keys(P).map(function (n) {
+      var s = P[n], toi = s.reduce(function (q, x) { return q + x.len; }, 0), lens = s.map(function (x) { return x.len; });
+      return {n: +n, shifts: s, count: s.length, toi: toi, avg: toi / s.length, max: Math.max.apply(null, lens), min: Math.min.apply(null, lens)};
+    }).sort(function (a, b) { return b.toi - a.toi || a.n - b.n; });
+    return {rows: rows, open: Object.keys(on).map(Number), stops: stops};
+  }
+  function stateAt(ev, t) {
+    var e = ev.map(function (x, i) { return {t: x.t, k: x.k, n: x.n, i: i}; }).sort(function (a, b) { return a.t - b.t || a.i - b.i; }), on = {}, stopped = false;
+    e.forEach(function (x) {
+      if (x.t > t + 0.3) return;
+      if (x.k === "on") on[x.n] = 1; else if (x.k === "off") delete on[x.n]; else if (x.k === "stop") stopped = true; else if (x.k === "go") stopped = false;
+    });
+    return {on: on, stopped: stopped};
+  }
+  function iceDates() { var s = {}; Object.keys(D.shifts).concat(Object.keys(lget(SHK))).forEach(function (d) { if (getShifts(d).length) s[d] = 1; }); return Object.keys(s).sort(); }
+  function shiftsBlock(g) {
+    var ev = getShifts(g.date); if (!ev.length) return "";
+    var c = computeShifts(ev); if (!c.rows.length) return "";
+    return "<h2>Ice time<small>stoppages not counted</small></h2><div class='card scroll'><table><thead><tr><th>Player</th><th>Shifts</th><th>Ice time</th><th>Avg shift</th><th>Longest</th><th>Shortest</th></tr></thead><tbody>" +
+      c.rows.map(function (r) { return '<tr class="click" onclick="location.hash=\'#/player/' + r.n + '\'"><td>' + esc(label(r.n)) + "</td><td>" + r.count + "</td><td><b>" + mss(r.toi) + "</b></td><td>" + mss(r.avg) + "</td><td>" + mss(r.max) + "</td><td>" + mss(r.min) + "</td></tr>"; }).join("") + "</tbody></table></div>";
+  }
+  function playerIceHtml(n) {
+    var games = [];
+    iceDates().forEach(function (d) { var r = computeShifts(getShifts(d)).rows.filter(function (x) { return x.n === n; })[0]; if (r) games.push({date: d, r: r}); });
+    if (!games.length) return "";
+    var cnt = games.reduce(function (s0, x) { return s0 + x.r.count; }, 0), toi = games.reduce(function (s0, x) { return s0 + x.r.toi; }, 0), mx = Math.max.apply(null, games.map(function (x) { return x.r.max; }));
+    var h = "<h2>Ice time<small>" + games.length + (games.length === 1 ? " game" : " games") + ", stoppages not counted</small></h2><div class='kpis'>" + kpi(mss(toi / games.length), "Ice time per game") + kpi((cnt / games.length).toFixed(1), "Shifts per game") + kpi(mss(toi / cnt), "Average shift") + kpi(mss(mx), "Longest shift") + "</div>";
+    h += "<div class='card scroll' style='margin-top:12px'><table><thead><tr><th>Game</th><th>Shifts</th><th>Ice time</th><th>Avg</th><th>Longest</th></tr></thead><tbody>" + games.slice().reverse().map(function (x) {
+      var gm = D.games.filter(function (q) { return q.date === x.date; })[0];
+      return "<tr" + (gm ? " class=\"click\" onclick=\"location.hash='#/game/" + gm.id + "'\"" : "") + "><td>" + fmtDate(x.date) + (gm ? " vs " + esc(gm.away) : "") + "</td><td>" + x.r.count + "</td><td><b>" + mss(x.r.toi) + "</b></td><td>" + mss(x.r.avg) + "</td><td>" + mss(x.r.max) + "</td></tr>";
+    }).join("") + "</tbody></table></div>";
+    return h;
+  }
+  function vShifts(dateParam) {
+    var dates = dateChoices(), date = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : (D.games.length ? D.games[D.games.length - 1].date : dates[0]);
+    if (dates.indexOf(date) < 0) dates.unshift(date);
+    var url = D.videos[date] || lget(VK)[date] || "";
+    var h = "<h2>Coaches corner</h2>" + coachSubTabs("shifts");
+    h += '<div class="card" style="margin-top:12px"><div class="fld"><label for="shfDate">Game</label>' + dateSelect("shfDate", dates, date) + "</div>";
+    if (!ytId(url)) return h + '<p class="note">This game has no video link yet. Add the YouTube link in <b>Game analysis</b> first, then come back.</p></div>';
+    h += '<p class="note" style="margin-bottom:0">Play the video. Tap a number when that player steps on the ice, and tap it again when he comes off. Tap <b>Whistle</b> when play stops and <b>Play on</b> when it starts again. Time during a whistle never counts.</p></div>';
+    h += '<div class="card shfbar" style="position:sticky;top:96px;z-index:4;margin-top:12px"><div id="shfBox" style="max-width:300px;margin:0 auto"><div class="ytbox" id="shfYt" style="max-height:none"></div></div>' +
+      '<div class="shfstat"><span id="shfTime" class="note" style="margin:0">Loading the video.</span><b id="shfState">PLAY</b><span id="shfCount" class="note" style="margin:0"></span></div>' +
+      '<div class="seg" role="group" aria-label="Video controls"><button class="btn" id="shfWhistle" style="flex:2">Whistle</button><button id="shfPlay">Play / Pause</button><button id="shfBack">&larr; 5s</button><button id="shfFwd">5s &rarr;</button>' +
+      '<select id="shfSpeed" aria-label="Speed"><option value="0.5">Half speed</option><option value="1" selected>Normal speed</option><option value="1.5">1.5x</option><option value="2">2x</option></select></div></div>';
+    h += '<div class="card" style="margin-top:12px"><h3 style="margin-top:0">Who is on the ice<small id="shfOnList"></small></h3><div id="shfGrid" class="shfgrid"></div>' +
+      '<div class="seg" style="margin-top:10px"><button id="shfAllOff">Everyone off</button><button id="shfPeriod">End of period</button><button id="shfUndo">Undo last tap</button></div>' +
+      '<div class="filters" style="margin-top:8px"><div class="fld"><label for="shfAdd">Another jersey number</label><div class="seg"><input type="number" id="shfAdd" min="0" max="999" placeholder="Like 21" style="max-width:110px"><button id="shfAddBtn">Add</button></div></div></div></div>';
+    h += '<div class="seg" style="margin-top:12px"><button class="btn" id="shfSave" style="width:100%">Save for everyone</button></div><p class="note" id="shfSaved" aria-live="polite">Everything is saved on this device as you tap.</p>';
+    h += '<h2>Shifts so far<small>tap a player to see each shift</small></h2><div class="card scroll" id="shfRes"></div>';
+    h += '<details class="card" style="margin-top:12px"><summary id="shfLogSum" style="cursor:pointer">All taps</summary><div id="shfLog" style="margin-top:8px"></div></details>';
+    return h;
+  }
+  function bindShifts(dateParam) {
+    if (!$("shfYt")) { if ($("shfDate")) $("shfDate").addEventListener("change", function () { location.hash = "#/coach/shifts/" + $("shfDate").value; }); return; }
+    var date = $("shfDate").value, url = D.videos[date] || lget(VK)[date] || "", id = ytId(url);
+    $("shfDate").addEventListener("change", function () { location.hash = "#/coach/shifts/" + $("shfDate").value; });
+    var loc = shiftLocal(date), ev = JSON.parse(JSON.stringify(loc ? loc.ev : (D.shifts[date] || []))), extra = loc && loc.extra ? loc.extra.slice() : [], pl = null, ready = false, sig = "";
+    function now() { try { return ready ? pl.getCurrentTime() || 0 : 0; } catch (e) { return 0; } }
+    function persist() { var l = lget(SHK); l[date] = {ev: ev, extra: extra}; lset(SHK, l); }
+    var gm = D.games.filter(function (x) { return x.date === date; })[0];
+    function nums() {
+      var set = {}; rosterNums().forEach(function (n) { set[n] = 1; });
+      if (gm) gm.players.forEach(function (p) { set[p.n] = 1; });
+      extra.forEach(function (n) { set[n] = 1; }); ev.forEach(function (e) { if (e.n !== null) set[e.n] = 1; });
+      Object.keys(D.goalieNums).forEach(function (k) { delete set[k]; });
+      var order = {C: 0, W: 1, D: 2, "": 3};
+      return Object.keys(set).map(Number).sort(function (a, b) { var ga = order[posGroup(D.pos[a])], gb = order[posGroup(D.pos[b])]; return ga - gb || a - b; });
+    }
+    function add(k, n) { ev.push({t: Math.round(now() * 10) / 10, k: k, n: n === undefined ? null : n}); persist(); sig = ""; refresh(); }
+    function onNow() { return stateAt(ev, now()); }
+    function grid() {
+      var s = onNow(), list = nums();
+      $("shfGrid").innerHTML = list.map(function (n) {
+        var g = posGroup(D.pos[n]);
+        return '<button class="shfp' + (s.on[n] ? " on" : "") + '" data-n="' + n + '" aria-pressed="' + !!s.on[n] + '"><b>' + n + "</b><span>" + esc((pname(n) || "").split(" ")[0] || (g || "")) + "</span></button>";
+      }).join("");
+      var cnt = Object.keys(s.on).length;
+      $("shfCount").textContent = cnt + " on the ice";
+      $("shfOnList").textContent = cnt ? " " + Object.keys(s.on).map(Number).sort(function (a, b) { return a - b; }).map(function (n) { return "#" + n; }).join(" ") : "";
+    }
+    function results() {
+      var c = computeShifts(ev);
+      $("shfRes").innerHTML = c.rows.length ? '<table><thead><tr><th>Player</th><th>Shifts</th><th>Ice time</th><th>Avg shift</th><th>Longest</th><th>Shortest</th></tr></thead><tbody>' + c.rows.map(function (r) {
+        return '<tr class="click" data-r="' + r.n + '"><td>' + esc(label(r.n)) + "</td><td>" + r.count + "</td><td><b>" + mss(r.toi) + "</b></td><td>" + mss(r.avg) + "</td><td>" + mss(r.max) + "</td><td>" + mss(r.min) + "</td></tr>" +
+          '<tr hidden data-d="' + r.n + '"><td colspan="6">' + r.shifts.map(function (x, i) { return '<button class="tm" data-seek="' + x.a + '" style="background:none;border:0;color:var(--accent);padding:2px 8px 2px 0;font-weight:700">#' + (i + 1) + " " + hms(Math.floor(x.a)) + "</button>" + mss(x.len); }).join(" &middot; ") + "</td></tr>";
+      }).join("") + "</tbody></table>" + (c.open.length ? '<p class="note">Still on the ice with no off tap: ' + c.open.map(function (n) { return "#" + n; }).join(" ") + ". Those shifts are not counted yet.</p>" : "") : '<p class="note" style="margin:0">No finished shifts yet.</p>';
+      var sorted = ev.map(function (e, i) { return {e: e, i: i}; }).sort(function (a, b) { return b.e.t - a.e.t || b.i - a.i; });
+      $("shfLogSum").textContent = "All taps (" + ev.length + ")";
+      $("shfLog").innerHTML = sorted.length ? sorted.map(function (x) {
+        var txt = x.e.k === "on" ? "#" + x.e.n + " on" : x.e.k === "off" ? "#" + x.e.n + " off" : x.e.k === "stop" ? "Whistle, play stopped" : "Play started";
+        return '<div class="ev"><button class="tm" data-seek="' + x.e.t + '" style="background:none;border:0;color:var(--accent);font-family:var(--display);font-weight:700;font-size:16px;min-width:70px;text-align:left;padding:0">' + hms(Math.floor(x.e.t)) + '</button><span class="lb">' + esc(txt) + '</span><button data-del="' + x.i + '" aria-label="Delete this tap">Delete</button></div>';
+      }).join("") : '<p class="note" style="margin:0">No taps yet.</p>';
+    }
+    function status() {
+      var s = onNow();
+      $("shfState").textContent = s.stopped ? "STOPPED" : "PLAY"; $("shfState").className = s.stopped ? "stop" : "go";
+      $("shfWhistle").textContent = s.stopped ? "Play on" : "Whistle";
+      $("shfTime").textContent = ready ? hms(Math.floor(now())) : "Loading the video.";
+    }
+    function refresh() { status(); grid(); results(); }
+    $("shfGrid").addEventListener("click", function (e) {
+      var b = e.target.closest("button[data-n]"); if (!b || !ready) return;
+      var n = +b.getAttribute("data-n"); add(onNow().on[n] ? "off" : "on", n);
+    });
+    $("shfWhistle").addEventListener("click", function () { if (!ready) return; add(onNow().stopped ? "go" : "stop"); });
+    $("shfAllOff").addEventListener("click", function () { if (!ready) return; var s = onNow(), t = Math.round(now() * 10) / 10; var gp = Date.now(); Object.keys(s.on).forEach(function (n) { ev.push({t: t, k: "off", n: +n, grp: gp}); }); persist(); refresh(); });
+    $("shfPeriod").addEventListener("click", function () { if (!ready) return; var s = onNow(), t = Math.round(now() * 10) / 10, gp = Date.now(); Object.keys(s.on).forEach(function (n) { ev.push({t: t, k: "off", n: +n, grp: gp}); }); if (!s.stopped) ev.push({t: t, k: "stop", n: null, grp: gp}); persist(); refresh(); });
+    $("shfUndo").addEventListener("click", function () {
+      if (!ev.length) return; var gp = ev[ev.length - 1].grp; ev.pop();
+      if (gp) while (ev.length && ev[ev.length - 1].grp === gp) ev.pop();
+      persist(); refresh();
+    });
+    $("shfAddBtn").addEventListener("click", function () { var n = parseInt($("shfAdd").value, 10); if (isNaN(n) || n < 0 || n > 999) return; if (extra.indexOf(n) < 0) extra.push(n); $("shfAdd").value = ""; persist(); refresh(); });
+    $("shfRes").addEventListener("click", function (e) {
+      var sk = e.target.closest("button[data-seek]"); if (sk) { if (ready) { pl.seekTo(+sk.getAttribute("data-seek"), true); pl.playVideo(); } return; }
+      var r = e.target.closest("tr[data-r]"); if (r) { var d = $("shfRes").querySelector('tr[data-d="' + r.getAttribute("data-r") + '"]'); d.hidden = !d.hidden; }
+    });
+    $("shfLog").addEventListener("click", function (e) {
+      var sk = e.target.closest("button[data-seek]"); if (sk) { if (ready) pl.seekTo(+sk.getAttribute("data-seek"), true); return; }
+      var d = e.target.closest("button[data-del]"); if (d) { ev.splice(+d.getAttribute("data-del"), 1); persist(); refresh(); }
+    });
+    $("shfPlay").addEventListener("click", function () { if (!ready) return; if (pl.getPlayerState() === 1) pl.pauseVideo(); else pl.playVideo(); });
+    $("shfBack").addEventListener("click", function () { if (ready) pl.seekTo(Math.max(0, now() - 5), true); });
+    $("shfFwd").addEventListener("click", function () { if (ready) pl.seekTo(now() + 5, true); });
+    $("shfSpeed").addEventListener("change", function () { if (ready) pl.setPlaybackRate(+$("shfSpeed").value); });
+    $("shfSave").addEventListener("click", function () {
+      var note = $("shfSaved"); persist();
+      if (!(D.cfg && D.cfg.submitUrl)) { note.textContent = "Saved on this device only (no helper is set up)."; return; }
+      note.textContent = "Sending...";
+      fetch(workerUrl(), {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({kind: "shifts", date: date, passcode: coachCfg().pass, text: fmtShifts(ev)})})
+        .then(function (r) { return r.json().catch(function () { return {ok: false, error: "Bad reply"}; }); })
+        .then(function (j) { if (j.ok) { D.shifts[date] = JSON.parse(JSON.stringify(ev)); var l = lget(SHK); delete l[date]; lset(SHK, l); } note.textContent = j.ok ? "Saved for everyone. It shows on the game page and player pages in a minute." : "Not saved for everyone: " + (j.error || "unknown problem") + ". It is saved on this device."; })
+        .catch(function () { note.textContent = "No connection. Saved on this device only."; });
+    });
+    var tm = setInterval(function () {
+      if (!$("shfYt")) { clearInterval(tm); return; }
+      var s = onNow(), g = JSON.stringify([Object.keys(s.on).sort(), s.stopped, ready, ev.length]);
+      $("shfTime").textContent = ready ? hms(Math.floor(now())) : "Loading the video.";
+      if (g !== sig) { sig = g; status(); grid(); }
+    }, 250);
+    refresh();
+    function loadApi(cb) {
+      if (window.YT && window.YT.Player) return cb();
+      var prev = window.onYouTubeIframeAPIReady; window.onYouTubeIframeAPIReady = function () { if (prev) prev(); cb(); };
+      if (!document.getElementById("yt-api")) { var sc = document.createElement("script"); sc.id = "yt-api"; sc.src = "https://www.youtube.com/iframe_api"; document.head.appendChild(sc); }
+      setTimeout(function () { if (!(window.YT && window.YT.Player)) $("shfTime").textContent = "YouTube did not load. Check the connection."; }, 9000);
+    }
+    loadApi(function () {
+      $("shfYt").innerHTML = '<div id="shfP"></div>';
+      pl = new window.YT.Player("shfP", {videoId: id, width: "100%", height: "100%", playerVars: {playsinline: 1, rel: 0}, events: {onReady: function () { ready = true; sig = ""; }}});
     });
   }
 
@@ -2396,7 +2600,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (base === "shots" && parts[1] === "mark") { location.replace("#/coach"); return; }
     if (base === "clips") { location.replace("#/video" + (parts[1] ? "/" + parts[1] : "")); return; }
     if (base === "coach" && needLock()) h += lockView();
-    else if (base === "coach") h += parts[1] === "shots" ? vShots("mark") : parts[1] === "players" ? vCoachPlayers() : parts[1] === "clip" ? vClipEditor(parts[2], +parts[3], +parts[4]) : (parts[1] === "analysis" || /^\d{4}-\d{2}-\d{2}$/.test(parts[1] || "")) ? vReview(parts.filter(function (x) { return /^\d{4}-\d{2}-\d{2}$/.test(x); })[0]) : vCoachClips();
+    else if (base === "coach") h += parts[1] === "shots" ? vShots("mark") : parts[1] === "players" ? vCoachPlayers() : parts[1] === "shifts" ? vShifts(parts[2]) : parts[1] === "clip" ? vClipEditor(parts[2], +parts[3], +parts[4]) : (parts[1] === "analysis" || /^\d{4}-\d{2}-\d{2}$/.test(parts[1] || "")) ? vReview(parts.filter(function (x) { return /^\d{4}-\d{2}-\d{2}$/.test(x); })[0]) : vCoachClips();
     else if (base === "shots") h += vShots();
     else if (!D.games.length) h += vEmpty();
     else if (base === "players") h += vPlayers();
@@ -2408,7 +2612,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     else h += vOverview();
     $("app").innerHTML = h;
     if (base === "coach" && needLock()) bindLock();
-    else if (base === "coach") { if (parts[1] === "shots") bindShots("mark"); else if (parts[1] === "players") bindPlayersEditor(); else if (parts[1] === "clip") bindClipEditor(parts[2], +parts[3], +parts[4]); else if (parts[1] === "analysis" || /^\d{4}-\d{2}-\d{2}$/.test(parts[1] || "")) bindReview(); else bindCoachClips(); }
+    else if (base === "coach") { if (parts[1] === "shots") bindShots("mark"); else if (parts[1] === "players") bindPlayersEditor(); else if (parts[1] === "shifts") bindShifts(parts[2]); else if (parts[1] === "clip") bindClipEditor(parts[2], +parts[3], +parts[4]); else if (parts[1] === "analysis" || /^\d{4}-\d{2}-\d{2}$/.test(parts[1] || "")) bindReview(); else bindCoachClips(); }
     if (base === "video") bindVideo();
     if (base === "player") bindPlayerClips(+parts[1]);
     if (base === "game") bindGameEvents();

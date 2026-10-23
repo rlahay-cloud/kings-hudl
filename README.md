@@ -61,6 +61,12 @@ In the editor the coach pauses the video, taps **Draw on this frame**, and uses 
 
 The other sections hold the marking tools: **Game analysis** (review, below), **Shot marker** and **Players** (names and positions).
 
+## Shifts (ice time)
+
+Open **Coaches corner**, then **Shifts**, pick the game and play the video. Tap a jersey number when that player steps on the ice and tap it again when he comes off. Tap **Whistle** when play stops and **Play on** when it starts again. Time between a whistle and Play on never counts toward ice time, so line changes during stoppages are handled automatically. **Everyone off** and **End of period** clear the ice in one tap, and **Undo last tap** takes back the last tap.
+
+Save for everyone writes `shifts_DATE.txt` into the games folder (one line per tap: video second, on, off, stop or go). The game page then shows an Ice time table (shifts, total ice time, average, longest and shortest shift) and each player page shows ice time per game, shifts per game, average shift and longest shift.
+
 ## Coaches corner (game review)
 
 One screen, Review, holds everything for coaches.
