@@ -642,16 +642,31 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   var vp = {id: null, player: null};
   // Inline player used by the Video tab, player pages and game pages. Needs #vpCard, #vpBox and #vpNow on the page.
   function clipEnd(it) { return it.end && it.end > it.sec ? it.end : it.sec + 10; }
-  function embedSrc(id, sec, auto, end) { return "https://www.youtube.com/embed/" + id + "?start=" + sec + (end ? "&end=" + end : "") + (auto ? "&autoplay=1" : "") + "&playsinline=1&rel=0"; }
+  function embedSrc(id, sec, auto, end) { return "https://www.youtube.com/embed/" + id + "?start=" + sec + (end ? "&end=" + end : "") + (auto ? "&autoplay=1" : "") + "&playsinline=1&rel=0&enablejsapi=1&origin=" + encodeURIComponent(location.origin); }
+  // One video that stays put: later taps seek inside it instead of reloading it.
+  var ytTimer = null;
+  function ytCmd(f, func, args) { try { f.contentWindow.postMessage(JSON.stringify({event: "command", func: func, args: args || []}), "*"); } catch (e) {} }
+  function ytMake(box, id, sec, end, auto) {
+    box.innerHTML = '<iframe title="Game video" src="' + embedSrc(id, sec, auto, end) + '" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen style="width:100%;height:100%;border:0;border-radius:12px"></iframe>';
+    var f = box.firstChild; f.setAttribute("data-vid", id); f.addEventListener("load", function () { f.setAttribute("data-ready", "1"); });
+  }
+  function ytPlay(box, id, sec, end) {
+    clearTimeout(ytTimer);
+    var f = box.querySelector("iframe");
+    if (f && f.getAttribute("data-vid") === id && f.getAttribute("data-ready") === "1") {
+      ytCmd(f, "seekTo", [sec, true]); ytCmd(f, "playVideo");
+      ytTimer = setTimeout(function () { if (document.body.contains(f)) ytCmd(f, "pauseVideo"); }, (end - sec) * 1000 + 600);
+    } else ytMake(box, id, sec, end, true);
+  }
   function playItem(it) {
     var url = D.videos[it.date] || lget(VK)[it.date] || "", id = ytId(url);
-    $("vpCard").hidden = false;
+    var first = $("vpCard").hidden; $("vpCard").hidden = false;
     var now = it.game + ", " + hms(it.sec) + " " + it.tag;
     if (!id) { $("vpBox").innerHTML = ""; $("vpBox").style.display = "none"; $("vpNow").textContent = now + ". No video link for this game yet. Add it to videos.txt or on the Highlights page."; return; }
     $("vpBox").style.display = "";
-    $("vpBox").innerHTML = '<iframe id="vpYt" title="Game video" src="' + embedSrc(id, it.sec, true, clipEnd(it)) + '" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen style="width:100%;height:100%;border:0;border-radius:12px"></iframe>';
+    ytPlay($("vpBox"), id, it.sec, clipEnd(it));
     $("vpNow").innerHTML = esc(now) + ' &middot; <a href="' + esc(ytLink(url, it.sec)) + '" target="_blank" rel="noopener">Open in YouTube</a>';
-    window.scrollTo(0, 0);
+    if (first) $("vpCard").scrollIntoView({block: "nearest"});
   }
   var PL = [];
   function playCard() { return '<div class="card" id="vpCard" hidden style="position:sticky;top:96px;z-index:4;margin-bottom:12px"><div class="ytbox" id="vpBox"></div><p class="note" id="vpNow" style="margin:8px 0 0"></p></div>'; }
@@ -891,7 +906,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       (mark ? '<div class="fld"><label for="clFile">Or open a video file from this device</label><input type="file" id="clFile" accept="video/*"></div>' +
         '<p class="note">The site does not store video. Footage stays on YouTube or on your device. Only the highlight times and labels are saved.</p>' : "") +
       (mark ? "" : '<p class="note" id="clNote" aria-live="polite">' + (url ? "Loading the video. Tap a time below to jump to it." : "No video for this game yet.") + "</p>") + "</div>" +
-      '<div id="clVideo" style="margin-top:12px' + (mark ? ";position:sticky;top:96px;z-index:4" : "") + '"></div>';
+      '<div id="clVideo" style="margin-top:12px' + ";position:sticky;top:96px;z-index:4" + '"></div>';
     if (mark) {
       h += '<div class="card" style="margin-top:12px"><p class="note" style="margin-top:0">' + (ev ? "Basic game events: goals and penalties. No name is attached. " : "") + 'Watch the video and tap a button when it happens. That is all. Each tap saves the moment a few seconds earlier.</p>' +
         '<div class="tagbtns" id="clTags">' + (ev ? EVENT_TAGS : TAP_TAGS).map(function (t) { return '<button class="btn" data-tag="' + t + '" disabled>' + t + "</button>"; }).join("") + "</div>" +
@@ -1005,9 +1020,9 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
           .catch(function () { $("clShare").textContent = "Video link only saved on this phone (no connection)."; });
       }
       if (!mark) {
-        var mk = function (sec, auto, end) { return '<iframe title="Game video" src="' + embedSrc(id, sec, auto, end) + '" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen style="width:100%;height:100%;border:0;border-radius:12px"></iframe>'; };
-        $("clVideo").innerHTML = '<div class="ytbox" id="ytp">' + mk(0, false) + "</div>";
-        ready({seek: function (sec, end) { $("ytp").innerHTML = mk(sec, true, end); }});
+        $("clVideo").innerHTML = '<div class="ytbox" id="ytp"></div>';
+        ytMake($("ytp"), id, 0, 0, false);
+        ready({seek: function (sec, end) { ytPlay($("ytp"), id, sec, end); }});
         return;
       }
       $("clVideo").innerHTML = '<div class="ytbox" id="ytp"></div>';
@@ -1058,7 +1073,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     $("clAll").addEventListener("click", function (e) {
       var b = e.target.closest("button[data-sec]"); if (!b) return;
       var sec = +b.getAttribute("data-sec");
-      if (cur) { cur.seek(sec, +b.getAttribute("data-end")); window.scrollTo(0, $("clVideo").offsetTop - 80); }
+      if (cur) { cur.seek(sec, +b.getAttribute("data-end")); }
       else { var u = $("clUrl").value.trim() || url0; if (u) window.open(ytLink(u, sec), "_blank", "noopener"); else $("clNote").textContent = "No video for this game yet."; }
     });
     renderAll();
