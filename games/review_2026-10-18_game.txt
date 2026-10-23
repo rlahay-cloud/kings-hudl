@@ -3,7 +3,7 @@
 0:10:00|For: Shot on goal|86|0.766,0.656,1,f
 0:10:21|Faceoff: OZ Loss|97|,,1,f
 0:11:40|Against: Shot on goal|33|0.092,0.447,1,f
-0:13:35|Penalty|17|,,1,f,s855,e997|Penalty Kill|Tripping
+0:13:35|Penalty|17|,,1,f
 0:13:36|Against: Shot on goal|33|0.205,0.494,1,f
 0:13:38|Against: Shot on goal|33|0.081,0.432,1,f
 0:14:13|Penalty kill||,,1,f
@@ -36,23 +36,23 @@
 0:33:12|For: Shot on goal|38|0.859,0.270,2,f
 0:33:14|For: Goal|93 a38 a91 i4 i86|0.894,0.572,2,f
 0:33:47|Faceoff: NZ Loss|17|,,2,f
-0:35:11|Against: Shot on goal||0.153,0.461,2,f
+0:35:11|Against: Shot on goal|33|0.153,0.461,2,f
 0:35:13|Against: Goal|33 i18 i14 i10 i97 i88|0.081,0.564,2,f
 0:35:49|Faceoff: NZ Win|97|,,2,f
 0:35:56|For: Shot on goal|13|0.912,0.458,2,f
 0:36:01|For: Shot on goal|97|0.830,0.325,2,f
 0:37:59|Faceoff: NZ Loss|38|,,3,f
-0:38:05|Against: Shot on goal||0.225,0.561,3,f
+0:38:05|Against: Shot on goal|33|0.225,0.561,3,f
 0:38:30|For: Shot on goal||0.731,0.564,3,f
 0:38:36|Away Penalty||,,3,f
 0:40:12|Power play||,,3,f
 0:40:13|Faceoff: OZ Win|17|,,3,f
 0:41:33|Penalty|86|,,3,f
-0:41:36|Against: Shot on goal||0.106,0.461,3,f
+0:41:36|Against: Shot on goal|33|0.106,0.461,3,f
 0:42:09|Penalty kill||,,3,f
 0:42:11|Faceoff: DZ Win|97|,,3,f
 0:43:19|For: Shot on goal|10|0.912,0.483,3,f
-0:43:38|Against: Shot on goal||0.181,0.406,3,f
+0:43:38|Against: Shot on goal|33|0.181,0.406,3,f
 0:43:43|Penalty|18|,,3,f
 0:44:17|Penalty kill||,,3,f
 0:44:19|Faceoff: DZ Win|13|,,3,f
@@ -70,10 +70,10 @@
 0:52:15|Faceoff: OZ Win|38|,,3,f
 0:52:53|Against: Shot on goal||0.170,0.506,3,f
 0:52:55|Against: Shot on goal||0.095,0.406,3,f
-0:52:56|Against: Shot on goal||0.102,0.517,3,f
+0:52:56|Against: Shot on goal|33|0.102,0.517,3,f
 0:53:40|Faceoff: DZ Loss|17|,,3,f
-0:53:44|Against: Shot on goal||0.345,0.752,3,f
+0:53:44|Against: Shot on goal|33|0.345,0.752,3,f
 0:54:05|Faceoff: DZ Win|17|,,3,f
 0:55:19|Against: Shot on goal||0.075,0.263,3,f
-0:55:27|Against: Shot on goal||0.339,0.833,3,f
+0:55:27|Against: Shot on goal|33|0.339,0.833,3,f
 0:56:04|Faceoff: NZ Loss|97|,,3,f
