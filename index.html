@@ -1401,7 +1401,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var g0 = rvGroup(c.tag);
     if (!all.length && g0 && g0.k !== "sp" && c.tag !== "Away Penalty" && c.tag !== "Against: Missed shot") return '<input type="text" class="pl" data-f="players" placeholder="Jersey numbers, like 4 10" value="' + esc(c.players.join(" ")) + '" aria-label="Players">';
     var ice = c.ice || [], onIce = function (n) { return ice.indexOf(n) >= 0 || (c.tag === "For: Goal" && inP(n)); };
-    var iceRow = function () { return chipRow("On the ice (up to 5, for +/-)", skaters, c, "ice", onIce) + '<p class="note" style="margin:2px 0 0">The scorer and assists count as on the ice automatically.</p>'; };
+    var iceRow = function () { return chipRow("On the ice (up to 5, for +/-)", skaters, c, "ice", onIce) + (c.tag === "For: Goal" ? '<p class="note" style="margin:2px 0 0">The scorer and assists count as on the ice automatically.</p>' : ""); };
     if (c.tag === "For: Goal") return chipRow("Scored by", skaters, c, "scorer", function (n) { return inP(n) && a.indexOf(n) < 0; }) + chipRow("Assists (up to 2)", skaters, c, "assist", function (n) { return a.indexOf(n) >= 0; }) + iceRow();
     var g = rvGroup(c.tag); if (!g || g.k === "sp") return "";
     if (g.k === "pen") return c.tag === "Penalty" ? chipRow("Penalty on", skaters, c, "any", inP) : "";
