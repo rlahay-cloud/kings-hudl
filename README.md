@@ -53,10 +53,14 @@ Player names come from `roster.json`. Edit it to add or fix names. Goalies can g
 - Two games on the same date share one video link and one timestamps file.
 - Add `?sample` to the site address to preview it with made up data.
 
-## Game events (no name)
+## Coaches corner (game review)
 
-In Coaches corner, the Game events tab marks basic moments: Goal, Goal against, Penalty and Away Penalty. Goals take a scorer and up to two assists, penalties take the player. These are saved with no coach name and show in the Video tab under "Game events". The passcode is still needed so strangers cannot write to the repo.
+Coaches corner is one screen, Review, that holds everything for coaches:
 
-## Review (coaches)
+- **Video, timeline and rink.** Load the game video. Every mark shows on a timeline. Tap the timeline to jump, or tap a mark to select it and add players.
+- **Highlights.** Coach clips (Goal, Save, Chance and so on). They save under the coach's name and show in the Video tab.
+- **Game events.** Goal, Goal against, Penalty and Away Penalty. They save with no name.
+- **Review buttons.** Shots for and against, zone entries and exits, faceoffs (pick OZ, NZ or DZ, then Win or Loss) and power play or penalty kill.
+- **Shot locations.** Tap the rink, then a shot button. Markers stay on the rink and can be filtered by team and by goal or saved.
 
-Coaches corner has a Review tab, similar to the Hudl coach screen. It has the game video, a timeline with a colored mark for every event, button panels (shots for and against, zone entries and exits, faceoffs, power play and penalty kill), and a rink for shot locations. Tap the rink first, then a shot button, to save where the shot came from. Review events save as `games/review_DATE_NAME.txt` and feed a Coach review summary on each game page and the Shot map.
+Share to Kings HUDL sends all three kinds at once. Player pages show goals, assists and penalties by default, with buttons to switch on the rest.
