@@ -85,7 +85,14 @@ export default {
     try {
       await saveToGitHub(env, r.path, r.text, (body.kind === "clips" ? "Highlights" : "Shots") + " from " + r.coach + " for " + body.date);
     } catch (e) {
-      return reply(env, 502, {ok: false, error: "Could not save to GitHub"});
+      const why = String(e && e.message || e);
+      let hint = "";
+      if (/ 401$/.test(why)) hint = " (the GitHub key is wrong or expired)";
+      else if (/ 403$/.test(why)) hint = " (the GitHub key does not have Contents read and write)";
+      else if (/ 404$/.test(why)) hint = " (the GitHub key cannot see the repo, or REPO is spelled wrong)";
+      else if (/ 422$/.test(why)) hint = " (GitHub refused the file)";
+      else if (!/GitHub (read|write) \d+$/.test(why)) hint = " (GITHUB_TOKEN or REPO is missing in the helper settings)";
+      return reply(env, 502, {ok: false, error: "Could not save to GitHub, " + why + hint});
     }
     return reply(env, 200, {ok: true, file: r.path});
   },
