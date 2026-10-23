@@ -110,6 +110,8 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
 .clip .tm { font-family: var(--display); font-weight: 700; font-size: 20px; color: var(--accent); background: none; border: 0; padding: 0; text-align: left; }
 .clip .f { grid-column: 1 / -1; display: grid; grid-template-columns: 130px 1fr auto; gap: 6px; }
 .clip .f input.pl { grid-column: 1 / 3; }
+.clip .pick { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
+.chip.pk { min-height: 40px; min-width: 44px; padding: 4px 10px; font-size: 16px; }
 @media (max-width: 520px) { .clip .f { grid-template-columns: 1fr; } .clip .f input.pl { grid-column: auto; } }
 .stickybar { position: sticky; bottom: 0; z-index: 3; justify-content: center; margin: 12px -14px 0; padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); background: var(--panel); border-top: 1px solid var(--line); }
 .tagbtns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -478,10 +480,43 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     h += "<h2>Player cards</h2><div class='pcards'>" + P.map(function (p) {
       return '<a class="pcard" href="#/player/' + p.n + '"><div class="top">' + avatar(p.n) + '<div class="n">#' + p.n + '</div></div><div class="nm">' + esc(pname(p.n) || "Player") + '</div><div class="st"><span><b>' + p.g + "</b>G</span><span><b>" + p.a + "</b>A</span><span><b>" + p.p + "</b>P</span></div></a>";
     }).join("") + "</div>";
+    var G = aggGoalies();
+    if (G.length) {
+      h += "<h2>Goalies</h2><div class='card scroll'><table><thead><tr><th>Goalie</th><th>GP</th><th>SA</th><th>GA</th><th>SV%</th><th>GAA</th></tr></thead><tbody>" +
+        G.map(function (x) { return '<tr class="click" onclick="location.hash=\'#/player/' + x.n + '\'"><td>' + esc(label(x.n)) + "</td><td>" + x.gp + "</td><td>" + x.sa + "</td><td>" + x.ga + "</td><td><b>" + svText(x.sv) + "</b></td><td>" + (x.gaa === null ? "-" : x.gaa.toFixed(2)) + "</td></tr>"; }).join("") + "</tbody></table></div>";
+      h += "<div class='pcards' style='margin-top:12px'>" + G.map(function (x) {
+        return '<a class="pcard" href="#/player/' + x.n + '"><div class="top">' + avatar(x.n) + '<div class="n">#' + x.n + '</div></div><div class="nm">' + esc(pname(x.n) || "Goalie") + '</div><div class="st"><span><b>' + svText(x.sv) + "</b>SV%</span><span><b>" + x.ga + "</b>GA</span><span><b>" + x.gp + "</b>GP</span></div></a>";
+      }).join("") + "</div>";
+    }
     return h;
   }
 
+  function playerClips(n) {
+    var items = allVideoItems().filter(function (x) { return x.players.indexOf(n) >= 0; });
+    if (!items.length) return "";
+    var last = "";
+    return "<h2>Highlights<small>" + items.length + (items.length === 1 ? " clip" : " clips") + "</small></h2><div class='card'>" + items.map(function (x) {
+      var url = lget(VK)[x.date] || D.videos[x.date] || "";
+      var head = x.game !== last ? '<h3 style="margin:' + (last ? "14px" : "0") + ' 0 4px">' + esc(x.game) + "</h3>" : ""; last = x.game;
+      var t = url ? '<a class="t" href="' + esc(ytLink(url, x.sec)) + '" target="_blank" rel="noopener">' + hms(x.sec) + "</a>" : '<span class="t" style="font-family:var(--display);font-weight:700;font-size:18px;min-width:70px">' + hms(x.sec) + "</span>";
+      return head + '<div class="ev ' + (x.tag === "Goal" ? "goal" : "") + '">' + t + '<span class="lb"><b>' + esc(x.tag) + "</b> " + esc(x.label) + ' <span class="mut">' + esc(x.coach) + "</span></span></div>";
+    }).join("") + "</div>";
+  }
+  function vGoalie(n) {
+    var x = aggGoalies().filter(function (a) { return a.n === n; })[0];
+    var labels = x.log.map(function (l) { return fmtDate(l.game.date); });
+    var h = '<a class="back" href="#/players">&larr; All players</a><div class="phead">' + avatar(n, "lg") + "<h2 style='margin:18px 0 10px'>" + esc(label(n)) + "<small>Goalie, " + x.gp + (x.gp === 1 ? " game" : " games") + "</small></h2></div>";
+    h += '<div class="kpis">' + kpi(svText(x.sv), "Save %") + kpi(x.gaa === null ? "-" : x.gaa.toFixed(2), "GAA") + kpi(x.sa, "Shots against") + kpi(x.sa - x.ga, "Saves") + kpi(x.ga, "Goals against") + kpi(Math.floor(x.toi / 60) + " min", "Time in net") + "</div>";
+    h += "<h2>Game by game</h2><div class='card'><h3>Save percentage</h3>" + lineChart([{name: "SV%", c: "var(--accent)", v: x.log.map(function (l) { return svp(l.s.sa, l.s.ga); })}], labels, {min: 0.5, max: 1, fmt: function (v) { return svText(v); }}) + "</div>";
+    h += "<div class='card scroll' style='margin-top:12px'><table><thead><tr><th>Game</th><th></th><th>SA</th><th>GA</th><th>SV%</th></tr></thead><tbody>" +
+      x.log.slice().reverse().map(function (l) {
+        return '<tr class="click" onclick="location.hash=\'#/game/' + l.game.id + '\'"><td>' + fmtDate(l.game.date) + " vs " + esc(l.game.away) + '</td><td><span class="pill ' + l.game.result + '">' + l.game.result + "</span></td><td>" + l.s.sa + "</td><td>" + l.s.ga + "</td><td>" + svText(svp(l.s.sa, l.s.ga)) + "</td></tr>";
+      }).join("") + "</tbody></table></div>";
+    return h + playerClips(n);
+  }
+
   function vPlayer(n) {
+    if (aggGoalies().some(function (x) { return x.n === n; }) && !aggPlayers().some(function (x) { return x.n === n; })) return vGoalie(n);
     var p = aggPlayers().filter(function (x) { return x.n === n; })[0];
     if (!p) return '<a class="back" href="#/players">&larr; All players</a><div class="card empty">No games found for #' + n + ".</div>";
     var labels = p.log.map(function (l) { return fmtDate(l.game.date); });
@@ -503,7 +538,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var best = p.log.slice().sort(function (a, b) { return b.s.p - a.s.p || b.s.sog - a.s.sog; })[0];
     if (best && best.s.p > 0) ins.push("Best game: " + fmtDate(best.game.date) + " vs " + esc(best.game.away) + " with " + best.s.g + "G " + best.s.a + "A.");
     h += "<h2>Notes</h2><div class='card'>" + ins.map(function (s) { return '<div class="insight">' + s + "</div>"; }).join("") + "</div>";
-    return h;
+    return h + playerClips(n);
   }
 
   function vGoalies() {
@@ -800,6 +835,20 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     }
     return h;
   }
+  function everyoneNums() {
+    var m = {}; Object.keys(D.roster).forEach(function (k) { m[k] = 1; });
+    D.games.forEach(function (g) { g.players.forEach(function (p) { m[p.n] = 1; }); g.goalies.forEach(function (x) { m[x.n] = 1; }); });
+    Object.keys(D.goalieNums).forEach(function (k) { m[k] = 1; });
+    return Object.keys(m).map(Number).sort(function (a, b) { return a - b; });
+  }
+  function playerPick(c) {
+    var nums = everyoneNums();
+    c.players.forEach(function (n) { if (nums.indexOf(n) < 0) nums.push(n); });
+    if (!nums.length) return '<input type="text" class="pl" data-f="players" placeholder="Players, like 4 10" value="' + esc(c.players.join(" ")) + '" aria-label="Players">';
+    return '<div class="pick" role="group" aria-label="Players in this highlight">' + nums.map(function (n) {
+      return '<button type="button" class="chip pk" data-act="pick" data-n="' + n + '" aria-pressed="' + (c.players.indexOf(n) >= 0) + '">' + n + "</button>";
+    }).join("") + "</div>";
+  }
   function bindClips(dateParam, mode) {
     var mark = mode === "mark", date = $("clDate").value, list = getMyClips(date), cur = null, focusIdx = -1;
     if (mark) bindCoach();
@@ -813,7 +862,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
           '<div class="f"><select data-f="tag" aria-label="Type">' + TAGS.map(function (t) { return "<option" + (t === c.tag ? " selected" : "") + ">" + t + "</option>"; }).join("") + "</select>" +
           '<input type="text" data-f="label" placeholder="What happened?" value="' + esc(c.label) + '" aria-label="Label">' +
           '<button class="chip" data-act="del" aria-label="Remove highlight">Remove</button>' +
-          '<input type="text" class="pl" data-f="players" placeholder="Players, like 4 10" value="' + esc(c.players.join(" ")) + '" aria-label="Players"></div></div>';
+          playerPick(c) + "</div></div>";
       }).join("");
       if (focusIdx >= 0) { var inp = box.querySelector('.clip[data-i="' + focusIdx + '"] input[data-f="label"]'); if (inp) inp.focus(); focusIdx = -1; }
     }
@@ -825,6 +874,11 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (mark) $("clList").addEventListener("click", function (e) {
       var b = e.target.closest("button"); if (!b) return; var row = b.closest(".clip"), i = +row.getAttribute("data-i"), act = b.getAttribute("data-act");
       if (act === "seek" && cur) cur.seek(list[i].sec);
+      if (act === "pick") {
+        var n = +b.getAttribute("data-n"), pl = list[i].players, k = pl.indexOf(n);
+        if (k >= 0) pl.splice(k, 1); else pl.push(n);
+        pl.sort(function (a, b) { return a - b; }); persist(); b.setAttribute("aria-pressed", k < 0); return;
+      }
       if (act === "del") { list.splice(i, 1); persist(); renderList(); }
     });
     if (mark) renderList();
@@ -1021,7 +1075,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   }
 
   // ---------- router ----------
-  var tabs = [["", "Overview"], ["players", "Players"], ["games", "Games"], ["goalies", "Goalies"], ["clips", "Highlights"], ["shots", "Shot map"], ["video", "Video"], ["coach", "Coaches corner"]];
+  var tabs = [["", "Overview"], ["players", "Players"], ["games", "Games"], ["clips", "Highlights"], ["shots", "Shot map"], ["video", "Video"], ["coach", "Coaches corner"]];
   function route() {
     var parts = location.hash.replace(/^#\/?/, "").split("/");
     var base = parts[0] || "";
@@ -1042,7 +1096,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     else if (base === "player") h += vPlayer(+parts[1]);
     else if (base === "games") h += vGames();
     else if (base === "game") h += vGame(parts[1]);
-    else if (base === "goalies") h += vGoalies();
+    else if (base === "goalies") { location.replace("#/players"); return; }
     else if (base === "video") h += vVideo();
     else h += vOverview();
     $("app").innerHTML = h;
