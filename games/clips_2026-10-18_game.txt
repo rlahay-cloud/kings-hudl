@@ -1,7 +1,1 @@
-0:27:22|Away Penalty||
-0:33:06|Goal|93 a38 a91|
-0:35:07|Goal against|33|
-0:38:30|Away Penalty||
-0:41:26|Penalty|86|
-0:43:37|Penalty|18|
-0:49:56|Goal|72 a4 a93|
+
