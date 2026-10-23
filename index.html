@@ -779,7 +779,8 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       allReview(d).forEach(function (c) {
         var tag = RV_DERIVE[c.tag]; if (!tag) return;
         if (items.some(function (o) { return o.date === d && o.tag === tag && Math.abs((o.end ? o.end - 2 : o.sec + 8) - c.sec) <= 25; })) return;
-        items.push({date: d, game: label, sec: Math.max(0, c.sec - 8), end: c.sec + 2, tag: tag, label: "", players: c.players || [], assists: c.assists || [], coach: GAME_LABEL});
+        var sit = /Goal/.test(c.tag) ? goalSit(allReview(d), c) : "";
+        items.push({date: d, game: label, sec: Math.max(0, c.sec - 8), end: c.sec + 2, tag: tag, label: (sit === "PP" ? "Power play" : sit === "SH" ? "Short handed" : "") + (c.until != null ? "Ends " + hms(c.until) : ""), players: c.players || [], assists: c.assists || [], coach: GAME_LABEL});
       });
     });
     return items.sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : a.sec - b.sec; });
@@ -1217,14 +1218,14 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     });
     if (mark) return;
     // Everyone's highlights, with filters (watch page)
-    var everyone = allClips(date), url0 = (D.videos[date] || lget(VK)[date] || "");
+    var everyone = allVideoItems().filter(function (x) { return x.date === date; }), url0 = (D.videos[date] || lget(VK)[date] || "");
     function fillSelect(id, label, values) {
       var cur0 = $(id).value;
       $(id).innerHTML = '<option value="">' + label + "</option>" + values.map(function (v) { return '<option>' + esc(v) + "</option>"; }).join("");
       $(id).value = cur0;
     }
     fillSelect("clCoach", "All coaches", Object.keys(everyone.reduce(function (m, c) { m[c.coach] = 1; return m; }, {})).sort());
-    fillSelect("clTag", "All types", TAGS.filter(function (t) { return everyone.some(function (c) { return c.tag === t; }); }));
+    fillSelect("clTag", "All types", VID_TAGS.filter(function (t) { return everyone.some(function (c) { return c.tag === t; }); }));
     function renderAll() {
       var co = $("clCoach").value, tg = $("clTag").value;
       var f = everyone.filter(function (c) { return (!co || c.coach === co) && (!tg || c.tag === tg); });
@@ -1483,7 +1484,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       '<div class="fld"><label>Whose play</label><div class="seg" id="rvTeam"><button data-v="For" aria-pressed="true">Us</button><button data-v="Against" aria-pressed="false">Them</button></div></div>' +
       '<p class="note" style="margin:0">Whose play applies to shots and penalties.</p></div>' +
       sect("Shot", "#3ddc97", '<div class="rvbtns">' + RV_SHOTS.map(function (t) { return '<button class="rvb" data-kind="shot" data-res="' + t + '" disabled>' + t + "</button>"; }).join("") + "</div>", "rvShotCard") +
-      sect("Penalty", "#ff8fab", '<div class="rvbtns"><button class="rvb" data-kind="pen" id="rvPenBtn" disabled>Penalty on us</button></div>') +
+      sect("Penalty", "#ff8fab", '<div class="rvbtns"><button class="rvb" data-kind="pen" id="rvPenBtn" disabled>Penalty on us</button><button class="rvb" data-kind="penend" id="rvPenEnd" disabled>Penalty ends now</button></div><p class="note" style="margin:6px 0 0">Tap Penalty first. When it ends in the video, tap Penalty ends now. It ends the latest penalty for the team picked above that has no end yet.</p>') +
       sect("Zone entry", "#2ec4b6", btns("rv", RV_MOVES.map(function (m) { return "Entry: " + m; })).replace(/>Entry: /g, ">")) +
       sect("Zone exit", "#f5c542", btns("rv", RV_MOVES.map(function (m) { return "Exit: " + m; })).replace(/>Exit: /g, ">")) +
       sect("Faceoff", "#b4c0d6", '<p class="note" id="rvZoneNote" style="margin-top:0"></p><div class="rvbtns"><button class="rvb" data-fo="Win" disabled>Win</button><button class="rvb" data-fo="Loss" disabled>Loss</button></div>') +
@@ -1561,7 +1562,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       $("rvCount").textContent = view.length + (view.length === 1 ? " event" : " events");
       $("rvList").innerHTML = view.length ? view.map(function (c, i) {
         var g = itemGroup(c);
-        return '<div class="ev" data-i="' + i + '"><button class="tm" style="background:none;border:0;color:var(--accent);font-family:var(--display);font-weight:700;font-size:18px;min-width:70px;text-align:left;padding:0">' + hms(mark(c)) + '</button><span class="lb"><i class="dot" style="background:' + (g ? g.c : "#93a1bd") + '"></i><b>' + esc(itemLabel(c)) + "</b>" + (c.src === "rv" ? " P" + (c.p || 1) : "") + (c.src === "rv" && /: Goal$/.test(c.tag) && goalSit(allReview(date), c) ? ' <span class="pill W">' + goalSit(allReview(date), c) + "</span>" : "") + (c.src === "rv" && c.until != null ? ' <span class="mut">to ' + hms(c.until) + "</span>" : "") + whoHtml(c) + (c.x != null ? ' <span class="mut">spot</span>' : "") + (c.label ? " " + esc(c.label) : "") + "</span></div>";
+        return '<div class="ev" data-i="' + i + '"><button class="tm" style="background:none;border:0;color:var(--accent);font-family:var(--display);font-weight:700;font-size:18px;min-width:70px;text-align:left;padding:0">' + hms(mark(c)) + '</button><span class="lb"><i class="dot" style="background:' + (g ? g.c : "#93a1bd") + '"></i><b>' + esc(itemLabel(c)) + "</b>" + (c.src === "rv" ? " P" + (c.p || 1) : "") + (c.src === "rv" && /: Goal$/.test(c.tag) && goalSit(allReview(date), c) ? ' <span class="pill W">' + goalSit(allReview(date), c) + "</span>" : "") + (c.src === "rv" && c.until != null ? ' <span class="mut">to ' + hms(c.until) + "</span>" : "") + (c.src === "rv" && (c.tag === "Penalty" || c.tag === "Away Penalty") && c.until == null ? ' <span class="mut" style="color:#e5484d">no end time yet</span>' : "") + whoHtml(c) + (c.x != null ? ' <span class="mut">spot</span>' : "") + (c.label ? " " + esc(c.label) : "") + "</span></div>";
       }).join("") : '<p class="note">Nothing marked yet.</p>';
       $("rvSum").innerHTML = RV.length ? reviewSummaryHtml(RV) : '<div class="card empty"><p class="note">Review numbers appear here as you mark.</p></div>';
     }
@@ -1634,6 +1635,12 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
         var c = newRv((st.team + ": ") + b.getAttribute("data-res"));
         if (st.pend) { c.x = st.pend.x; c.y = st.pend.y; st.pend = null; }
         addEvent(c); return;
+      }
+      if (b.getAttribute("data-kind") === "penend") {
+        var ptag = st.team === "For" ? "Penalty" : "Away Penalty", now2 = Math.floor(cur.get());
+        var open = RV.filter(function (c) { return c.tag === ptag && c.until == null && c.sec <= now2; }).sort(function (a, b2) { return b2.sec - a.sec; })[0];
+        if (!open) { $("clNote").textContent = "No open " + (st.team === "For" ? "penalty on us" : "penalty on them") + " before this point in the video. Play to where it ends, or mark the penalty first."; return; }
+        open.until = now2; st.sel = open; persist(); drawAll(); $("clNote").textContent = "Penalty at " + hms(open.sec) + " ends at " + hms(now2) + "."; return;
       }
       if (b.getAttribute("data-kind") === "pen") { addEvent(newRv(st.team === "For" ? "Penalty" : "Away Penalty")); return; }
       var src = b.getAttribute("data-src"), tag = b.getAttribute("data-tag");
@@ -1751,12 +1758,13 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     return "<h2>Shot map</h2>" +
       '<div class="card"><div class="filters"><div class="fld"><label for="mpGame">Game</label><select id="mpGame"><option value="">All games</option>' + ds.map(function (d) { return '<option value="' + d + '">' + fmtDate(d) + "</option>"; }).join("") + "</select></div>" +
       '<div class="fld"><label for="mpPl">Player</label><select id="mpPl"><option value="">Everyone</option>' + nums.map(function (n) { return '<option value="' + n + '">' + esc(label(n)) + "</option>"; }).join("") + "</select></div>" +
-      '<div class="fld"><label for="mpRes">Result</label><select id="mpRes"><option value="">All shots</option><option value="G">Goals</option><option value="S">Saved</option></select></div>' +
-      '<div class="fld"><label for="mpTeam">Team</label><select id="mpTeam"><option value="H">Us</option><option value="A">Opponent</option></select></div>' +
+      '<div class="fld"><label for="mpRes">Result</label><select id="mpRes"><option value="">All shots</option><option value="G">Goals</option><option value="S">Saved</option><option value="M">Missed</option><option value="B">Blocked</option></select></div>' +
+      '<div class="fld"><label for="mpTeam">Team</label><select id="mpTeam"><option value="">Both teams</option><option value="H">Us</option><option value="A">Opponent</option></select></div>' +
       '<div class="fld"><label for="mpCoach">Marked by</label><select id="mpCoach"><option value="">Everyone</option>' + coachesWithShots().map(function (c) { return "<option>" + esc(c) + "</option>"; }).join("") + "</select></div></div>" +
       '<label class="note"><input type="checkbox" id="mpHeat" checked> Show heat</label>' +
-      '<div class="kpis" id="mpKpi"></div>' + rinkSvg() +
-      '<div class="leg"><span><i style="background:#a974ff;border-radius:50%"></i>Goal</span><span><i style="border:2px solid #1e5fd0;border-radius:50%"></i>Saved</span></div>' +
+      '<div class="kpis" id="mpKpi"></div>' + fullRink() +
+      '<div class="leg"><span><i style="background:#a974ff;border-radius:50%"></i>Our goal</span><span><i style="background:#e5484d;border-radius:50%"></i>Their goal</span><span><i style="border:2px solid #1e5fd0;border-radius:50%"></i>Our shot</span><span><i style="border:2px dashed #e5484d;border-radius:50%"></i>Their shot</span></div>' +
+      '<p class="note">We attack the net on the right. Older shots marked on one end only are placed on the correct end. Missed and blocked shots are small dots.</p>' +
       (ds.length ? "" : '<p class="note">No shots marked yet. Coaches can add shots in Coaches corner.</p>') + "</div>";
   }
   var PERIODS_LABEL = ["1", "2", "3", "OT"];
@@ -1766,15 +1774,41 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   }
   function bindShots(sub) {
     if (sub === "mark") return bindMark();
-    function all() { var out = []; shotDates().forEach(function (d) { allShots(d).forEach(function (s) { out.push({d: d, p: s.p, x: s.x, y: s.y, n: s.n, r: s.r, t: s.t, c: s.coach}); }); }); return out; }
+    function all() {
+      var out = [];
+      shotDates().forEach(function (d) {
+        mergeBy(D.shots[d], lget(SK)[d]).forEach(function (s0) {
+          var them = s0.t === "A", x = them ? (100 - s0.x * 100) / 200 : (100 + s0.x * 100) / 200, y = them ? 1 - s0.y : s0.y;
+          out.push({d: d, x: x, y: y, n: s0.n, r: s0.r, t: s0.t, c: s0.coach});
+        });
+        allReview(d).forEach(function (c) {
+          if (c.x == null || c.y == null) return;
+          var m = /^(For|Against): (Goal|Shot on goal|Missed shot|Blocked shot)$/.exec(c.tag); if (!m) return;
+          var us = m[1] === "For", a = c.assists || [], sc = c.players.filter(function (n) { return a.indexOf(n) < 0; })[0];
+          out.push({d: d, x: c.x, y: c.y, n: us && sc !== undefined ? sc : null, r: m[2] === "Goal" ? "G" : m[2] === "Shot on goal" ? "S" : m[2] === "Missed shot" ? "M" : "B", t: us ? "H" : "A", c: c.coach});
+        });
+      });
+      return out;
+    }
     var data = all();
     function draw() {
-      var g = $("mpGame").value, pl = $("mpPl").value, r = $("mpRes").value, t = $("mpTeam").value, co = $("mpCoach").value;
-      var f = data.filter(function (s) { return (!g || s.d === g) && (!pl || s.n === +pl) && (!r || s.r === r) && s.t === t && (!co || s.c === co); });
-      var goals = f.filter(function (s) { return s.r === "G"; }).length;
-      var out = marksSvg(f, $("mpHeat").checked);
-      $("rinkHeat").innerHTML = out.heat; $("rinkMarks").innerHTML = out.marks;
-      $("mpKpi").innerHTML = kpi(f.length, "Shots") + kpi(goals, "Goals") + kpi(f.length ? Math.round(goals * 100 / f.length) + "%" : "-", "Shooting %");
+      var g = $("mpGame").value, pl = $("mpPl").value, r = $("mpRes").value, t = $("mpTeam").value, co = $("mpCoach").value, heat = $("mpHeat").checked;
+      var f = data.filter(function (s0) { return (!g || s0.d === g) && (!pl || s0.n === +pl) && (!r || s0.r === r) && (!t || s0.t === t) && (!co || s0.c === co); });
+      var h = '<defs><radialGradient id="heat"><stop offset="0" stop-color="#8a4dff" stop-opacity=".42"/><stop offset="1" stop-color="#8a4dff" stop-opacity="0"/></radialGradient></defs>', m = "";
+      f.forEach(function (s0) {
+        var x = s0.x * 200, y = s0.y * 85, them = s0.t === "A";
+        if (heat) h += '<circle cx="' + x + '" cy="' + y + '" r="14" fill="url(#heat)"/>';
+        if (s0.r === "G") m += '<circle cx="' + x + '" cy="' + y + '" r="2.8" fill="' + (them ? "#e5484d" : "#a974ff") + '" stroke="#fff" stroke-width=".8"/>';
+        else if (s0.r === "S") m += '<circle cx="' + x + '" cy="' + y + '" r="2.1" fill="none" stroke="' + (them ? "#e5484d" : "#1e5fd0") + '" stroke-width="1"' + (them ? ' stroke-dasharray="1.2 .8"' : "") + "/>";
+        else m += '<circle cx="' + x + '" cy="' + y + '" r="1.1" fill="' + (them ? "#e5484d" : "#1e5fd0") + '" opacity=".6"/>';
+      });
+      $("rinkFMarks").innerHTML = h + m;
+      var cnt = function (side) { var l = f.filter(function (s0) { return s0.t === side; }), gl = l.filter(function (s0) { return s0.r === "G"; }).length, sog = l.filter(function (s0) { return s0.r === "G" || s0.r === "S"; }).length; return {n: l.length, gl: gl, sog: sog}; };
+      var us = cnt("H"), th = cnt("A"), k = "";
+      if (t !== "A") k += kpi(us.n, "Our shot attempts") + kpi(us.sog, "Our shots on goal") + kpi(us.gl, "Our goals") + kpi(us.sog ? Math.round(us.gl * 100 / us.sog) + "%" : "-", "Our shooting %");
+      if (t !== "H") k += kpi(th.n, "Their shot attempts") + kpi(th.sog, "Their shots on goal") + kpi(th.gl, "Their goals") + kpi(th.sog ? Math.round(th.gl * 100 / th.sog) + "%" : "-", "Their shooting %");
+      $("mpKpi").innerHTML = k;
+      $("cntR").textContent = t === "A" ? "" : "Us " + us.sog + " SOG, " + us.gl + " G"; $("cntL").textContent = t === "H" ? "" : "Them " + th.sog + " SOG, " + th.gl + " G";
     }
     ["mpGame", "mpPl", "mpRes", "mpTeam", "mpCoach", "mpHeat"].forEach(function (id) { $(id).addEventListener("change", draw); });
     draw();
