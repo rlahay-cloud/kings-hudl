@@ -52,3 +52,7 @@ Player names come from `roster.json`. Edit it to add or fix names. Goalies can g
 - The summary lists every goal with the period, time, who scored and who assisted, so the game page shows a goals list. Streamn keeps the last 16 goals of a game.
 - Two games on the same date share one video link and one timestamps file.
 - Add `?sample` to the site address to preview it with made up data.
+
+## Game events (no name)
+
+In Coaches corner, the Game events tab marks basic moments: Goal, Goal against, Penalty and Penalty against. Goals take a scorer and up to two assists, penalties take the player. These are saved with no coach name and show in the Video tab under "Game events". The passcode is still needed so strangers cannot write to the repo.

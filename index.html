@@ -501,7 +501,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       var head = x.game !== last ? '<h3 style="margin:' + (last ? "14px" : "0") + ' 0 4px">' + esc(x.game) + "</h3>" : ""; last = x.game;
       var t = url ? '<a class="t" href="' + esc(ytLink(url, x.sec)) + '" target="_blank" rel="noopener">' + hms(x.sec) + "</a>" : '<span class="t" style="font-family:var(--display);font-weight:700;font-size:18px;min-width:70px">' + hms(x.sec) + "</span>";
       var role = x.assists.indexOf(n) >= 0 ? "Assist" : x.tag;
-      return head + '<div class="ev ' + (x.tag === "Goal" ? "goal" : "") + '">' + t + '<span class="lb"><b>' + esc(role) + "</b> " + esc(x.label) + (x.tag === "Goal" && x.assists.length ? ' <span class="mut">' + (x.assists.indexOf(n) >= 0 ? "goal by " + (x.players.filter(function (p) { return x.assists.indexOf(p) < 0; }).map(function (p) { return "#" + p; }).join(" ") || "?") : "assists " + x.assists.map(function (p) { return "#" + p; }).join(" ")) + "</span>" : "") + ' <span class="mut">' + esc(x.coach) + "</span></span></div>";
+      return head + '<div class="ev ' + (x.tag === "Goal" ? "goal" : "") + '">' + t + '<span class="lb"><b>' + esc(role) + "</b> " + esc(x.label) + (x.tag === "Goal" && x.assists.length ? ' <span class="mut">' + (x.assists.indexOf(n) >= 0 ? "goal by " + (x.players.filter(function (p) { return x.assists.indexOf(p) < 0; }).map(function (p) { return "#" + p; }).join(" ") || "?") : "assists " + x.assists.map(function (p) { return "#" + p; }).join(" ")) + "</span>" : "") + coachSpan(x) + "</span></div>";
     }).join("") + "</div>";
   }
   function vGoalie(n) {
@@ -614,7 +614,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     });
     return items.sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : a.sec - b.sec; });
   }
-  var VID_TAGS = ["Goal", "Save", "Chance", "Good play", "Breakout", "Blocked shot", "Review", "To fix", "Highlight", "Other"];
+  var VID_TAGS = ["Goal", "Goal against", "Penalty", "Penalty against", "Save", "Chance", "Good play", "Breakout", "Blocked shot", "Review", "To fix", "Highlight", "Other"];
   function vVideo() {
     var items = allVideoItems();
     var h = "<h2>Video</h2>";
@@ -645,7 +645,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       $("vfList").innerHTML = f.length ? f.map(function (x, i) {
         var head = x.game !== last ? '<h3 style="margin:' + (last ? "14px" : "0") + ' 0 4px">' + esc(x.game) + "</h3>" : ""; last = x.game;
         return head + '<div class="ev ' + (x.tag === "Goal" ? "goal" : "") + '"><button class="tm" style="background:none;border:0;color:var(--accent);font-family:var(--display);font-weight:700;font-size:18px;min-width:70px;text-align:left;padding:0" data-i="' + items.indexOf(x) + '">' + hms(x.sec) + '</button><span class="lb"><b>' + esc(x.tag) + "</b> " + esc(x.label) +
-          whoHtml(x) + ' <span class="mut">' + esc(x.coach) + "</span></span></div>";
+          whoHtml(x) + coachSpan(x) + "</span></div>";
       }).join("") : '<p class="note">Nothing matches these filters.</p>';
     }
     ["vfGame", "vfTag", "vfCoach", "vfPl"].forEach(function (id) { $(id).addEventListener("change", render); });
@@ -680,12 +680,12 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   }
 
   // ---------- highlights (clips) and shot map: data ----------
-  var CK = "kh-clips-v1", SK = "kh-shots-v1", VK = "kh-video-v1";
+  var EK = "kh-events-v1", EVENT_TAGS = ["Goal", "Goal against", "Penalty", "Penalty against"], GAME_LABEL = "Game events", CK = "kh-clips-v1", SK = "kh-shots-v1", VK = "kh-video-v1";
   function lget(k) { try { return JSON.parse(localStorage.getItem(k) || "{}") || {}; } catch (e) { return {}; } }
   function lset(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
   function hms(sec) { return Math.floor(sec / 3600) + ":" + ("0" + Math.floor(sec % 3600 / 60)).slice(-2) + ":" + ("0" + sec % 60).slice(-2); }
   function parseHms(t) { var m = /^(\d+):(\d{2}):(\d{2})$/.exec(String(t).trim()); return m ? (+m[1]) * 3600 + (+m[2]) * 60 + (+m[3]) : null; }
-  var TAGS = ["Highlight", "Goal", "Save", "Chance", "Good play", "To fix", "Breakout", "Blocked shot", "Review", "Other"];
+  var TAGS = ["Highlight", "Goal", "Goal against", "Penalty", "Penalty against", "Save", "Chance", "Good play", "To fix", "Breakout", "Blocked shot", "Review", "Other"];
   var TAP_TAGS = ["Goal", "Save", "Chance", "Good play", "Breakout", "Blocked shot", "Review"];
 
   function whoHtml(c) {
@@ -728,16 +728,16 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   // Coach name and passcode live on this device only.
   var CS = "kh-coach-v1";
   function slugify(n) { return String(n || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 20); }
-  function coachLabel(slug) { return slug.split("-").map(function (w) { return w.charAt(0).toUpperCase() + w.slice(1); }).join(" "); }
+  function coachLabel(slug) { if (slug === "game") return GAME_LABEL; return slug.split("-").map(function (w) { return w.charAt(0).toUpperCase() + w.slice(1); }).join(" "); }
   function coachCfg() { var c = lget(CS); return {name: c.name || "", pass: c.pass || ""}; }
   function mySlug() { return slugify(coachCfg().name) || "team"; }
   // My own marks are kept on this device. Everyone's sent files come from the games folder.
-  function getMyClips(date) {
-    var l = lget(CK); if (l[date]) return l[date].slice();
-    var sent = (D.clips[date] || {})[mySlug()];
+  function getMyClips(date, ev) {
+    var l = lget(ev ? EK : CK); if (l[date]) return l[date].slice();
+    var sent = (D.clips[date] || {})[ev ? "game" : mySlug()];
     return sent ? sent.map(function (x) { return {sec: x.sec, tag: x.tag, players: (x.players || []).slice(), assists: (x.assists || []).slice(), label: x.label || ""}; }) : [];
   }
-  function putClips(date, list) { var l = lget(CK); l[date] = list; lset(CK, l); }
+  function putClips(date, list, ev) { var k = ev ? EK : CK, l = lget(k); l[date] = list; lset(k, l); }
   function getMyShots(date) { var l = lget(SK); return l[date] ? l[date].slice() : []; }
   function putShots(date, list) { var l = lget(SK); l[date] = list; lset(SK, l); }
   function mergeBy(sent, mine, key) {
@@ -749,7 +749,14 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     (mine || []).forEach(function (x) { var c = {}; Object.keys(x).forEach(function (k) { c[k] = x[k]; }); c.coach = coachLabel(me); out.push(c); });
     return key ? out.sort(function (a, b) { return a[key] - b[key]; }) : out;
   }
-  function allClips(date) { var l = lget(CK); return mergeBy(D.clips[date], l[date], "sec"); }
+  function allClips(date) {
+    var sent = D.clips[date] || {}, others = {}, le = lget(EK);
+    Object.keys(sent).forEach(function (k) { if (k !== "game") others[k] = sent[k]; });
+    var out = mergeBy(others, lget(CK)[date], null);
+    (le[date] || sent.game || []).forEach(function (x) { var c = {}; Object.keys(x).forEach(function (k) { c[k] = x[k]; }); c.coach = GAME_LABEL; out.push(c); });
+    return out.sort(function (a, b) { return a.sec - b.sec; });
+  }
+  function coachSpan(x) { return x.coach === GAME_LABEL ? "" : ' <span class="mut">' + esc(x.coach) + "</span>"; }
   function allShots(date) { var l = lget(SK); return mergeBy(D.shots[date], l[date]); }
   function shotDates() {
     var seen = {}, out = [];
@@ -768,26 +775,29 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     plainCopy(text, noteEl);
   }
   // Sends a file to the helper, which saves it into the games folder on GitHub.
-  function submitFile(kind, date, text, noteEl) {
+  function submitFile(kind, date, text, noteEl, asGame) {
     var cfg = D.cfg || {}, c = coachCfg(), name = kind + "_" + date + ".txt";
     if (!cfg.submitUrl) { shareSheet(name, text, noteEl); return; }
     if (!c.pass.trim()) { noteEl.textContent = "Add the coach passcode above first."; return; }
     noteEl.textContent = "Sending...";
     var url = /^https?:\/\//.test(cfg.submitUrl) ? cfg.submitUrl : "https://" + cfg.submitUrl;
-    fetch(url, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({passcode: c.pass, coach: c.name, date: date, kind: kind, text: text})})
+    fetch(url, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({passcode: c.pass, coach: asGame ? "game" : c.name, date: date, kind: kind, text: text})})
       .then(function (r) { return r.json().catch(function () { return {ok: false, error: "Bad reply"}; }); })
       .then(function (j) { noteEl.textContent = j.ok ? "Sent to Kings HUDL. Thank you!" : "Not sent: " + (j.error || "unknown problem") + "."; })
       .catch(function () { noteEl.textContent = "Not sent, no connection. Your marks are saved on this phone. Try again later."; });
   }
-  function coachCard() {
+  function coachCard(ev) {
     var c = coachCfg();
+    if (ev) return '<div class="card"><h3>Passcode</h3><div class="fld"><label for="cPass">Coach passcode</label><input type="password" id="cPass" autocomplete="off" value="' + esc(c.pass) + '"></div>' +
+      '<p class="note" style="margin:0">Game events (goals and penalties) are saved with no name on them.</p></div>';
     return '<div class="card"><h3>Coach</h3><div class="filters"><div class="fld"><label for="cName">Your name (optional)</label><input type="text" id="cName" autocomplete="name" placeholder="Blank = Team" value="' + esc(c.name) + '"></div>' +
       '<div class="fld"><label for="cPass">Coach passcode</label><input type="password" id="cPass" autocomplete="off" value="' + esc(c.pass) + '"></div></div>' +
       '<p class="note" style="margin:0">Saved on this phone. Leave the name blank to send as Team.</p></div>';
   }
   function bindCoach() {
     function save() { lset(CS, {name: $("cName").value, pass: $("cPass").value}); }
-    $("cName").addEventListener("input", save); $("cPass").addEventListener("input", save);
+    var nm = $("cName"); if (nm) nm.addEventListener("input", function () { lset(CS, {name: nm.value, pass: $("cPass").value}); });
+    $("cPass").addEventListener("input", function () { lset(CS, {name: nm ? nm.value : coachCfg().name, pass: $("cPass").value}); });
   }
   function todayStr() { var d = new Date(), p = function (n) { return (n < 10 ? "0" : "") + n; }; return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()); }
   function dateChoices() {
@@ -823,17 +833,18 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var list = allClips(date); if (!list.length) return "";
     return "<h2>Highlights<small><a href='#/clips/" + date + "'>filter and watch</a></small></h2><div class='card'>" + list.map(function (c) {
       var t = hms(c.sec), tl = url ? '<a class="t" href="' + esc(ytLink(url, c.sec)) + '" target="_blank" rel="noopener">' + t + "</a>" : '<span class="t" style="font-family:var(--display);font-weight:700;font-size:18px;min-width:70px">' + t + "</span>";
-      return '<div class="ev">' + tl + '<span class="lb"><b>' + esc(c.tag) + "</b> " + esc(c.label) + whoHtml(c) + ' <span class="mut">' + esc(c.coach) + "</span></span></div>";
+      return '<div class="ev">' + tl + '<span class="lb"><b>' + esc(c.tag) + "</b> " + esc(c.label) + whoHtml(c) + coachSpan(c) + "</span></div>";
     }).join("") + "</div>";
   }
   function coachSubTabs(active) {
-    return '<div class="seg" role="group"><button onclick="location.hash=\'#/coach\'" aria-pressed="' + (active === "clips") + '">Highlights</button><button onclick="location.hash=\'#/coach/shots\'" aria-pressed="' + (active === "shots") + '">Mark shots</button></div>';
+    function b(h, label, key) { return '<button onclick="location.hash=\'' + h + '\'" aria-pressed="' + (active === key) + '">' + label + "</button>"; }
+    return '<div class="seg" role="group">' + b("#/coach", "Highlights", "clips") + b("#/coach/events", "Game events", "events") + b("#/coach/shots", "Mark shots", "shots") + "</div>";
   }
   function vClips(dateParam, mode) {
     var dates = dateChoices(), date = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : (D.games.length ? D.games[D.games.length - 1].date : dates[0]);
     if (dates.indexOf(date) < 0) dates.unshift(date);
-    var vk = lget(VK), url = vk[date] || D.videos[date] || "", mark = mode === "mark";
-    var h = mark ? "<h2>Coaches corner</h2>" + coachSubTabs("clips") + coachCard() : "<h2>Highlights</h2>";
+    var vk = lget(VK), url = vk[date] || D.videos[date] || "", ev = mode === "events", mark = mode === "mark" || ev;
+    var h = mark ? "<h2>Coaches corner</h2>" + coachSubTabs(ev ? "events" : "clips") + coachCard(ev) : "<h2>Highlights</h2>";
     h += '<div class="card"' + (mark ? ' style="margin-top:12px"' : "") + '><div class="fld"><label for="clDate">Game</label>' + dateSelect("clDate", dates, date) + "</div>" +
       (mark ? '<div class="fld"><label for="clUrl">YouTube link for this game</label><input type="url" id="clUrl" placeholder="https://youtu.be/..." value="' + esc(url) + '"></div>' +
         '<div class="seg"><button id="clLoad">Load video</button></div>' : '<input type="hidden" id="clUrl" value="' + esc(url) + '">') +
@@ -842,11 +853,11 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       (mark ? "" : '<p class="note" id="clNote" aria-live="polite">' + (url ? "Loading the video. Tap a time below to jump to it." : "No video for this game yet.") + "</p>") + "</div>" +
       '<div id="clVideo" style="margin-top:12px"></div>';
     if (mark) {
-      h += '<div class="card" style="margin-top:12px"><p class="note" style="margin-top:0">Watch the video and tap a button when it happens. That is all. Each tap saves the moment a few seconds earlier.</p>' +
-        '<div class="tagbtns" id="clTags">' + TAP_TAGS.map(function (t) { return '<button class="btn" data-tag="' + t + '" disabled>' + t + "</button>"; }).join("") + "</div>" +
+      h += '<div class="card" style="margin-top:12px"><p class="note" style="margin-top:0">' + (ev ? "Basic game events: goals and penalties. No name is attached. " : "") + 'Watch the video and tap a button when it happens. That is all. Each tap saves the moment a few seconds earlier.</p>' +
+        '<div class="tagbtns" id="clTags">' + (ev ? EVENT_TAGS : TAP_TAGS).map(function (t) { return '<button class="btn" data-tag="' + t + '" disabled>' + t + "</button>"; }).join("") + "</div>" +
         '<p class="note" id="clNote" aria-live="polite">Load a video to start.</p>' +
         '<details><summary class="note">Settings</summary><div class="fld"><label for="clLead">Save each moment this many seconds earlier</label><select id="clLead"><option>0</option><option>5</option><option selected>8</option><option>10</option><option>15</option></select></div></details></div>' +
-        "<h2>Your highlights<small>tap Delete to remove one</small></h2><div class='card' id='clList'></div>" +
+        "<h2>" + (ev ? "Game events" : "Your highlights") + "<small>tap Delete to remove one</small></h2><div class='card' id='clList'></div>" +
         '<div class="seg" style="margin-top:12px"><button class="btn" id="clClear">Delete all of mine for this game</button></div>' +
         '<div class="seg" style="margin-top:12px"><button class="btn" id="clSend" style="width:100%">Share to Kings HUDL</button></div><p class="note" id="clShare" aria-live="polite"></p>';
     } else {
@@ -876,20 +887,22 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (c.tag === "Goal") return '<div class="pickwrap">' +
       chipRow("Scored by", skaters, c, "scorer", function (n) { return inP(n) && a.indexOf(n) < 0; }) +
       chipRow("Assists (up to 2)", skaters, c, "assist", function (n) { return a.indexOf(n) >= 0; }) + "</div>";
-    if (c.tag === "Save" && goalies.length) return '<div class="pickwrap">' + chipRow("Goalie", goalies, c, "any", inP) + "</div>";
+    if (c.tag === "Penalty against") return "";
+    if (c.tag === "Penalty") return '<div class="pickwrap">' + chipRow("Penalty on", skaters, c, "any", inP) + "</div>";
+    if ((c.tag === "Save" || c.tag === "Goal against") && goalies.length) return '<div class="pickwrap">' + chipRow("Goalie", goalies, c, "any", inP) + "</div>";
     return '<div class="pickwrap">' + chipRow(c.tag === "Blocked shot" ? "Blocked by" : "Players", c.tag === "Blocked shot" ? skaters : all, c, "any", inP) + "</div>";
   }
   function bindClips(dateParam, mode) {
-    var mark = mode === "mark", date = $("clDate").value, list = getMyClips(date), cur = null, focusIdx = -1;
+    var ev = mode === "events", mark = mode === "mark" || ev, date = $("clDate").value, list = getMyClips(date, ev), cur = null, focusIdx = -1;
     if (mark) bindCoach();
-    $("clDate").addEventListener("change", function () { location.hash = (mark ? "#/coach/" : "#/clips/") + $("clDate").value; });
-    function persist() { putClips(date, list); }
+    $("clDate").addEventListener("change", function () { location.hash = (ev ? "#/coach/events/" : mark ? "#/coach/" : "#/clips/") + $("clDate").value; });
+    function persist() { putClips(date, list, ev); }
     function renderList() {
       var box = $("clList");
       if (!list.length) { box.innerHTML = '<p class="note">Nothing marked yet.</p>'; return; }
       box.innerHTML = list.map(function (c, i) {
         return '<div class="clip" data-i="' + i + '"><button class="tm" data-act="seek">' + hms(c.sec) + "</button><span></span>" +
-          '<div class="f"><select data-f="tag" aria-label="Type">' + TAGS.map(function (t) { return "<option" + (t === c.tag ? " selected" : "") + ">" + t + "</option>"; }).join("") + "</select>" +
+          '<div class="f"><select data-f="tag" aria-label="Type">' + (ev ? EVENT_TAGS : TAGS).map(function (t) { return "<option" + (t === c.tag ? " selected" : "") + ">" + t + "</option>"; }).join("") + "</select>" +
           '<input type="text" data-f="label" placeholder="What happened?" value="' + esc(c.label) + '" aria-label="Label">' +
           '<button class="chip" data-act="del" aria-label="Delete this highlight">Delete</button>' +
           playerPick(c) + "</div></div>";
@@ -961,8 +974,8 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       persist(); renderList(); $("clNote").textContent = "Saved: " + tag + " at " + hms(t) + ". " + list.length + " marked so far.";
     });
     if (mark) $("clSend").addEventListener("click", function () {
-      if (!list.length && !(D.clips[date] || {})[mySlug()]) { $("clShare").textContent = "Nothing marked yet."; return; }
-      submitFile("clips", date, fmtClips(list), $("clShare"));
+      if (!list.length && !(D.clips[date] || {})[ev ? "game" : mySlug()]) { $("clShare").textContent = "Nothing marked yet."; return; }
+      submitFile("clips", date, fmtClips(list), $("clShare"), ev);
     });
     if (mark) $("clClear").addEventListener("click", function () {
       if (!list.length) { $("clShare").textContent = "Nothing to delete."; return; }
@@ -985,7 +998,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       var f = everyone.filter(function (c) { return (!co || c.coach === co) && (!tg || c.tag === tg); });
       $("clAll").innerHTML = f.length ? f.map(function (c, i) {
         return '<div class="ev" data-s="' + c.sec + '"><button class="tm" style="background:none;border:0;color:var(--accent);font-family:var(--display);font-weight:700;font-size:18px;min-width:70px;text-align:left;padding:0" data-sec="' + c.sec + '">' + hms(c.sec) + '</button><span class="lb"><b>' + esc(c.tag) + "</b> " + esc(c.label) +
-          whoHtml(c) + ' <span class="mut">' + esc(c.coach) + "</span></span></div>";
+          whoHtml(c) + coachSpan(c) + "</span></div>";
       }).join("") : '<p class="note">' + (everyone.length ? "Nothing matches these filters." : "No highlights for this game yet.") + "</p>";
     }
     $("clCoach").addEventListener("change", renderAll); $("clTag").addEventListener("change", renderAll);
@@ -1136,7 +1149,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     document.title = "Kings HUDL";
     var h = D.sample ? '<div class="banner">This is sample data to show how the site looks. It is not real.</div>' : "";
     if (base === "shots" && parts[1] === "mark") { location.replace("#/coach/shots"); return; }
-    if (base === "coach") h += parts[1] === "shots" ? vShots("mark") : vClips(parts[1], "mark");
+    if (base === "coach") h += parts[1] === "shots" ? vShots("mark") : parts[1] === "events" ? vClips(parts[2], "events") : vClips(parts[1], "mark");
     else if (base === "clips") h += vClips(parts[1], "watch");
     else if (base === "shots") h += vShots();
     else if (!D.games.length) h += vEmpty();
@@ -1148,7 +1161,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     else if (base === "video") h += vVideo();
     else h += vOverview();
     $("app").innerHTML = h;
-    if (base === "coach") { if (parts[1] === "shots") bindShots("mark"); else bindClips(parts[1], "mark"); }
+    if (base === "coach") { if (parts[1] === "shots") bindShots("mark"); else if (parts[1] === "events") bindClips(parts[2], "events"); else bindClips(parts[1], "mark"); }
     if (base === "clips") bindClips(parts[1], "watch");
     if (base === "video") bindVideo();
     if (base === "shots") bindShots();
