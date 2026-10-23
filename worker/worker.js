@@ -79,6 +79,10 @@ export default {
     if (origin && origin !== env.ALLOWED_ORIGIN) return reply(env, 403, {ok: false, error: "Not allowed from this site"});
     let body;
     try { body = await request.json(); } catch (e) { return reply(env, 400, {ok: false, error: "Bad request"}); }
+    if (body && body.kind === "check") {
+      if (!same(body.passcode, env.PASSCODE || "")) return reply(env, 401, {ok: false, error: "Wrong passcode"});
+      return reply(env, 200, {ok: true});
+    }
     const r = check(body, env);
     if (r.error) return reply(env, r.error === "Wrong passcode" ? 401 : 400, {ok: false, error: r.error});
     try {

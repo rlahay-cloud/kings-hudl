@@ -636,23 +636,15 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   }
   var vp = {id: null, player: null};
   // Inline player used by the Video tab, player pages and game pages. Needs #vpCard, #vpBox and #vpNow on the page.
+  function embedSrc(id, sec, auto) { return "https://www.youtube.com/embed/" + id + "?start=" + sec + (auto ? "&autoplay=1" : "") + "&playsinline=1&rel=0"; }
   function playItem(it) {
     var url = lget(VK)[it.date] || D.videos[it.date] || "", id = ytId(url);
     $("vpCard").hidden = false;
-    $("vpNow").textContent = it.game + ", " + hms(it.sec) + " " + it.tag;
-    if (!id) { $("vpBox").innerHTML = ""; $("vpBox").style.display = "none"; $("vpNow").textContent += ". No video link for this game yet. Add it to videos.txt or on the Highlights page."; return; }
+    var now = it.game + ", " + hms(it.sec) + " " + it.tag;
+    if (!id) { $("vpBox").innerHTML = ""; $("vpBox").style.display = "none"; $("vpNow").textContent = now + ". No video link for this game yet. Add it to videos.txt or on the Highlights page."; return; }
     $("vpBox").style.display = "";
-    if (vp.player && vp.id === id && vp.player.seekTo && document.getElementById("vpYt")) { vp.player.seekTo(it.sec, true); vp.player.playVideo(); window.scrollTo(0, 0); return; }
-    $("vpBox").innerHTML = '<div id="vpYt" style="width:100%;height:100%"></div>';
-    function make() {
-      vp.id = id; vp.player = new window.YT.Player("vpYt", {videoId: id, width: "100%", height: "100%", playerVars: {playsinline: 1, rel: 0, start: it.sec, autoplay: 1}});
-    }
-    if (window.YT && window.YT.Player) make();
-    else {
-      var prev = window.onYouTubeIframeAPIReady;
-      window.onYouTubeIframeAPIReady = function () { if (prev) prev(); make(); };
-      if (!document.getElementById("yt-api")) { var sc = document.createElement("script"); sc.id = "yt-api"; sc.src = "https://www.youtube.com/iframe_api"; document.head.appendChild(sc); }
-    }
+    $("vpBox").innerHTML = '<iframe id="vpYt" title="Game video" src="' + embedSrc(id, it.sec, true) + '" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen style="width:100%;height:100%;border:0;border-radius:12px"></iframe>';
+    $("vpNow").innerHTML = esc(now) + ' &middot; <a href="' + esc(ytLink(url, it.sec)) + '" target="_blank" rel="noopener">Open in YouTube</a>';
     window.scrollTo(0, 0);
   }
   var PL = [];
@@ -669,7 +661,6 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   document.addEventListener("click", plClick);
   function bindVideo() {
     if (!$("vfList")) return;
-    vp.player = null; vp.id = null;
     var items = allVideoItems();
     function render() {
       var g = $("vfGame").value, t = $("vfTag").value, c = $("vfCoach").value, pl = $("vfPl").value;
@@ -853,6 +844,29 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       return '<div class="ev">' + tl + '<span class="lb"><b>' + esc(c.tag) + "</b> " + esc(c.label) + whoHtml(c) + coachSpan(c) + "</span></div>";
     }).join("") + "</div>";
   }
+  var UK = "kh-unlocked-v1";
+  function needLock() { var c = coachCfg(); return !!(D.cfg && D.cfg.submitUrl) && !(c.pass && lget(UK).pass === c.pass); }
+  function workerUrl() { var u = D.cfg.submitUrl; return /^https?:\/\//.test(u) ? u : "https://" + u; }
+  function lockView() {
+    return '<h2>Coaches corner</h2><div class="card"><h3>Coach passcode</h3><p class="note" style="margin-top:0">Enter the passcode to mark highlights, game events and shots. Everyone else can watch and browse.</p>' +
+      '<div class="fld"><label for="lkPass">Passcode</label><input type="password" id="lkPass" autocomplete="off" value="' + esc(coachCfg().pass) + '"></div>' +
+      '<div class="seg"><button class="btn" id="lkGo">Unlock</button></div><p class="note" id="lkNote" aria-live="polite"></p></div>';
+  }
+  function bindLock() {
+    function go() {
+      var pw = $("lkPass").value.trim(); if (!pw) { $("lkNote").textContent = "Type the passcode first."; return; }
+      $("lkNote").textContent = "Checking...";
+      fetch(workerUrl(), {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({kind: "check", passcode: pw})})
+        .then(function (r) { return r.json().catch(function () { return {ok: false}; }); })
+        .then(function (j) {
+          if (!j.ok) { $("lkNote").textContent = j.error === "Wrong passcode" ? "That passcode is not right." : "Could not check it" + (j.error ? ": " + j.error : ". If you just updated the helper, wait a minute and try again.") + "."; return; }
+          var c = coachCfg(); lset(CS, {name: c.name, pass: pw}); lset(UK, {pass: pw}); route();
+        })
+        .catch(function () { $("lkNote").textContent = "No connection. Try again."; });
+    }
+    $("lkGo").addEventListener("click", go);
+    $("lkPass").addEventListener("keydown", function (e) { if (e.key === "Enter") go(); });
+  }
   function coachSubTabs(active) {
     function b(h, label, key) { return '<button onclick="location.hash=\'' + h + '\'" aria-pressed="' + (active === key) + '">' + label + "</button>"; }
     return '<div class="seg" role="group">' + b("#/coach", "Highlights", "clips") + b("#/coach/events", "Game events", "events") + b("#/coach/shots", "Mark shots", "shots") + "</div>";
@@ -974,6 +988,12 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       var id = ytId(url);
       if (!id) { $("clNote").textContent = "That does not look like a YouTube link."; return; }
       var vk = lget(VK); vk[date] = url; lset(VK, vk);
+      if (!mark) {
+        var mk = function (sec, auto) { return '<iframe title="Game video" src="' + embedSrc(id, sec, auto) + '" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen style="width:100%;height:100%;border:0;border-radius:12px"></iframe>'; };
+        $("clVideo").innerHTML = '<div class="ytbox" id="ytp">' + mk(0, false) + "</div>";
+        ready({seek: function (sec) { $("ytp").innerHTML = mk(sec, true); }});
+        return;
+      }
       $("clVideo").innerHTML = '<div class="ytbox" id="ytp"></div>';
       withYT(function () {
         var pl = new window.YT.Player("ytp", {videoId: id, width: "100%", height: "100%", playerVars: {playsinline: 1, rel: 0},
@@ -1166,7 +1186,8 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     document.title = "Kings HUDL";
     var h = D.sample ? '<div class="banner">This is sample data to show how the site looks. It is not real.</div>' : "";
     if (base === "shots" && parts[1] === "mark") { location.replace("#/coach/shots"); return; }
-    if (base === "coach") h += parts[1] === "shots" ? vShots("mark") : parts[1] === "events" ? vClips(parts[2], "events") : vClips(parts[1], "mark");
+    if (base === "coach" && needLock()) h += lockView();
+    else if (base === "coach") h += parts[1] === "shots" ? vShots("mark") : parts[1] === "events" ? vClips(parts[2], "events") : vClips(parts[1], "mark");
     else if (base === "clips") h += vClips(parts[1], "watch");
     else if (base === "shots") h += vShots();
     else if (!D.games.length) h += vEmpty();
@@ -1178,7 +1199,8 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     else if (base === "video") h += vVideo();
     else h += vOverview();
     $("app").innerHTML = h;
-    if (base === "coach") { if (parts[1] === "shots") bindShots("mark"); else if (parts[1] === "events") bindClips(parts[2], "events"); else bindClips(parts[1], "mark"); }
+    if (base === "coach" && needLock()) bindLock();
+    else if (base === "coach") { if (parts[1] === "shots") bindShots("mark"); else if (parts[1] === "events") bindClips(parts[2], "events"); else bindClips(parts[1], "mark"); }
     if (base === "clips") bindClips(parts[1], "watch");
     if (base === "video") bindVideo();
     if (base === "shots") bindShots();
