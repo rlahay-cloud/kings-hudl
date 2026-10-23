@@ -6,7 +6,7 @@
 //   REPO           text     rlahay-cloud/kings-hudl
 //   ALLOWED_ORIGIN text     https://rlahay-cloud.github.io
 
-const CLIP_LINE = /^\d+:\d{2}:\d{2}\|[^|\n]{1,30}\|[\da ]{0,60}\|[^|\n]{0,200}$/;
+const CLIP_LINE = /^\d+:\d{2}:\d{2}\|[^|\n]{1,30}\|[\da ]{0,60}\|[^|\n]{0,200}(\|\d{1,7})?$/;
 const SHOT_LINE = /^P\d+\|[\d.]+\|[\d.]+\|(-|\d+)\|(G|S)\|(H|A)$/;
 const MAX_BYTES = 60000;
 

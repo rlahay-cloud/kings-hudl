@@ -55,4 +55,4 @@ Player names come from `roster.json`. Edit it to add or fix names. Goalies can g
 
 ## Game events (no name)
 
-In Coaches corner, the Game events tab marks basic moments: Goal, Goal against, Penalty and Penalty against. Goals take a scorer and up to two assists, penalties take the player. These are saved with no coach name and show in the Video tab under "Game events". The passcode is still needed so strangers cannot write to the repo.
+In Coaches corner, the Game events tab marks basic moments: Goal, Goal against, Penalty and Away Penalty. Goals take a scorer and up to two assists, penalties take the player. These are saved with no coach name and show in the Video tab under "Game events". The passcode is still needed so strangers cannot write to the repo.

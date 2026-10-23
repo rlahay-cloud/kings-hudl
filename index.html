@@ -9,7 +9,7 @@
 <style>
 :root {
   --bg: #0b1220; --panel: #131c2e; --panel2: #1a2640; --line: #26334f;
-  --fg: #eef2fa; --muted: #93a1bd; --accent: #ff7a1a; --accent-ink: #1a0e00;
+  --fg: #eef2fa; --muted: #93a1bd; --accent: #a974ff; --accent-ink: #12062b;
   --good: #3ddc97; --bad: #ff6b6b; --blue: #5aa9ff;
   --font: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
   --display: "Barlow Condensed", "Barlow", system-ui, sans-serif;
@@ -39,7 +39,7 @@ h3 { font-family: var(--display); font-weight: 600; letter-spacing: .08em; text-
 .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-top: 16px; }
 .kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
 .kpi b { display: block; font-family: var(--display); font-size: 36px; line-height: 1; font-variant-numeric: tabular-nums; }
-.kpi span { color: var(--muted); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; font-family: var(--display); font-weight: 600; }
+.kpi > span { color: var(--muted); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; font-family: var(--display); font-weight: 600; }
 .pos { color: var(--good); } .neg { color: var(--bad); } .mut { color: var(--muted); }
 table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 th, td { text-align: right; padding: 9px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
@@ -78,7 +78,7 @@ tbody tr.click { cursor: pointer; } tbody tr.click:hover { background: var(--pan
 .empty .btn { margin-top: 10px; }
 .btn { background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 10px; padding: 12px 18px; min-height: 46px; font-family: var(--display); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; font-size: 17px; }
 .btn.alt { background: var(--panel2); color: var(--fg); border: 1px solid var(--line); }
-.banner { background: rgba(255,122,26,.15); border: 1px solid var(--accent); border-radius: 10px; padding: 10px 12px; margin: 14px 0; }
+.banner { background: rgba(169,116,255,.16); border: 1px solid var(--accent); border-radius: 10px; padding: 10px 12px; margin: 14px 0; }
 .ev { display: flex; gap: 10px; align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--line); }
 .ev a.t { font-family: var(--display); font-weight: 700; font-size: 18px; min-width: 70px; }
 .ev.goal .lb { color: var(--good); font-weight: 600; } .ev.pen .lb { color: var(--bad); }
@@ -609,14 +609,14 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     D.games.forEach(function (g) {
       var base = {date: g.date, game: fmtDate(g.date) + " vs " + g.away};
       allClips(g.date).forEach(function (c) {
-        items.push({date: g.date, game: base.game, sec: c.sec, tag: c.tag, label: c.label || "", players: c.players || [], assists: c.assists || [], coach: c.coach});
+        items.push({date: g.date, game: base.game, sec: c.sec, tag: c.tag, label: c.label || "", players: c.players || [], assists: c.assists || [], end: c.end || 0, coach: c.coach});
       });
     });
     // Highlights for dates with no game summary yet
     var known = {}; D.games.forEach(function (g) { known[g.date] = 1; });
     dateChoices().forEach(function (d) {
       if (known[d]) return;
-      allClips(d).forEach(function (c) { items.push({date: d, game: fmtDate(d), sec: c.sec, tag: c.tag, label: c.label || "", players: c.players || [], assists: c.assists || [], coach: c.coach}); });
+      allClips(d).forEach(function (c) { items.push({date: d, game: fmtDate(d), sec: c.sec, tag: c.tag, label: c.label || "", players: c.players || [], assists: c.assists || [], end: c.end || 0, coach: c.coach}); });
     });
     return items.sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : a.sec - b.sec; });
   }
@@ -641,14 +641,15 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   }
   var vp = {id: null, player: null};
   // Inline player used by the Video tab, player pages and game pages. Needs #vpCard, #vpBox and #vpNow on the page.
-  function embedSrc(id, sec, auto) { return "https://www.youtube.com/embed/" + id + "?start=" + sec + (auto ? "&autoplay=1" : "") + "&playsinline=1&rel=0"; }
+  function clipEnd(it) { return it.end && it.end > it.sec ? it.end : it.sec + 10; }
+  function embedSrc(id, sec, auto, end) { return "https://www.youtube.com/embed/" + id + "?start=" + sec + (end ? "&end=" + end : "") + (auto ? "&autoplay=1" : "") + "&playsinline=1&rel=0"; }
   function playItem(it) {
     var url = D.videos[it.date] || lget(VK)[it.date] || "", id = ytId(url);
     $("vpCard").hidden = false;
     var now = it.game + ", " + hms(it.sec) + " " + it.tag;
     if (!id) { $("vpBox").innerHTML = ""; $("vpBox").style.display = "none"; $("vpNow").textContent = now + ". No video link for this game yet. Add it to videos.txt or on the Highlights page."; return; }
     $("vpBox").style.display = "";
-    $("vpBox").innerHTML = '<iframe id="vpYt" title="Game video" src="' + embedSrc(id, it.sec, true) + '" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen style="width:100%;height:100%;border:0;border-radius:12px"></iframe>';
+    $("vpBox").innerHTML = '<iframe id="vpYt" title="Game video" src="' + embedSrc(id, it.sec, true, clipEnd(it)) + '" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen style="width:100%;height:100%;border:0;border-radius:12px"></iframe>';
     $("vpNow").innerHTML = esc(now) + ' &middot; <a href="' + esc(ytLink(url, it.sec)) + '" target="_blank" rel="noopener">Open in YouTube</a>';
     window.scrollTo(0, 0);
   }
@@ -699,6 +700,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   var TAGS = ["Highlight", "Goal", "Goal against", "Penalty", "Away Penalty", "Save", "Chance", "Good play", "To fix", "Breakout", "Blocked shot", "Review", "Other"];
   var TAP_TAGS = ["Goal", "Save", "Chance", "Good play", "Breakout", "Blocked shot", "Review"];
 
+  function normTag(t) { t = String(t || "").trim(); return /^Penalty against$/i.test(t) ? "Away Penalty" : (t || "Highlight"); }
   function whoHtml(c) {
     var a = c.assists || [], sc = (c.players || []).filter(function (n) { return a.indexOf(n) < 0; });
     var h = sc.map(function (n) { return "#" + n; }).join(" ");
@@ -712,7 +714,9 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       var sec = parseHms(a[0]); if (sec === null) return;
       var tk = a[2].match(/a?\d+/gi) || [], ps = [], as = [];
       tk.forEach(function (t) { var n = +t.replace(/\D/g, ""); if (ps.indexOf(n) < 0) ps.push(n); if (/^a/i.test(t) && as.indexOf(n) < 0) as.push(n); });
-      out.push({sec: sec, tag: (a[1].trim() || "Highlight").replace(/^Penalty against$/i, "Away Penalty"), players: ps, assists: as, label: a.slice(3).join("|").trim()});
+      var end = 0, lab = a.slice(3);
+      if (lab.length > 1 && /^\d{1,7}$/.test(lab[lab.length - 1].trim())) end = +lab.pop().trim();
+      out.push({sec: sec, end: end, tag: normTag(a[1]), players: ps, assists: as, label: lab.join("|").trim()});
     });
     return out;
   }
@@ -722,7 +726,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   }
   function fmtClips(list) {
     return list.slice().sort(function (a, b) { return a.sec - b.sec; }).map(function (c) {
-      return hms(c.sec) + "|" + c.tag + "|" + clipPlayersField(c) + "|" + c.label.replace(/[\r\n|]+/g, " ");
+      return hms(c.sec) + "|" + c.tag + "|" + clipPlayersField(c) + "|" + c.label.replace(/[\r\n|]+/g, " ") + (c.end ? "|" + c.end : "");
     }).join("\n") + "\n";
   }
   function parseShots(text) {
@@ -744,9 +748,9 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   function mySlug() { return slugify(coachCfg().name) || "team"; }
   // My own marks are kept on this device. Everyone's sent files come from the games folder.
   function getMyClips(date, ev) {
-    var l = lget(ev ? EK : CK); if (l[date]) return l[date].slice();
+    var l = lget(ev ? EK : CK); if (l[date]) return l[date].map(function (c) { c.tag = normTag(c.tag); return c; });
     var sent = (D.clips[date] || {})[ev ? "game" : mySlug()];
-    return sent ? sent.map(function (x) { return {sec: x.sec, tag: x.tag, players: (x.players || []).slice(), assists: (x.assists || []).slice(), label: x.label || ""}; }) : [];
+    return sent ? sent.map(function (x) { return {sec: x.sec, end: x.end || 0, tag: normTag(x.tag), players: (x.players || []).slice(), assists: (x.assists || []).slice(), label: x.label || ""}; }) : [];
   }
   function putClips(date, list, ev) { var k = ev ? EK : CK, l = lget(k); l[date] = list; lset(k, l); }
   function getMyShots(date) { var l = lget(SK); return l[date] ? l[date].slice() : []; }
@@ -764,7 +768,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var sent = D.clips[date] || {}, others = {}, le = lget(EK);
     Object.keys(sent).forEach(function (k) { if (k !== "game") others[k] = sent[k]; });
     var out = mergeBy(others, lget(CK)[date], null);
-    (le[date] || sent.game || []).forEach(function (x) { var c = {}; Object.keys(x).forEach(function (k) { c[k] = x[k]; }); c.coach = GAME_LABEL; out.push(c); });
+    (le[date] || sent.game || []).forEach(function (x) { var c = {}; Object.keys(x).forEach(function (k) { c[k] = x[k]; }); c.tag = normTag(c.tag); c.coach = GAME_LABEL; out.push(c); });
     return out.sort(function (a, b) { return a.sec - b.sec; });
   }
   function coachSpan(x) { return x.coach === GAME_LABEL ? "" : ' <span class="mut">' + esc(x.coach) + "</span>"; }
@@ -845,7 +849,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var gm = D.games.filter(function (g) { return g.date === date; })[0], gl = fmtDate(date) + (gm ? " vs " + gm.away : "");
     vp.player = null; vp.id = null; PL = [];
     return "<h2>Highlights<small><a href='#/clips/" + date + "'>filter and watch</a></small></h2>" + playCard() + "<div class='card'>" + list.map(function (c) {
-      var tl = timeBtn({date: date, game: gl, sec: c.sec, tag: c.tag}, !!ytId(url));
+      var tl = timeBtn({date: date, game: gl, sec: c.sec, end: c.end, tag: c.tag}, !!ytId(url));
       return '<div class="ev">' + tl + '<span class="lb"><b>' + esc(c.tag) + "</b> " + esc(c.label) + whoHtml(c) + coachSpan(c) + "</span></div>";
     }).join("") + "</div>";
   }
@@ -887,13 +891,13 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       (mark ? '<div class="fld"><label for="clFile">Or open a video file from this device</label><input type="file" id="clFile" accept="video/*"></div>' +
         '<p class="note">The site does not store video. Footage stays on YouTube or on your device. Only the highlight times and labels are saved.</p>' : "") +
       (mark ? "" : '<p class="note" id="clNote" aria-live="polite">' + (url ? "Loading the video. Tap a time below to jump to it." : "No video for this game yet.") + "</p>") + "</div>" +
-      '<div id="clVideo" style="margin-top:12px"></div>';
+      '<div id="clVideo" style="margin-top:12px' + (mark ? ";position:sticky;top:96px;z-index:4" : "") + '"></div>';
     if (mark) {
       h += '<div class="card" style="margin-top:12px"><p class="note" style="margin-top:0">' + (ev ? "Basic game events: goals and penalties. No name is attached. " : "") + 'Watch the video and tap a button when it happens. That is all. Each tap saves the moment a few seconds earlier.</p>' +
         '<div class="tagbtns" id="clTags">' + (ev ? EVENT_TAGS : TAP_TAGS).map(function (t) { return '<button class="btn" data-tag="' + t + '" disabled>' + t + "</button>"; }).join("") + "</div>" +
         '<p class="note" id="clNote" aria-live="polite">Load a video to start.</p>' +
         '<details><summary class="note">Settings</summary><div class="fld"><label for="clLead">Save each moment this many seconds earlier</label><select id="clLead"><option>0</option><option>5</option><option selected>8</option><option>10</option><option>15</option></select></div></details></div>' +
-        "<h2>" + (ev ? "Game events" : "Your highlights") + "<small>tap Delete to remove one</small></h2><div class='card' id='clList'></div>" +
+        "<details class='card' id='clBox' style='margin-top:12px'><summary id='clSum' style='cursor:pointer;font-family:var(--display);font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:18px'></summary><div id='clList' style='margin-top:10px'></div></details>" +
         '<div class="seg" style="margin-top:12px"><button class="btn" id="clClear">Delete all of mine for this game</button></div>' +
         '<div class="seg" style="margin-top:12px"><button class="btn" id="clSend" style="width:100%">Share to Kings HUDL</button></div><p class="note" id="clShare" aria-live="polite"></p>';
     } else {
@@ -935,6 +939,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     function persist() { putClips(date, list, ev); }
     function renderList() {
       var box = $("clList");
+      $("clSum").textContent = (ev ? "Game events" : "Your highlights") + " (" + list.length + ") - tap to edit or delete";
       if (!list.length) { box.innerHTML = '<p class="note">Nothing marked yet.</p>'; return; }
       box.innerHTML = list.map(function (c, i) {
         return '<div class="clip" data-i="' + i + '"><button class="tm" data-act="seek">' + hms(c.sec) + "</button><span></span>" +
@@ -1000,9 +1005,9 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
           .catch(function () { $("clShare").textContent = "Video link only saved on this phone (no connection)."; });
       }
       if (!mark) {
-        var mk = function (sec, auto) { return '<iframe title="Game video" src="' + embedSrc(id, sec, auto) + '" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen style="width:100%;height:100%;border:0;border-radius:12px"></iframe>'; };
+        var mk = function (sec, auto, end) { return '<iframe title="Game video" src="' + embedSrc(id, sec, auto, end) + '" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen style="width:100%;height:100%;border:0;border-radius:12px"></iframe>'; };
         $("clVideo").innerHTML = '<div class="ytbox" id="ytp">' + mk(0, false) + "</div>";
-        ready({seek: function (sec) { $("ytp").innerHTML = mk(sec, true); }});
+        ready({seek: function (sec, end) { $("ytp").innerHTML = mk(sec, true, end); }});
         return;
       }
       $("clVideo").innerHTML = '<div class="ytbox" id="ytp"></div>';
@@ -1016,10 +1021,10 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (mark) $("clFile").addEventListener("change", function () { if ($("clFile").files[0]) loadFile($("clFile").files[0]); });
     if (mark) $("clTags").addEventListener("click", function (e) {
       var btn = e.target.closest("button"); if (!btn || !cur) return;
-      var lead = +$("clLead").value, t = Math.max(0, Math.floor(cur.get()) - lead), tag = btn.getAttribute("data-tag");
-      list.push({sec: t, tag: tag, players: [], assists: [], label: ""});
+      var lead = +$("clLead").value, now = Math.floor(cur.get()), t = Math.max(0, now - lead), tag = btn.getAttribute("data-tag");
+      list.push({sec: t, end: now + 2, tag: tag, players: [], assists: [], label: ""});
       list.sort(function (a, b) { return a.sec - b.sec; });
-      persist(); renderList(); $("clNote").textContent = "Saved: " + tag + " at " + hms(t) + ". " + list.length + " marked so far.";
+      persist(); renderList(); $("clNote").textContent = "Saved " + tag + " at " + hms(t) + ". " + list.length + " so far.";
     });
     if (mark) $("clSend").addEventListener("click", function () {
       if (!list.length && !(D.clips[date] || {})[ev ? "game" : mySlug()]) { $("clShare").textContent = "Nothing marked yet."; return; }
@@ -1045,7 +1050,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       var co = $("clCoach").value, tg = $("clTag").value;
       var f = everyone.filter(function (c) { return (!co || c.coach === co) && (!tg || c.tag === tg); });
       $("clAll").innerHTML = f.length ? f.map(function (c, i) {
-        return '<div class="ev" data-s="' + c.sec + '"><button class="tm" style="background:none;border:0;color:var(--accent);font-family:var(--display);font-weight:700;font-size:18px;min-width:70px;text-align:left;padding:0" data-sec="' + c.sec + '">' + hms(c.sec) + '</button><span class="lb"><b>' + esc(c.tag) + "</b> " + esc(c.label) +
+        return '<div class="ev" data-s="' + c.sec + '"><button class="tm" style="background:none;border:0;color:var(--accent);font-family:var(--display);font-weight:700;font-size:18px;min-width:70px;text-align:left;padding:0" data-sec="' + c.sec + '" data-end="' + clipEnd(c) + '">' + hms(c.sec) + '</button><span class="lb"><b>' + esc(c.tag) + "</b> " + esc(c.label) +
           whoHtml(c) + coachSpan(c) + "</span></div>";
       }).join("") : '<p class="note">' + (everyone.length ? "Nothing matches these filters." : "No highlights for this game yet.") + "</p>";
     }
@@ -1053,7 +1058,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     $("clAll").addEventListener("click", function (e) {
       var b = e.target.closest("button[data-sec]"); if (!b) return;
       var sec = +b.getAttribute("data-sec");
-      if (cur) { cur.seek(sec); window.scrollTo(0, $("clVideo").offsetTop - 80); }
+      if (cur) { cur.seek(sec, +b.getAttribute("data-end")); window.scrollTo(0, $("clVideo").offsetTop - 80); }
       else { var u = $("clUrl").value.trim() || url0; if (u) window.open(ytLink(u, sec), "_blank", "noopener"); else $("clNote").textContent = "No video for this game yet."; }
     });
     renderAll();
@@ -1062,7 +1067,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   // ---------- shot map ----------
   function rinkSvg(extra) {
     return '<div class="rinkwrap"><svg id="rink" viewBox="0 0 100 85" role="img" aria-label="Offensive zone of the rink. The net is on the right.">' +
-      '<defs><radialGradient id="heat"><stop offset="0" stop-color="#ff5a00" stop-opacity=".42"/><stop offset="1" stop-color="#ff5a00" stop-opacity="0"/></radialGradient></defs>' +
+      '<defs><radialGradient id="heat"><stop offset="0" stop-color="#8a4dff" stop-opacity=".42"/><stop offset="1" stop-color="#8a4dff" stop-opacity="0"/></radialGradient></defs>' +
       '<path d="M0 0H72A28 28 0 0 1 100 28V57A28 28 0 0 1 72 85H0Z" fill="#f4f8fc" stroke="#46556e" stroke-width="1"/>' +
       '<rect x="24" y="0" width="2" height="85" fill="#2b6cd9" opacity=".8"/><rect x="0" y="0" width="1.4" height="85" fill="#d33"/>' +
       '<rect x="88.8" y="0" width=".5" height="85" fill="#d33" opacity=".8"/>' +
@@ -1078,7 +1083,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     list.forEach(function (s) {
       var x = s.x * 100, y = s.y * 85;
       if (heat) h += '<circle cx="' + x + '" cy="' + y + '" r="9" fill="url(#heat)"/>';
-      m += s.r === "G" ? '<circle cx="' + x + '" cy="' + y + '" r="2.3" fill="#ff7a1a" stroke="#fff" stroke-width=".7"/>'
+      m += s.r === "G" ? '<circle cx="' + x + '" cy="' + y + '" r="2.3" fill="#a974ff" stroke="#fff" stroke-width=".7"/>'
         : '<circle cx="' + x + '" cy="' + y + '" r="1.8" fill="none" stroke="#1e5fd0" stroke-width=".9"/>';
     });
     return {heat: h, marks: m};
@@ -1113,7 +1118,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       '<div class="fld"><label for="mpCoach">Marked by</label><select id="mpCoach"><option value="">Everyone</option>' + coachesWithShots().map(function (c) { return "<option>" + esc(c) + "</option>"; }).join("") + "</select></div></div>" +
       '<label class="note"><input type="checkbox" id="mpHeat" checked> Show heat</label>' +
       '<div class="kpis" id="mpKpi"></div>' + rinkSvg() +
-      '<div class="leg"><span><i style="background:#ff7a1a;border-radius:50%"></i>Goal</span><span><i style="border:2px solid #1e5fd0;border-radius:50%"></i>Saved</span></div>' +
+      '<div class="leg"><span><i style="background:#a974ff;border-radius:50%"></i>Goal</span><span><i style="border:2px solid #1e5fd0;border-radius:50%"></i>Saved</span></div>' +
       (ds.length ? "" : '<p class="note">No shots marked yet. Coaches can add shots in Coaches corner.</p>') + "</div>";
   }
   var PERIODS_LABEL = ["1", "2", "3", "OT"];
