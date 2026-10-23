@@ -59,7 +59,8 @@ function check(body, env) {
     const ls = t.split(/\r?\n/).filter(function (l) { return l.trim() !== ""; });
     if (ls.length > 5000) return {error: "Too many lines"};
     for (const l of ls) if (!SHIFT_LINE.test(l)) return {error: "A line was not in the right format"};
-    return {path: "games/shifts_" + body.date + ".txt", text: ls.length ? ls.join("\n") + "\n" : "\n", coach: "shifts"};
+    const sc = slugify(body.coach) || "team";
+    return {path: sc === "team" ? "games/shifts_" + body.date + ".txt" : "games/shifts_" + body.date + "_" + sc + ".txt", text: ls.length ? ls.join("\n") + "\n" : "\n", coach: sc};
   }
   if (body.kind === "players") {
     const t = String(body.text || "");

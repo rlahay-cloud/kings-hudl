@@ -59,6 +59,7 @@ tbody tr.click { cursor: pointer; } tbody tr.click:hover { background: var(--pan
 .shfp { min-height: 64px; border-radius: 12px; border: 2px solid var(--line); background: var(--panel2); color: var(--fg); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4px; }
 .shfp b { font-family: var(--display); font-size: 26px; line-height: 1; }
 .shfp span { font-size: 11px; color: var(--muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.shfh { grid-column: 1 / -1; font-family: var(--display); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-size: 14px; margin-top: 4px; }
 .shfp.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .shfp.on span { color: var(--accent-ink); }
 .shfstat { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 8px 0 2px; }
@@ -325,9 +326,10 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
         var m = /^draw_(\d{4}-\d{2}-\d{2})_(\d+)\.txt$/.exec(n);
         videoJobs.push(getText("games/" + n).then(function (t) { D.draws[m[1] + "_" + m[2]] = parseDraw(t); }).catch(function () {}));
       });
-      names.filter(function (n) { return /^shifts_\d{4}-\d{2}-\d{2}\.txt$/.test(n); }).forEach(function (n) {
+      names.filter(function (n) { return /^shifts_\d{4}-\d{2}-\d{2}(_[a-z0-9-]+)?\.txt$/.test(n); }).forEach(function (n) {
         var d = /(\d{4}-\d{2}-\d{2})/.exec(n)[1];
-        videoJobs.push(getText("games/" + n).then(function (t) { D.shifts[d] = parseShifts(t); }).catch(function () {}));
+        var sl = (/^shifts_\d{4}-\d{2}-\d{2}_([a-z0-9-]+)\.txt$/.exec(n) || [])[1] || "team";
+        videoJobs.push(getText("games/" + n).then(function (t) { (D.shifts[d] = D.shifts[d] || {})[sl] = parseShifts(t); }).catch(function () {}));
       });
       var shotFiles = names.filter(function (n) { return /^shots_\d{4}-\d{2}-\d{2}(_[a-z0-9-]+)?\.txt$/.test(n); });
       var jobs = sums.map(function (n) {
@@ -540,6 +542,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var pct = function (a, b) { return has && b ? Math.round(a * 100 / b) + "%" : "-"; };
     var en = RV_MOVES.reduce(function (s0, m) { return s0 + T.en[m]; }, 0), ex = RV_MOVES.reduce(function (s0, m) { return s0 + T.ex[m]; }, 0);
     var ctlEn = pct(T.en.Carry + T.en.Pass, en), ctlEx = pct(T.ex.Carry + T.ex.Pass, ex);
+    if (grp === "F") return [["SOG", v(T.sog)], ["PP G", v(T.ppg)], ["SH G", v(T.shg)], ["FO%", pct(T.fow, T.fow + T.fol)], ["Ctrl En%", ctlEn], ["Pen", v(T.pen)], ["GF on", v(T.gf)], ["GA on", v(T.ga)]];
     if (grp === "C") return [["FO W-L", v(T.fow + "-" + T.fol)], ["FO%", pct(T.fow, T.fow + T.fol)], ["SOG", v(T.sog)], ["Ctrl En%", ctlEn], ["Pen", v(T.pen)], ["GF on", v(T.gf)], ["GA on", v(T.ga)]];
     if (grp === "W") return [["SOG", v(T.sog)], ["PP G", v(T.ppg)], ["SH G", v(T.shg)], ["Ctrl En%", ctlEn], ["Pen", v(T.pen)], ["GF on", v(T.gf)], ["GA on", v(T.ga)]];
     return [["Blk", v(T.blk)], ["Ctrl Ex%", ctlEx], ["SOG", v(T.sog)], ["Pen", v(T.pen)], ["GF on", v(T.gf)], ["GA on", v(T.ga)]];
@@ -553,11 +556,11 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   function vPlayers() {
     var P = aggPlayers(), ICE = iceTotals(), hasIce = P.some(function (p) { return ICE[p.n]; });
     var cols = [["gp", "GP"], ["g", "G"], ["a", "A"], ["p", "P"], ["ppg", "P/GP"], ["pm", "+/-"], ["sog", "SOG"], ["shp", "S%"], ["pim", "PIM"]];
-    if (posFilter) P = P.filter(function (p) { return posGroup(D.pos[p.n]) === posFilter; });
+    if (posFilter) P = P.filter(function (p) { var g = posGroup(D.pos[p.n]); return posFilter === "F" ? g === "C" || g === "W" : g === posFilter; });
     var EX = {}; if (posFilter) { P.forEach(function (p) { EX[p.n] = posExtras(p.n, posFilter); }); }
     var exHead = P.length && posFilter ? EX[P[0].n].map(function (x) { return "<th>" + x[0] + "</th>"; }).join("") : "";
     P.sort(function (a, b) { var x = a[sortKey] === null ? -1 : a[sortKey], y = b[sortKey] === null ? -1 : b[sortKey]; return (y - x) * -sortDir || a.n - b.n; });
-    var h = "<h2>Skaters<small>tap a heading to sort</small></h2>" + (Object.keys(D.pos).length ? '<div class="seg" id="posChips" role="group" aria-label="Position">' + [["", "All"], ["C", "Centres"], ["W", "Wings"], ["D", "Defence"]].map(function (x) { return '<button data-pos="' + x[0] + '" aria-pressed="' + (posFilter === x[0]) + '">' + x[1] + "</button>"; }).join("") + "</div>" : "") + "<div class='card scroll'><table><thead><tr><th>Player</th><th>Pos</th>" +
+    var h = "<h2>Skaters<small>tap a heading to sort</small></h2>" + (Object.keys(D.pos).length ? '<div class="seg" id="posChips" role="group" aria-label="Position">' + [["", "All"], ["F", "Forwards"], ["C", "Centres"], ["W", "Wings"], ["D", "Defence"]].map(function (x) { return '<button data-pos="' + x[0] + '" aria-pressed="' + (posFilter === x[0]) + '">' + x[1] + "</button>"; }).join("") + "</div>" : "") + "<div class='card scroll'><table><thead><tr><th>Player</th><th>Pos</th>" +
       cols.map(function (c) { return '<th class="sort' + (c[0] === sortKey ? " on" : "") + '" data-k="' + c[0] + '">' + c[1] + "</th>"; }).join("") + (hasIce ? "<th>Shifts</th><th>TOI/GP</th>" : "") + exHead + "</tr></thead><tbody>" +
       P.map(function (p) {
         return '<tr class="click" onclick="location.hash=\'#/player/' + p.n + '\'"><td>' + esc(label(p.n)) + "</td><td>" + esc(D.pos[p.n] || "") + "</td><td>" + p.gp + "</td><td>" + p.g + "</td><td>" + p.a + "</td><td><b>" + p.p + "</b></td><td>" + p.ppg.toFixed(2) + '</td><td class="' + pmCls(p.pm) + '">' + pmText(p.pm) + "</td><td>" + p.sog + "</td><td>" + (p.shp === null ? "-" : Math.round(p.shp * 100) + "%") + "</td><td>" + p.pim + "</td>" + (hasIce ? (ICE[p.n] ? "<td>" + ICE[p.n].shifts + "</td><td>" + mss(ICE[p.n].toi / ICE[p.n].games) + "</td>" : "<td>-</td><td>-</td>") : "") + (EX[p.n] || []).map(function (x) { return "<td>" + x[1] + "</td>"; }).join("") + "</tr>";
@@ -1605,7 +1608,12 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     }).join("\n");
   }
   function shiftLocal(date) { var l = lget(SHK)[date]; return l && l.ev ? l : null; }
-  function getShifts(date) { var l = shiftLocal(date); return l ? l.ev : (D.shifts[date] || []); }
+  // Everyone's saved shifts for a game, put together. My own unsaved taps on this device replace my saved file.
+  function getShifts(date) {
+    var me = mySlug(), by = D.shifts[date] || {}, loc = shiftLocal(date), out = [];
+    Object.keys(by).forEach(function (s) { if (s === me && loc) return; out = out.concat(by[s]); });
+    return loc ? out.concat(loc.ev) : out;
+  }
   function mss(sec) { sec = Math.max(0, Math.round(sec)); return Math.floor(sec / 60) + ":" + ("0" + (sec % 60)).slice(-2); }
   // Turns the taps into shifts. Only time while tracking is on counts.
   function computeShifts(ev, upTo) {
@@ -1681,7 +1689,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     h += '<div class="card" style="margin-top:12px"><h3 style="margin-top:0">Who is on the ice<small id="shfOnList"></small></h3><div id="shfGrid" class="shfgrid"></div>' +
       '<div class="seg" style="margin-top:10px"><button id="shfAllOff">Everyone off</button><button id="shfPeriod">End of period</button><button id="shfUndo">Undo last tap</button></div>' +
       '<div class="filters" style="margin-top:8px"><div class="fld"><label for="shfAdd">Another jersey number</label><div class="seg"><input type="number" id="shfAdd" min="0" max="999" placeholder="Like 21" style="max-width:110px"><button id="shfAddBtn">Add</button></div></div></div></div>';
-    h += '<div class="seg" style="margin-top:12px"><button class="btn" id="shfSave" style="width:100%">Save for everyone</button></div><p class="note" id="shfSaved" aria-live="polite">Everything is saved on this device as you tap.</p>';
+    h += '<div class="seg" style="margin-top:12px"><button class="btn" id="shfSave" style="width:100%">Save for everyone</button></div><p class="note" id="shfSaved" aria-live="polite">Everything is saved on this device as you tap.</p><div class="seg"><button id="shfPull">Refresh other coaches</button></div><p class="note" id="shfSync" aria-live="polite"></p>';
     h += '<h2>Shifts so far<small>tap a player to see each shift</small></h2><div class="card scroll" id="shfRes"></div>';
     h += '<details class="card" style="margin-top:12px"><summary id="shfLogSum" style="cursor:pointer">All taps</summary><div id="shfLog" style="margin-top:8px"></div></details>';
     h += '</div></div>';
@@ -1691,26 +1699,35 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (!$("shfYt")) { if ($("shfDate")) $("shfDate").addEventListener("change", function () { location.hash = "#/coach/shifts/" + $("shfDate").value; }); return; }
     var date = $("shfDate").value, url = D.videos[date] || lget(VK)[date] || "", id = ytId(url);
     $("shfDate").addEventListener("change", function () { location.hash = "#/coach/shifts/" + $("shfDate").value; });
-    var loc = shiftLocal(date), ev = JSON.parse(JSON.stringify(loc ? loc.ev : (D.shifts[date] || []))), extra = loc && loc.extra ? loc.extra.slice() : [], pl = null, ready = false, sig = "";
+    var me = mySlug(), loc = shiftLocal(date), ev = JSON.parse(JSON.stringify(loc ? loc.ev : ((D.shifts[date] || {})[me] || []))), extra = loc && loc.extra ? loc.extra.slice() : [], pl = null, ready = false, sig = "";
     function now() { try { return ready ? pl.getCurrentTime() || 0 : 0; } catch (e) { return 0; } }
-    function lastTracked() { return ev.reduce(function (m, e) { return Math.max(m, e.t); }, 0); }
+    // my taps come first, then every other coach's saved taps (read only)
+    function others() {
+      var by = D.shifts[date] || {}, out = [];
+      Object.keys(by).forEach(function (s) { if (s !== me) by[s].forEach(function (e) { out.push({t: e.t, k: e.k, n: e.n, by: s}); }); });
+      return out;
+    }
+    function all() { return ev.concat(others()); }
+    function lastTracked() { return all().reduce(function (m, e) { return Math.max(m, e.t); }, 0); }
     function persist() { var l = lget(SHK); l[date] = {ev: ev, extra: extra}; lset(SHK, l); }
     var gm = D.games.filter(function (x) { return x.date === date; })[0];
     function nums() {
       var set = {}; rosterNums().forEach(function (n) { set[n] = 1; });
       if (gm) gm.players.forEach(function (p) { set[p.n] = 1; });
-      extra.forEach(function (n) { set[n] = 1; }); ev.forEach(function (e) { if (e.n !== null) set[e.n] = 1; });
+      extra.forEach(function (n) { set[n] = 1; }); all().forEach(function (e) { if (e.n !== null) set[e.n] = 1; });
       Object.keys(D.goalieNums).forEach(function (k) { delete set[k]; });
       var order = {C: 0, W: 1, D: 2, "": 3};
       return Object.keys(set).map(Number).sort(function (a, b) { var ga = order[posGroup(D.pos[a])], gb = order[posGroup(D.pos[b])]; return ga - gb || a - b; });
     }
     function add(k, n) { ev.push({t: Math.round(now() * 10) / 10, k: k, n: n === undefined ? null : n}); persist(); sig = ""; refresh(); }
-    function onNow() { return stateAt(ev, now()); }
+    function onNow() { return stateAt(all(), now()); }
     function grid() {
       var s = onNow(), list = nums();
+      var lastH = null;
       $("shfGrid").innerHTML = list.map(function (n) {
-        var g = posGroup(D.pos[n]);
-        return '<button class="shfp' + (s.on[n] ? " on" : "") + '" data-n="' + n + '" aria-pressed="' + !!s.on[n] + '"><b>' + n + "</b><span>" + esc((pname(n) || "").split(" ")[0] || (g || "")) + "</span></button>";
+        var g = posGroup(D.pos[n]), hd = g === "C" || g === "W" ? "Forwards" : g === "D" ? "Defence" : "Other", head = "";
+        if (hd !== lastH) { lastH = hd; head = '<div class="shfh">' + hd + "</div>"; }
+        return head + '<button class="shfp' + (s.on[n] ? " on" : "") + '" data-n="' + n + '" aria-pressed="' + !!s.on[n] + '"><b>' + n + "</b><span>" + esc((pname(n) || "").split(" ")[0] || (g || "")) + "</span></button>";
       }).join("");
       var cnt = Object.keys(s.on).length;
       $("shfCount").textContent = cnt + " on the ice";
@@ -1718,20 +1735,20 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     }
     var openRows = {}, armed = null;
     function results() {
-      var c = computeShifts(ev, ready ? now() : undefined);
+      var AE = all(), c = computeShifts(AE, ready ? now() : undefined);
       $("shfRes").innerHTML = c.rows.length ? '<table><thead><tr><th>Player</th><th>Shifts</th><th>Ice time</th><th>Avg shift</th><th>Longest</th><th>Shortest</th></tr></thead><tbody>' + c.rows.map(function (r) {
         var live = r.shifts.some(function (x) { return x.live; });
         return '<tr class="click" data-r="' + r.n + '"><td>' + esc(label(r.n)) + (live ? ' <span class="pill W">on ice</span>' : "") + "</td><td>" + r.count + "</td><td><b>" + mss(r.toi) + "</b></td><td>" + mss(r.avg) + "</td><td>" + mss(r.max) + "</td><td>" + mss(r.min) + "</td></tr>" +
           '<tr' + (openRows[r.n] ? "" : " hidden") + ' data-d="' + r.n + '"><td colspan="6">' + r.shifts.map(function (x, i) {
-            var key = r.n + ":" + x.ia + ":" + x.ib;
-            return '<div class="ev"><button class="tm" data-seek="' + x.a + '" style="background:none;border:0;color:var(--accent);padding:2px 8px 2px 0;font-weight:700">#' + (i + 1) + " " + hms(Math.floor(x.a)) + "</button><span class=\"lb\">" + mss(x.len) + (x.live ? " so far" : "") + '</span><button data-delshift="' + key + '">' + (armed === key ? "Tap again to delete" : "Delete") + "</button></div>";
+            var key = r.n + ":" + x.ia + ":" + x.ib, mine = x.ia < ev.length && (x.ib === null || x.ib < ev.length), by = AE[x.ia].by;
+            return '<div class="ev"><button class="tm" data-seek="' + x.a + '" style="background:none;border:0;color:var(--accent);padding:2px 8px 2px 0;font-weight:700">#' + (i + 1) + " " + hms(Math.floor(x.a)) + "</button><span class=\"lb\">" + mss(x.len) + (x.live ? " so far" : "") + (by ? ' <span class="mut">' + esc(coachLabel(by)) + "</span>" : "") + "</span>" + (mine ? '<button data-delshift="' + key + '">' + (armed === key ? "Tap again to delete" : "Delete") + "</button>" : "") + "</div>";
           }).join("") + "</td></tr>";
       }).join("") + "</tbody></table>" + (c.open.length ? '<p class="note">On the ice now: ' + c.open.map(function (n) { return "#" + n; }).join(" ") + ". Their shift is counted so far and is finished when you tap them off.</p>" : "") : '<p class="note" style="margin:0">No shifts yet.</p>';
-      var sorted = ev.map(function (e, i) { return {e: e, i: i}; }).sort(function (a, b) { return b.e.t - a.e.t || b.i - a.i; });
-      $("shfLogSum").textContent = "All taps (" + ev.length + ")";
+      var sorted = AE.map(function (e, i) { return {e: e, i: i}; }).sort(function (a, b) { return b.e.t - a.e.t || b.i - a.i; });
+      $("shfLogSum").textContent = "All taps (" + AE.length + ")";
       $("shfLog").innerHTML = sorted.length ? sorted.map(function (x) {
         var txt = x.e.k === "on" ? "#" + x.e.n + " on" : x.e.k === "off" ? "#" + x.e.n + " off" : x.e.k === "stop" ? "Tracking stopped" : "Tracking started";
-        return '<div class="ev"><button class="tm" data-seek="' + x.e.t + '" style="background:none;border:0;color:var(--accent);font-family:var(--display);font-weight:700;font-size:16px;min-width:70px;text-align:left;padding:0">' + hms(Math.floor(x.e.t)) + '</button><span class="lb">' + esc(txt) + '</span><button data-del="' + x.i + '" aria-label="Delete this tap">Delete</button></div>';
+        return '<div class="ev"><button class="tm" data-seek="' + x.e.t + '" style="background:none;border:0;color:var(--accent);font-family:var(--display);font-weight:700;font-size:16px;min-width:70px;text-align:left;padding:0">' + hms(Math.floor(x.e.t)) + '</button><span class="lb">' + esc(txt) + (x.e.by ? ' <span class="mut">' + esc(coachLabel(x.e.by)) + "</span>" : "") + '</span>' + (x.i < ev.length ? '<button data-del="' + x.i + '" aria-label="Delete this tap">Delete</button>' : "") + '</div>';
       }).join("") : '<p class="note" style="margin:0">No taps yet.</p>';
     }
     function status() {
@@ -1782,11 +1799,30 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       var note = $("shfSaved"); persist();
       if (!(D.cfg && D.cfg.submitUrl)) { note.textContent = "Saved on this device only (no helper is set up)."; return; }
       note.textContent = "Sending...";
-      fetch(workerUrl(), {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({kind: "shifts", date: date, passcode: coachCfg().pass, text: fmtShifts(ev)})})
+      fetch(workerUrl(), {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({kind: "shifts", date: date, coach: coachCfg().name, passcode: coachCfg().pass, text: fmtShifts(ev)})})
         .then(function (r) { return r.json().catch(function () { return {ok: false, error: "Bad reply"}; }); })
-        .then(function (j) { if (j.ok) { D.shifts[date] = JSON.parse(JSON.stringify(ev)); var l = lget(SHK); delete l[date]; lset(SHK, l); } note.textContent = j.ok ? "Saved for everyone. It shows on the game page and player pages in a minute." : "Not saved for everyone: " + (j.error || "unknown problem") + ". It is saved on this device."; })
+        .then(function (j) { if (j.ok) { (D.shifts[date] = D.shifts[date] || {})[me] = JSON.parse(JSON.stringify(ev)); var l = lget(SHK); delete l[date]; lset(SHK, l); } note.textContent = j.ok ? "Saved for everyone. It shows on the game page and player pages in a minute." : "Not saved for everyone: " + (j.error || "unknown problem") + ". It is saved on this device."; })
         .catch(function () { note.textContent = "No connection. Saved on this device only."; });
     });
+    // other coaches' saved shifts: look for new files now and every 30 seconds
+    function syncNote() {
+      var by = D.shifts[date] || {}, parts = [];
+      Object.keys(by).forEach(function (s) { if (s !== me && by[s].length) parts.push(coachLabel(s) + " " + by[s].length + " taps, last at " + hms(Math.floor(by[s].reduce(function (m, e) { return Math.max(m, e.t); }, 0)))); });
+      $("shfSync").textContent = parts.length ? "Also tracked by: " + parts.join("; ") + "." : "No other coach has saved shifts for this game yet.";
+    }
+    function pull() {
+      listGameFiles().then(function (names) {
+        var re = new RegExp("^shifts_" + date + "(?:_([a-z0-9-]+))?\\.txt$"), jobs = [];
+        names.forEach(function (n) {
+          var m = re.exec(n); if (!m) return; var sl = m[1] || "team"; if (sl === me) return;
+          jobs.push(getText("games/" + n).then(function (tx) { (D.shifts[date] = D.shifts[date] || {})[sl] = parseShifts(tx); }).catch(function () {}));
+        });
+        return Promise.all(jobs);
+      }).then(function () { if (!$("shfYt")) return; sig = ""; syncNote(); refresh(); }).catch(function () {});
+    }
+    $("shfPull").addEventListener("click", pull);
+    var pullTimer = setInterval(function () { if (!$("shfYt")) { clearInterval(pullTimer); return; } pull(); }, 30000);
+    syncNote();
     var tick = 0;
     var tm = setInterval(function () {
       if (!$("shfYt")) { clearInterval(tm); return; }
