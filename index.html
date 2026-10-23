@@ -1602,7 +1602,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   function getShifts(date) { var l = shiftLocal(date); return l ? l.ev : (D.shifts[date] || []); }
   function mss(sec) { sec = Math.max(0, Math.round(sec)); return Math.floor(sec / 60) + ":" + ("0" + (sec % 60)).slice(-2); }
   // Turns the taps into shifts. Only time while tracking is on counts.
-  function computeShifts(ev) {
+  function computeShifts(ev, upTo) {
     var e = ev.map(function (x, i) { return {t: x.t, k: x.k, n: x.n, i: i}; }).sort(function (a, b) { return a.t - b.t || a.i - b.i; });
     var stops = [], sOpen = 0, last = 0; // not tracking until the first Start tracking
     e.forEach(function (x) {
@@ -1610,21 +1610,23 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       if (x.k === "stop" && sOpen === null) sOpen = x.t;
       else if (x.k === "go" && sOpen !== null) { stops.push([sOpen, x.t]); sOpen = null; }
     });
-    if (sOpen !== null) stops.push([sOpen, Math.max(last, sOpen)]);
+    if (sOpen !== null) stops.push([sOpen, Math.max(last, sOpen, upTo === undefined ? 0 : upTo)]);
     function play(a, b) { var d = b - a; stops.forEach(function (s) { var o = Math.min(b, s[1]) - Math.max(a, s[0]); if (o > 0) d -= o; }); return Math.max(0, d); }
     var on = {}, P = {};
     e.forEach(function (x) {
-      if (x.k === "on") { if (on[x.n] === undefined) on[x.n] = x.t; }
+      if (x.k === "on") { if (on[x.n] === undefined) on[x.n] = {t: x.t, i: x.i}; }
       else if (x.k === "off" && on[x.n] !== undefined) {
-        var a = on[x.n]; delete on[x.n]; var len = play(a, x.t);
-        if (len >= 1) (P[x.n] = P[x.n] || []).push({a: a, b: x.t, len: len});
+        var a = on[x.n]; delete on[x.n]; var len = play(a.t, x.t);
+        if (len >= 1) (P[x.n] = P[x.n] || []).push({a: a.t, b: x.t, len: len, ia: a.i, ib: x.i});
       }
     });
+    // players still on the ice: counted as a running shift when a current time is given
+    if (upTo !== undefined) Object.keys(on).forEach(function (n) { var len = play(on[n].t, Math.max(upTo, on[n].t)); if (len >= 1) (P[n] = P[n] || []).push({a: on[n].t, b: upTo, len: len, ia: on[n].i, ib: null, live: true}); });
     var rows = Object.keys(P).map(function (n) {
       var s = P[n], toi = s.reduce(function (q, x) { return q + x.len; }, 0), lens = s.map(function (x) { return x.len; });
       return {n: +n, shifts: s, count: s.length, toi: toi, avg: toi / s.length, max: Math.max.apply(null, lens), min: Math.min.apply(null, lens)};
     }).sort(function (a, b) { return b.toi - a.toi || a.n - b.n; });
-    return {rows: rows, open: Object.keys(on).map(Number), stops: stops};
+    return {rows: rows, open: Object.keys(on).map(Number), stops: stops, last: last};
   }
   function stateAt(ev, t) {
     var e = ev.map(function (x, i) { return {t: x.t, k: x.k, n: x.n, i: i}; }).sort(function (a, b) { return a.t - b.t || a.i - b.i; }), on = {}, stopped = true;
@@ -1651,6 +1653,11 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       var gm = D.games.filter(function (q) { return q.date === x.date; })[0];
       return "<tr" + (gm ? " class=\"click\" onclick=\"location.hash='#/game/" + gm.id + "'\"" : "") + "><td>" + fmtDate(x.date) + (gm ? " vs " + esc(gm.away) : "") + "</td><td>" + x.r.count + "</td><td><b>" + mss(x.r.toi) + "</b></td><td>" + mss(x.r.avg) + "</td><td>" + mss(x.r.max) + "</td></tr>";
     }).join("") + "</tbody></table></div>";
+    h += games.slice().reverse().map(function (x) {
+      return "<details class='card' style='margin-top:12px'><summary style='cursor:pointer'>Every shift, " + fmtDate(x.date) + " (" + x.r.count + ")</summary><div style='margin-top:8px'>" + x.r.shifts.map(function (s, i) {
+        return "<div class='ev'><span class='t' style='font-family:var(--display);font-weight:700;min-width:70px'>#" + (i + 1) + "</span><span class='lb'>" + mss(s.len) + " <span class='mut'>at video " + hms(Math.floor(s.a)) + "</span></span></div>";
+      }).join("") + "</div></details>";
+    }).join("");
     return h;
   }
   function vShifts(dateParam) {
@@ -1663,7 +1670,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     h += '<p class="note" style="margin-bottom:0">Tap <b>Start tracking</b> when play starts and <b>Stop tracking</b> at every stoppage. Time only counts while tracking is on and the video is playing. Tap a number to put that player on the ice, and tap it again when he comes off. You can change who is on while tracking is stopped.</p></div>';
     h += '<div class="rv"><div class="rvl"><div class="rvvideo shfv"><div class="ytbox" id="shfYt"></div>' +
       '<div class="shfstat"><span id="shfTime" class="note" style="margin:0">Loading the video.</span><b id="shfState">PLAY</b><span id="shfCount" class="note" style="margin:0"></span></div>' +
-      '<div class="seg" role="group" aria-label="Video controls"><button class="btn" id="shfWhistle" style="flex:1 1 100%;min-height:52px">Start tracking</button><button id="shfPlay">Play / Pause</button><button id="shfBack">&larr; 5s</button><button id="shfFwd">5s &rarr;</button>' +
+      '<div class="seg" role="group" aria-label="Video controls"><button class="btn" id="shfWhistle" style="flex:1 1 100%;min-height:52px">Start tracking</button><button id="shfPlay">Play / Pause</button><button id="shfBack">&larr; 5s</button><button id="shfFwd">5s &rarr;</button><button id="shfLast">Go to last tracked</button>' +
       '<select id="shfSpeed" aria-label="Speed"><option value="0.5">Half speed</option><option value="1" selected>Normal speed</option><option value="1.5">1.5x</option><option value="2">2x</option></select></div></div></div><div class="rvr">';
     h += '<div class="card" style="margin-top:12px"><h3 style="margin-top:0">Who is on the ice<small id="shfOnList"></small></h3><div id="shfGrid" class="shfgrid"></div>' +
       '<div class="seg" style="margin-top:10px"><button id="shfAllOff">Everyone off</button><button id="shfPeriod">End of period</button><button id="shfUndo">Undo last tap</button></div>' +
@@ -1680,6 +1687,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     $("shfDate").addEventListener("change", function () { location.hash = "#/coach/shifts/" + $("shfDate").value; });
     var loc = shiftLocal(date), ev = JSON.parse(JSON.stringify(loc ? loc.ev : (D.shifts[date] || []))), extra = loc && loc.extra ? loc.extra.slice() : [], pl = null, ready = false, sig = "";
     function now() { try { return ready ? pl.getCurrentTime() || 0 : 0; } catch (e) { return 0; } }
+    function lastTracked() { return ev.reduce(function (m, e) { return Math.max(m, e.t); }, 0); }
     function persist() { var l = lget(SHK); l[date] = {ev: ev, extra: extra}; lset(SHK, l); }
     var gm = D.games.filter(function (x) { return x.date === date; })[0];
     function nums() {
@@ -1702,12 +1710,17 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       $("shfCount").textContent = cnt + " on the ice";
       $("shfOnList").textContent = cnt ? " " + Object.keys(s.on).map(Number).sort(function (a, b) { return a - b; }).map(function (n) { return "#" + n; }).join(" ") : "";
     }
+    var openRows = {}, armed = null;
     function results() {
-      var c = computeShifts(ev);
+      var c = computeShifts(ev, ready ? now() : undefined);
       $("shfRes").innerHTML = c.rows.length ? '<table><thead><tr><th>Player</th><th>Shifts</th><th>Ice time</th><th>Avg shift</th><th>Longest</th><th>Shortest</th></tr></thead><tbody>' + c.rows.map(function (r) {
-        return '<tr class="click" data-r="' + r.n + '"><td>' + esc(label(r.n)) + "</td><td>" + r.count + "</td><td><b>" + mss(r.toi) + "</b></td><td>" + mss(r.avg) + "</td><td>" + mss(r.max) + "</td><td>" + mss(r.min) + "</td></tr>" +
-          '<tr hidden data-d="' + r.n + '"><td colspan="6">' + r.shifts.map(function (x, i) { return '<button class="tm" data-seek="' + x.a + '" style="background:none;border:0;color:var(--accent);padding:2px 8px 2px 0;font-weight:700">#' + (i + 1) + " " + hms(Math.floor(x.a)) + "</button>" + mss(x.len); }).join(" &middot; ") + "</td></tr>";
-      }).join("") + "</tbody></table>" + (c.open.length ? '<p class="note">Still on the ice with no off tap: ' + c.open.map(function (n) { return "#" + n; }).join(" ") + ". Those shifts are not counted yet.</p>" : "") : '<p class="note" style="margin:0">No finished shifts yet.</p>';
+        var live = r.shifts.some(function (x) { return x.live; });
+        return '<tr class="click" data-r="' + r.n + '"><td>' + esc(label(r.n)) + (live ? ' <span class="pill W">on ice</span>' : "") + "</td><td>" + r.count + "</td><td><b>" + mss(r.toi) + "</b></td><td>" + mss(r.avg) + "</td><td>" + mss(r.max) + "</td><td>" + mss(r.min) + "</td></tr>" +
+          '<tr' + (openRows[r.n] ? "" : " hidden") + ' data-d="' + r.n + '"><td colspan="6">' + r.shifts.map(function (x, i) {
+            var key = r.n + ":" + x.ia + ":" + x.ib;
+            return '<div class="ev"><button class="tm" data-seek="' + x.a + '" style="background:none;border:0;color:var(--accent);padding:2px 8px 2px 0;font-weight:700">#' + (i + 1) + " " + hms(Math.floor(x.a)) + "</button><span class=\"lb\">" + mss(x.len) + (x.live ? " so far" : "") + '</span><button data-delshift="' + key + '">' + (armed === key ? "Tap again to delete" : "Delete") + "</button></div>";
+          }).join("") + "</td></tr>";
+      }).join("") + "</tbody></table>" + (c.open.length ? '<p class="note">On the ice now: ' + c.open.map(function (n) { return "#" + n; }).join(" ") + ". Their shift is counted so far and is finished when you tap them off.</p>" : "") : '<p class="note" style="margin:0">No shifts yet.</p>';
       var sorted = ev.map(function (e, i) { return {e: e, i: i}; }).sort(function (a, b) { return b.e.t - a.e.t || b.i - a.i; });
       $("shfLogSum").textContent = "All taps (" + ev.length + ")";
       $("shfLog").innerHTML = sorted.length ? sorted.map(function (x) {
@@ -1720,6 +1733,8 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       $("shfState").textContent = s.stopped ? "NOT TRACKING" : "TRACKING"; $("shfState").className = s.stopped ? "stop" : "go";
       $("shfWhistle").textContent = s.stopped ? "Start tracking" : "Stop tracking";
       $("shfTime").textContent = ready ? hms(Math.floor(now())) : "Loading the video.";
+      $("shfLast").textContent = ev.length ? "Last tracked " + hms(Math.floor(lastTracked())) : "Go to last tracked";
+      $("shfLast").disabled = !ev.length;
     }
     function refresh() { status(); grid(); results(); }
     $("shfGrid").addEventListener("click", function (e) {
@@ -1737,12 +1752,22 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     $("shfAddBtn").addEventListener("click", function () { var n = parseInt($("shfAdd").value, 10); if (isNaN(n) || n < 0 || n > 999) return; if (extra.indexOf(n) < 0) extra.push(n); $("shfAdd").value = ""; persist(); refresh(); });
     $("shfRes").addEventListener("click", function (e) {
       var sk = e.target.closest("button[data-seek]"); if (sk) { if (ready) { pl.seekTo(+sk.getAttribute("data-seek"), true); pl.playVideo(); } return; }
-      var r = e.target.closest("tr[data-r]"); if (r) { var d = $("shfRes").querySelector('tr[data-d="' + r.getAttribute("data-r") + '"]'); d.hidden = !d.hidden; }
+      var ds = e.target.closest("button[data-delshift]");
+      if (ds) {
+        var key = ds.getAttribute("data-delshift"), pr = key.split(":");
+        if (armed !== key) { armed = key; results(); return; }
+        armed = null;
+        var idx = [pr[1], pr[2]].filter(function (x) { return x !== "null"; }).map(Number).sort(function (a, b) { return b - a; });
+        idx.forEach(function (k) { ev.splice(k, 1); });
+        persist(); sig = ""; refresh(); return;
+      }
+      var r = e.target.closest("tr[data-r]"); if (r) { var d = $("shfRes").querySelector('tr[data-d="' + r.getAttribute("data-r") + '"]'); d.hidden = !d.hidden; openRows[r.getAttribute("data-r")] = !d.hidden; }
     });
     $("shfLog").addEventListener("click", function (e) {
       var sk = e.target.closest("button[data-seek]"); if (sk) { if (ready) pl.seekTo(+sk.getAttribute("data-seek"), true); return; }
       var d = e.target.closest("button[data-del]"); if (d) { ev.splice(+d.getAttribute("data-del"), 1); persist(); refresh(); }
     });
+    $("shfLast").addEventListener("click", function () { if (ready) { pl.seekTo(lastTracked(), true); sig = ""; } });
     $("shfPlay").addEventListener("click", function () { if (!ready) return; if (pl.getPlayerState() === 1) pl.pauseVideo(); else pl.playVideo(); });
     $("shfBack").addEventListener("click", function () { if (ready) pl.seekTo(Math.max(0, now() - 5), true); });
     $("shfFwd").addEventListener("click", function () { if (ready) pl.seekTo(now() + 5, true); });
@@ -1756,10 +1781,12 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
         .then(function (j) { if (j.ok) { D.shifts[date] = JSON.parse(JSON.stringify(ev)); var l = lget(SHK); delete l[date]; lset(SHK, l); } note.textContent = j.ok ? "Saved for everyone. It shows on the game page and player pages in a minute." : "Not saved for everyone: " + (j.error || "unknown problem") + ". It is saved on this device."; })
         .catch(function () { note.textContent = "No connection. Saved on this device only."; });
     });
+    var tick = 0;
     var tm = setInterval(function () {
       if (!$("shfYt")) { clearInterval(tm); return; }
       var s = onNow(), g = JSON.stringify([Object.keys(s.on).sort(), s.stopped, ready, ev.length]);
       $("shfTime").textContent = ready ? hms(Math.floor(now())) : "Loading the video.";
+      tick++; if (tick % 8 === 0 && Object.keys(s.on).length) results();
       if (g !== sig) { sig = g; status(); grid(); }
     }, 250);
     refresh();
@@ -1771,7 +1798,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     }
     loadApi(function () {
       $("shfYt").innerHTML = '<div id="shfP"></div>';
-      pl = new window.YT.Player("shfP", {videoId: id, width: "100%", height: "100%", playerVars: {playsinline: 1, rel: 0}, events: {onReady: function () { ready = true; sig = ""; }}});
+      pl = new window.YT.Player("shfP", {videoId: id, width: "100%", height: "100%", playerVars: {playsinline: 1, rel: 0, start: Math.floor(lastTracked())}, events: {onReady: function () { ready = true; sig = ""; try { if (lastTracked() > 0) pl.seekTo(lastTracked(), true); } catch (e) {} refresh(); }}});
     });
   }
 
