@@ -1,0 +1,44 @@
+GAME SUMMARY
+KINGS 2 - 0 RAPIDS
+Period: 3RD
+Shots: KINGS 27, RAPIDS 11
+Faceoffs won (KINGS): 14/23 (61%)
+
+PLAYERS THIS GAME
+#4   0G 0A 0P  +/- +2  PIM 0
+#10  0G 0A 0P  +/- 0  PIM 0
+#11  0G 0A 0P  +/- 0  PIM 0
+#13  0G 0A 0P  +/- 0  PIM 0
+#14  0G 0A 0P  +/- +1  PIM 0
+#17  1G 0A 1P  +/- +1  PIM 0
+#18  0G 0A 0P  +/- 0  PIM 0
+#19  0G 0A 0P  +/- 0  PIM 0
+#38  0G 0A 0P  +/- 0  PIM 0
+#86  0G 2A 2P  +/- +2  PIM 0
+#88  0G 1A 1P  +/- +2  PIM 0
+#91  0G 0A 0P  +/- +1  PIM 0
+#93  0G 0A 0P  +/- 0  PIM 0
+#97  1G 0A 1P  +/- +1  PIM 0
+
+GOALIES THIS GAME
+#2   SA  11  GA  0  SV% 1.000  TOI 32:00
+#33  SA   0  GA  0  SV% -  TOI 0:00
+
+SEASON TO DATE
+#4   1GP 0G 0A 0P  0.00 PPG  +/- +2  PIM 0
+#10  1GP 0G 0A 0P  0.00 PPG  +/- 0  PIM 0
+#11  1GP 0G 0A 0P  0.00 PPG  +/- 0  PIM 0
+#13  1GP 0G 0A 0P  0.00 PPG  +/- 0  PIM 0
+#14  1GP 0G 0A 0P  0.00 PPG  +/- +1  PIM 0
+#17  1GP 1G 0A 1P  1.00 PPG  +/- +1  PIM 0
+#18  1GP 0G 0A 0P  0.00 PPG  +/- 0  PIM 0
+#19  1GP 0G 0A 0P  0.00 PPG  +/- 0  PIM 0
+#38  1GP 0G 0A 0P  0.00 PPG  +/- 0  PIM 0
+#86  1GP 0G 2A 2P  2.00 PPG  +/- +2  PIM 0
+#72  0GP 0G 0A 0P  0.00 PPG  +/- 0  PIM 0
+#88  1GP 0G 1A 1P  1.00 PPG  +/- +2  PIM 0
+#91  1GP 0G 0A 0P  0.00 PPG  +/- +1  PIM 0
+#93  1GP 0G 0A 0P  0.00 PPG  +/- 0  PIM 0
+#97  1GP 1G 0A 1P  1.00 PPG  +/- +1  PIM 0
+#2   SA  11  GA  0  SV% 1.000  TOI 32:00
+#33  SA   0  GA  0  SV% -  TOI 0:00
