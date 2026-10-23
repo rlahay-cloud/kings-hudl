@@ -54,7 +54,7 @@ tbody tr.click { cursor: pointer; } tbody tr.click:hover { background: var(--pan
 .pcard:hover { border-color: var(--accent); }
 .pcard .n { font-family: var(--display); font-weight: 700; font-size: 38px; line-height: 1; color: var(--accent); }
 .pcard .nm { font-weight: 600; margin: 2px 0 8px; overflow-wrap: anywhere; }
-.pcard .st { display: flex; gap: 12px; color: var(--muted); font-size: 13px; }
+.pcard .st { display: flex; flex-wrap: wrap; gap: 8px 12px; color: var(--muted); font-size: 13px; }
 .pcard .st b { display: block; color: var(--fg); font-size: 18px; font-family: var(--display); }
 .lead { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); text-decoration: none; color: inherit; }
 .lead:last-child { border-bottom: 0; }
@@ -528,7 +528,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var ctlEn = pct(T.en.Carry + T.en.Pass, en), ctlEx = pct(T.ex.Carry + T.ex.Pass, ex);
     if (grp === "C") return [["FO W-L", v(T.fow + "-" + T.fol)], ["FO%", pct(T.fow, T.fow + T.fol)], ["Att", v(T.att)], ["Ctrl En%", ctlEn], ["Pen", v(T.pen)], ["GF on", v(T.gf)], ["GA on", v(T.ga)]];
     if (grp === "W") return [["Att", v(T.att)], ["Miss", v(T.miss)], ["PP G", v(T.ppg)], ["SH G", v(T.shg)], ["Ctrl En%", ctlEn], ["Pen", v(T.pen)], ["GF on", v(T.gf)], ["GA on", v(T.ga)]];
-    return [["Blk for us", v(T.blocks)], ["Ctrl Ex%", ctlEx], ["Att", v(T.att)], ["Pen", v(T.pen)], ["GF on", v(T.gf)], ["GA on", v(T.ga)]];
+    return [["Blk", v(T.blk)], ["Ctrl Ex%", ctlEx], ["Att", v(T.att)], ["Pen", v(T.pen)], ["GF on", v(T.gf)], ["GA on", v(T.ga)]];
   }
   function vPlayers() {
     var P = aggPlayers();
@@ -656,7 +656,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var pm = '<span class="' + pmCls(p.pm) + '">' + pmText(p.pm) + "</span>", has = T.games.length > 0, v = function (x) { return has ? x : "-"; };
     var k = grp === "C" ? [kpi(p.p, "Points"), kpi(p.g, "Goals"), kpi(p.a, "Assists"), kpi(v(pct(T.fow, fo)), "Faceoff win %"), kpi(v(T.fow + "-" + T.fol), "Faceoffs W-L"), kpi(p.sog, "Shots on goal"), kpi(v(pct(T.en.Carry + T.en.Pass, en)), "Controlled entries"), kpi(pm, "Plus / minus")]
       : grp === "W" ? [kpi(p.g, "Goals"), kpi(p.sog, "Shots on goal"), kpi(p.shp === null ? "-" : Math.round(p.shp * 100) + "%", "Shooting %"), kpi(p.p, "Points"), kpi(v(T.ppg), "Power play goals"), kpi(v(T.att), "Shot attempts"), kpi(v(pct(T.en.Carry + T.en.Pass, en)), "Controlled entries"), kpi(pm, "Plus / minus")]
-      : [kpi(pm, "Plus / minus"), kpi(v(T.blocks), "Shots blocked for us"), kpi(v(pct(T.ex.Carry + T.ex.Pass, ex)), "Controlled exits"), kpi(p.a, "Assists"), kpi(p.p, "Points"), kpi(p.pim, "Penalty min"), kpi(v(T.ga), "Goals against on ice"), kpi(v(T.pen), "Penalties")];
+      : [kpi(pm, "Plus / minus"), kpi(v(T.blk), "Shots blocked"), kpi(v(pct(T.ex.Carry + T.ex.Pass, ex)), "Controlled exits"), kpi(p.a, "Assists"), kpi(p.p, "Points"), kpi(p.pim, "Penalty min"), kpi(v(T.ga), "Goals against on ice"), kpi(v(T.pen), "Penalties")];
     return "<h2>Key stats<small>" + esc(POS_NAME[pos] || pos) + ", the numbers that matter most for the position</small></h2><div class='kpis'>" + k.join("") + "</div>";
   }
   function playerVideoHtml(n) {
@@ -664,7 +664,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var pct = function (a, b) { return b ? Math.round(a * 100 / b) + "%" : "-"; };
     var en = RV_MOVES.reduce(function (s0, m) { return s0 + T.en[m]; }, 0), ex = RV_MOVES.reduce(function (s0, m) { return s0 + T.ex[m]; }, 0), fo = T.fow + T.fol;
     var h = "<h2>From video review<small>marked in Coaches corner, " + T.games.length + (T.games.length === 1 ? " game" : " games") + "</small></h2><div class='kpis'>" +
-      kpi(T.att, "Shot attempts") + kpi(T.sog, "Shots on goal") + kpi(T.miss, "Missed shots") + kpi(T.blk, "Shots blocked") + kpi(T.blocks, "Shots blocked for us") +
+      kpi(T.att, "Shot attempts") + kpi(T.sog, "Shots on goal") + kpi(T.miss, "Missed shots") + kpi(T.blk, "Shots blocked") +
       kpi(T.fow + "-" + T.fol, "Faceoffs W-L") + kpi(pct(T.fow, fo), "Faceoff win %") + kpi(en, "Zone entries") + kpi(pct(T.en.Carry + T.en.Pass, en), "Controlled entries") + kpi(ex, "Zone exits") + kpi(pct(T.ex.Carry + T.ex.Pass, ex), "Controlled exits") +
       kpi(T.pen, "Penalties") + kpi(T.ppg, "Power play goals") + kpi(T.shg, "Short handed goals") + kpi(T.gf, "Goals for on ice") + kpi(T.ga, "Goals against on ice") + "</div>";
     h += "<div class='card scroll' style='margin-top:12px'><table><thead><tr><th>Game</th><th>Att</th><th>SOG</th><th>Miss</th><th>Blk</th><th>FO</th><th>FO%</th><th>En</th><th>Ex</th><th>Pen</th><th>GF</th><th>GA</th></tr></thead><tbody>" +
@@ -798,7 +798,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   // Every marked moment plays from 8 seconds before it to 2 seconds after it (about 10 seconds in all).
   var LEAD = 8, TAIL = 2;
   function leadWin(m) { return {sec: Math.max(0, m - LEAD), end: m + TAIL, mark: m}; }
-  var HL_TAGS = ["Goal", "Goal against", "Penalty", "Away Penalty"];
+  var AUTO_HL_TAGS = ["Goal", "Goal against", "Penalty", "Away Penalty"];
   function allVideoItems() {
     var items = [];
     D.games.forEach(function (g) {
@@ -847,7 +847,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       });
     });
     // Every goal and penalty is in the Highlights playlist automatically.
-    items.forEach(function (x) { if (HL_TAGS.indexOf(x.tag) >= 0 && (x.lists || []).indexOf("Highlights") < 0) x.lists = (x.lists || []).concat(["Highlights"]); });
+    items.forEach(function (x) { if (AUTO_HL_TAGS.indexOf(x.tag) >= 0 && (x.lists || []).indexOf("Highlights") < 0) x.lists = (x.lists || []).concat(["Highlights"]); });
     return items.sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : a.sec - b.sec; });
   }
   var VID_TAGS = ["Goal", "Goal against", "Penalty", "Away Penalty", "Save", "Chance", "Good play", "Breakout", "Blocked shot", "Review", "To fix", "Highlight", "Other"];
