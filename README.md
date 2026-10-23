@@ -34,6 +34,10 @@ Open **Coaches corner**, pick the game, load the YouTube link (or open a video f
 
 Open **Coaches corner**, then **Mark shots**. Tap where the shot was taken, pick the player, then tap Goal or Saved. Mark every shot as if attacking the net on the right. Save the file and upload it as `shots_2026-10-24.txt`. The Shot map tab then shows dots and heat by game, player and result.
 
+## Video tab
+
+The Video tab collects every clip from every game: coach highlights plus Streamn's goals and penalties (from the timestamps files). Filter by game, type, who marked it, or player. Tap a time to watch it. A game needs its YouTube link in `videos.txt`.
+
 ## Roster from Streamn
 
 After End Game, Streamn writes `season_backup.txt`. Upload it to the top of this repository (replace the old one). Kings HUDL then uses Streamn's roster, with names, for the shot marking buttons, player lists and goalie names. `roster.json` is only used for names Streamn does not have.
