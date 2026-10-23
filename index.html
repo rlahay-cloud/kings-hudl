@@ -111,6 +111,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
 .clip .f { grid-column: 1 / -1; display: grid; grid-template-columns: 130px 1fr auto; gap: 6px; }
 .clip .f input.pl { grid-column: 1 / 3; }
 .clip .pick { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
+.pickwrap { grid-column: 1 / -1; display: grid; gap: 4px; }
 .chip.pk { min-height: 40px; min-width: 44px; padding: 4px 10px; font-size: 16px; }
 @media (max-width: 520px) { .clip .f { grid-template-columns: 1fr; } .clip .f input.pl { grid-column: auto; } }
 .stickybar { position: sticky; bottom: 0; z-index: 3; justify-content: center; margin: 12px -14px 0; padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); background: var(--panel); border-top: 1px solid var(--line); }
@@ -499,7 +500,8 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       var url = lget(VK)[x.date] || D.videos[x.date] || "";
       var head = x.game !== last ? '<h3 style="margin:' + (last ? "14px" : "0") + ' 0 4px">' + esc(x.game) + "</h3>" : ""; last = x.game;
       var t = url ? '<a class="t" href="' + esc(ytLink(url, x.sec)) + '" target="_blank" rel="noopener">' + hms(x.sec) + "</a>" : '<span class="t" style="font-family:var(--display);font-weight:700;font-size:18px;min-width:70px">' + hms(x.sec) + "</span>";
-      return head + '<div class="ev ' + (x.tag === "Goal" ? "goal" : "") + '">' + t + '<span class="lb"><b>' + esc(x.tag) + "</b> " + esc(x.label) + ' <span class="mut">' + esc(x.coach) + "</span></span></div>";
+      var role = x.assists.indexOf(n) >= 0 ? "Assist" : x.tag;
+      return head + '<div class="ev ' + (x.tag === "Goal" ? "goal" : "") + '">' + t + '<span class="lb"><b>' + esc(role) + "</b> " + esc(x.label) + (x.tag === "Goal" && x.assists.length ? ' <span class="mut">' + (x.assists.indexOf(n) >= 0 ? "goal by " + (x.players.filter(function (p) { return x.assists.indexOf(p) < 0; }).map(function (p) { return "#" + p; }).join(" ") || "?") : "assists " + x.assists.map(function (p) { return "#" + p; }).join(" ")) + "</span>" : "") + ' <span class="mut">' + esc(x.coach) + "</span></span></div>";
     }).join("") + "</div>";
   }
   function vGoalie(n) {
@@ -601,14 +603,14 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     D.games.forEach(function (g) {
       var base = {date: g.date, game: fmtDate(g.date) + " vs " + g.away};
       allClips(g.date).forEach(function (c) {
-        items.push({date: g.date, game: base.game, sec: c.sec, tag: c.tag, label: c.label || "", players: c.players || [], coach: c.coach});
+        items.push({date: g.date, game: base.game, sec: c.sec, tag: c.tag, label: c.label || "", players: c.players || [], assists: c.assists || [], coach: c.coach});
       });
     });
     // Highlights for dates with no game summary yet
     var known = {}; D.games.forEach(function (g) { known[g.date] = 1; });
     dateChoices().forEach(function (d) {
       if (known[d]) return;
-      allClips(d).forEach(function (c) { items.push({date: d, game: fmtDate(d), sec: c.sec, tag: c.tag, label: c.label || "", players: c.players || [], coach: c.coach}); });
+      allClips(d).forEach(function (c) { items.push({date: d, game: fmtDate(d), sec: c.sec, tag: c.tag, label: c.label || "", players: c.players || [], assists: c.assists || [], coach: c.coach}); });
     });
     return items.sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : a.sec - b.sec; });
   }
@@ -643,7 +645,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       $("vfList").innerHTML = f.length ? f.map(function (x, i) {
         var head = x.game !== last ? '<h3 style="margin:' + (last ? "14px" : "0") + ' 0 4px">' + esc(x.game) + "</h3>" : ""; last = x.game;
         return head + '<div class="ev ' + (x.tag === "Goal" ? "goal" : "") + '"><button class="tm" style="background:none;border:0;color:var(--accent);font-family:var(--display);font-weight:700;font-size:18px;min-width:70px;text-align:left;padding:0" data-i="' + items.indexOf(x) + '">' + hms(x.sec) + '</button><span class="lb"><b>' + esc(x.tag) + "</b> " + esc(x.label) +
-          (x.players.length ? ' <span class="mut">' + x.players.map(function (n) { return "#" + n; }).join(" ") + "</span>" : "") + ' <span class="mut">' + esc(x.coach) + "</span></span></div>";
+          whoHtml(x) + ' <span class="mut">' + esc(x.coach) + "</span></span></div>";
       }).join("") : '<p class="note">Nothing matches these filters.</p>';
     }
     ["vfGame", "vfTag", "vfCoach", "vfPl"].forEach(function (id) { $(id).addEventListener("change", render); });
@@ -686,18 +688,30 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   var TAGS = ["Highlight", "Goal", "Save", "Chance", "Good play", "To fix", "Breakout", "Blocked shot", "Review", "Other"];
   var TAP_TAGS = ["Goal", "Save", "Chance", "Good play", "Breakout", "Blocked shot", "Review"];
 
+  function whoHtml(c) {
+    var a = c.assists || [], sc = (c.players || []).filter(function (n) { return a.indexOf(n) < 0; });
+    var h = sc.map(function (n) { return "#" + n; }).join(" ");
+    if (a.length) h += " (A " + a.map(function (n) { return "#" + n; }).join(", ") + ")";
+    return h ? ' <span class="mut">' + h + "</span>" : "";
+  }
   function parseClips(text) {
     var out = [];
     text.split(/\r?\n/).forEach(function (line) {
       var a = line.split("|"); if (a.length < 4) return;
       var sec = parseHms(a[0]); if (sec === null) return;
-      out.push({sec: sec, tag: a[1].trim() || "Highlight", players: (a[2].match(/\d+/g) || []).map(Number), label: a.slice(3).join("|").trim()});
+      var tk = a[2].match(/a?\d+/gi) || [], ps = [], as = [];
+      tk.forEach(function (t) { var n = +t.replace(/\D/g, ""); if (ps.indexOf(n) < 0) ps.push(n); if (/^a/i.test(t) && as.indexOf(n) < 0) as.push(n); });
+      out.push({sec: sec, tag: a[1].trim() || "Highlight", players: ps, assists: as, label: a.slice(3).join("|").trim()});
     });
     return out;
   }
+  function clipPlayersField(c) {
+    var a = c.assists || [], sc = c.players.filter(function (n) { return a.indexOf(n) < 0; });
+    return sc.concat(a.filter(function (n) { return c.players.indexOf(n) >= 0; }).map(function (n) { return "a" + n; })).join(" ");
+  }
   function fmtClips(list) {
     return list.slice().sort(function (a, b) { return a.sec - b.sec; }).map(function (c) {
-      return hms(c.sec) + "|" + c.tag + "|" + c.players.join(" ") + "|" + c.label.replace(/[\r\n|]+/g, " ");
+      return hms(c.sec) + "|" + c.tag + "|" + clipPlayersField(c) + "|" + c.label.replace(/[\r\n|]+/g, " ");
     }).join("\n") + "\n";
   }
   function parseShots(text) {
@@ -721,7 +735,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   function getMyClips(date) {
     var l = lget(CK); if (l[date]) return l[date].slice();
     var sent = (D.clips[date] || {})[mySlug()];
-    return sent ? sent.map(function (x) { return {sec: x.sec, tag: x.tag, players: (x.players || []).slice(), label: x.label || ""}; }) : [];
+    return sent ? sent.map(function (x) { return {sec: x.sec, tag: x.tag, players: (x.players || []).slice(), assists: (x.assists || []).slice(), label: x.label || ""}; }) : [];
   }
   function putClips(date, list) { var l = lget(CK); l[date] = list; lset(CK, l); }
   function getMyShots(date) { var l = lget(SK); return l[date] ? l[date].slice() : []; }
@@ -809,7 +823,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var list = allClips(date); if (!list.length) return "";
     return "<h2>Highlights<small><a href='#/clips/" + date + "'>filter and watch</a></small></h2><div class='card'>" + list.map(function (c) {
       var t = hms(c.sec), tl = url ? '<a class="t" href="' + esc(ytLink(url, c.sec)) + '" target="_blank" rel="noopener">' + t + "</a>" : '<span class="t" style="font-family:var(--display);font-weight:700;font-size:18px;min-width:70px">' + t + "</span>";
-      return '<div class="ev">' + tl + '<span class="lb"><b>' + esc(c.tag) + "</b> " + esc(c.label) + (c.players.length ? ' <span class="mut">' + c.players.map(function (n) { return "#" + n; }).join(" ") + "</span>" : "") + ' <span class="mut">' + esc(c.coach) + "</span></span></div>";
+      return '<div class="ev">' + tl + '<span class="lb"><b>' + esc(c.tag) + "</b> " + esc(c.label) + whoHtml(c) + ' <span class="mut">' + esc(c.coach) + "</span></span></div>";
     }).join("") + "</div>";
   }
   function coachSubTabs(active) {
@@ -846,13 +860,24 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     Object.keys(D.goalieNums).forEach(function (k) { m[k] = 1; });
     return Object.keys(m).map(Number).sort(function (a, b) { return a - b; });
   }
+  function chipRow(title, nums, c, role, on) {
+    return '<div class="pickrow"><span class="note">' + title + '</span><div class="pick" role="group" aria-label="' + title + '">' + nums.map(function (n) {
+      return '<button type="button" class="chip pk" data-act="pick" data-role="' + role + '" data-n="' + n + '" aria-pressed="' + on(n) + '">' + n + "</button>";
+    }).join("") + "</div></div>";
+  }
   function playerPick(c) {
-    var nums = everyoneNums();
-    c.players.forEach(function (n) { if (nums.indexOf(n) < 0) nums.push(n); });
-    if (!nums.length) return '<input type="text" class="pl" data-f="players" placeholder="Players, like 4 10" value="' + esc(c.players.join(" ")) + '" aria-label="Players">';
-    return '<div class="pick" role="group" aria-label="Players in this highlight">' + nums.map(function (n) {
-      return '<button type="button" class="chip pk" data-act="pick" data-n="' + n + '" aria-pressed="' + (c.players.indexOf(n) >= 0) + '">' + n + "</button>";
-    }).join("") + "</div>";
+    var all = everyoneNums(), isG = {};
+    Object.keys(D.goalieNums).forEach(function (k) { isG[k] = 1; });
+    D.games.forEach(function (g) { g.goalies.forEach(function (x) { isG[x.n] = 1; }); g.players.forEach(function (p) { delete isG[p.n]; }); });
+    var goalies = all.filter(function (n) { return isG[n]; }), skaters = all.filter(function (n) { return !isG[n]; });
+    c.players.forEach(function (n) { if (all.indexOf(n) < 0) { all.push(n); skaters.push(n); } });
+    if (!all.length) return '<input type="text" class="pl" data-f="players" placeholder="Players, like 4 10" value="' + esc(c.players.join(" ")) + '" aria-label="Players">';
+    var a = c.assists || [], inP = function (n) { return c.players.indexOf(n) >= 0; };
+    if (c.tag === "Goal") return '<div class="pickwrap">' +
+      chipRow("Scored by", skaters, c, "scorer", function (n) { return inP(n) && a.indexOf(n) < 0; }) +
+      chipRow("Assists (up to 2)", skaters, c, "assist", function (n) { return a.indexOf(n) >= 0; }) + "</div>";
+    if (c.tag === "Save" && goalies.length) return '<div class="pickwrap">' + chipRow("Goalie", goalies, c, "any", inP) + "</div>";
+    return '<div class="pickwrap">' + chipRow(c.tag === "Blocked shot" ? "Blocked by" : "Players", c.tag === "Blocked shot" ? skaters : all, c, "any", inP) + "</div>";
   }
   function bindClips(dateParam, mode) {
     var mark = mode === "mark", date = $("clDate").value, list = getMyClips(date), cur = null, focusIdx = -1;
@@ -873,16 +898,27 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     }
     if (mark) $("clList").addEventListener("input", function (e) {
       var row = e.target.closest(".clip"); if (!row) return; var c = list[+row.getAttribute("data-i")], f = e.target.getAttribute("data-f");
-      if (f === "label") c.label = e.target.value; else if (f === "tag") c.tag = e.target.value; else if (f === "players") c.players = (e.target.value.match(/\d+/g) || []).map(Number);
+      if (f === "label") c.label = e.target.value; else if (f === "tag") {
+        if (c.tag === "Goal" && e.target.value !== "Goal") { c.players = c.players.filter(function (n) { return (c.assists || []).indexOf(n) < 0; }); c.assists = []; }
+        c.tag = e.target.value; persist(); renderList(); return;
+      } else if (f === "players") c.players = (e.target.value.match(/\d+/g) || []).map(Number);
       persist();
     });
     if (mark) $("clList").addEventListener("click", function (e) {
       var b = e.target.closest("button"); if (!b) return; var row = b.closest(".clip"), i = +row.getAttribute("data-i"), act = b.getAttribute("data-act");
       if (act === "seek" && cur) cur.seek(list[i].sec);
       if (act === "pick") {
-        var n = +b.getAttribute("data-n"), pl = list[i].players, k = pl.indexOf(n);
-        if (k >= 0) pl.splice(k, 1); else pl.push(n);
-        pl.sort(function (a, b) { return a - b; }); persist(); b.setAttribute("aria-pressed", k < 0); return;
+        var n = +b.getAttribute("data-n"), role = b.getAttribute("data-role"), c = list[i], as = c.assists = c.assists || [];
+        var isA = as.indexOf(n) >= 0, isP = c.players.indexOf(n) >= 0;
+        if (role === "scorer") {
+          c.players = c.players.filter(function (x) { return as.indexOf(x) >= 0; });
+          if (!(isP && !isA)) { if (isA) as.splice(as.indexOf(n), 1); else c.players.unshift(n); }
+        } else if (role === "assist") {
+          if (isA) { as.splice(as.indexOf(n), 1); c.players.splice(c.players.indexOf(n), 1); }
+          else if (as.length >= 2) { $("clShare").textContent = "A goal can have up to two assists."; return; }
+          else { if (isP) c.players.splice(c.players.indexOf(n), 1); as.push(n); c.players.push(n); }
+        } else if (isP) c.players.splice(c.players.indexOf(n), 1); else c.players.push(n);
+        persist(); renderList(); return;
       }
       if (act === "del") { list.splice(i, 1); persist(); renderList(); }
     });
@@ -920,7 +956,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (mark) $("clTags").addEventListener("click", function (e) {
       var btn = e.target.closest("button"); if (!btn || !cur) return;
       var lead = +$("clLead").value, t = Math.max(0, Math.floor(cur.get()) - lead), tag = btn.getAttribute("data-tag");
-      list.push({sec: t, tag: tag, players: [], label: ""});
+      list.push({sec: t, tag: tag, players: [], assists: [], label: ""});
       list.sort(function (a, b) { return a.sec - b.sec; });
       persist(); renderList(); $("clNote").textContent = "Saved: " + tag + " at " + hms(t) + ". " + list.length + " marked so far.";
     });
@@ -949,7 +985,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       var f = everyone.filter(function (c) { return (!co || c.coach === co) && (!tg || c.tag === tg); });
       $("clAll").innerHTML = f.length ? f.map(function (c, i) {
         return '<div class="ev" data-s="' + c.sec + '"><button class="tm" style="background:none;border:0;color:var(--accent);font-family:var(--display);font-weight:700;font-size:18px;min-width:70px;text-align:left;padding:0" data-sec="' + c.sec + '">' + hms(c.sec) + '</button><span class="lb"><b>' + esc(c.tag) + "</b> " + esc(c.label) +
-          (c.players.length ? ' <span class="mut">' + c.players.map(function (n) { return "#" + n; }).join(" ") + "</span>" : "") + ' <span class="mut">' + esc(c.coach) + "</span></span></div>";
+          whoHtml(c) + ' <span class="mut">' + esc(c.coach) + "</span></span></div>";
       }).join("") : '<p class="note">' + (everyone.length ? "Nothing matches these filters." : "No highlights for this game yet.") + "</p>";
     }
     $("clCoach").addEventListener("change", renderAll); $("clTag").addEventListener("change", renderAll);
