@@ -54,6 +54,7 @@ tbody tr.click { cursor: pointer; } tbody tr.click:hover { background: var(--pan
 .pcard:hover { border-color: var(--accent); }
 .pcard .n { font-family: var(--display); font-weight: 700; font-size: 38px; line-height: 1; color: var(--accent); }
 .pcard .nm { font-weight: 600; margin: 2px 0 8px; overflow-wrap: anywhere; }
+@media (max-width: 640px) { .shfbar { margin-left: -16px; margin-right: -16px; border-radius: 0; padding: 6px; } }
 .shfgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 8px; }
 .shfp { min-height: 64px; border-radius: 12px; border: 2px solid var(--line); background: var(--panel2); color: var(--fg); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4px; }
 .shfp b { font-family: var(--display); font-size: 26px; line-height: 1; }
@@ -1659,9 +1660,9 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     h += '<div class="card" style="margin-top:12px"><div class="fld"><label for="shfDate">Game</label>' + dateSelect("shfDate", dates, date) + "</div>";
     if (!ytId(url)) return h + '<p class="note">This game has no video link yet. Add the YouTube link in <b>Game analysis</b> first, then come back.</p></div>';
     h += '<p class="note" style="margin-bottom:0">Play the video. Tap a number when that player steps on the ice, and tap it again when he comes off. Tap <b>Whistle</b> when play stops and <b>Play on</b> when it starts again. Time during a whistle never counts.</p></div>';
-    h += '<div class="card shfbar" style="position:sticky;top:96px;z-index:4;margin-top:12px"><div id="shfBox" style="max-width:300px;margin:0 auto"><div class="ytbox" id="shfYt" style="max-height:none"></div></div>' +
+    h += '<div class="card shfbar" style="position:sticky;top:96px;z-index:4;margin-top:12px"><div id="shfBox" style="width:100%;max-width:min(100%,calc(58vh * 1.7778));margin:0 auto"><div class="ytbox" id="shfYt" style="max-height:none"></div></div>' +
       '<div class="shfstat"><span id="shfTime" class="note" style="margin:0">Loading the video.</span><b id="shfState">PLAY</b><span id="shfCount" class="note" style="margin:0"></span></div>' +
-      '<div class="seg" role="group" aria-label="Video controls"><button class="btn" id="shfWhistle" style="flex:2">Whistle</button><button id="shfPlay">Play / Pause</button><button id="shfBack">&larr; 5s</button><button id="shfFwd">5s &rarr;</button>' +
+      '<div class="seg" role="group" aria-label="Video controls"><button class="btn" id="shfWhistle" style="flex:1 1 100%;min-height:52px">Whistle</button><button id="shfPlay">Play / Pause</button><button id="shfBack">&larr; 5s</button><button id="shfFwd">5s &rarr;</button>' +
       '<select id="shfSpeed" aria-label="Speed"><option value="0.5">Half speed</option><option value="1" selected>Normal speed</option><option value="1.5">1.5x</option><option value="2">2x</option></select></div></div>';
     h += '<div class="card" style="margin-top:12px"><h3 style="margin-top:0">Who is on the ice<small id="shfOnList"></small></h3><div id="shfGrid" class="shfgrid"></div>' +
       '<div class="seg" style="margin-top:10px"><button id="shfAllOff">Everyone off</button><button id="shfPeriod">End of period</button><button id="shfUndo">Undo last tap</button></div>' +
