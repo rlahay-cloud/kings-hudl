@@ -44,7 +44,7 @@ function check(body, env) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(body.date || "")) return {error: "Bad date"};
   const coach = slugify(body.coach) || "team";
   const text = String(body.text || "");
-  if (text.length === 0 || text.length > MAX_BYTES) return {error: "File is empty or too big"};
+  if (text.length > MAX_BYTES) return {error: "File is too big"};
   const lines = text.split(/\r?\n/).filter(function (l) { return l.trim() !== ""; });
   if (lines.length > 3000) return {error: "Too many lines"};
   const re = body.kind === "clips" ? CLIP_LINE : SHOT_LINE;

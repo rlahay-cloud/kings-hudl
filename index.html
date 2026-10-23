@@ -718,7 +718,11 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   function coachCfg() { var c = lget(CS); return {name: c.name || "", pass: c.pass || ""}; }
   function mySlug() { return slugify(coachCfg().name) || "team"; }
   // My own marks are kept on this device. Everyone's sent files come from the games folder.
-  function getMyClips(date) { var l = lget(CK); return l[date] ? l[date].slice() : []; }
+  function getMyClips(date) {
+    var l = lget(CK); if (l[date]) return l[date].slice();
+    var sent = (D.clips[date] || {})[mySlug()];
+    return sent ? sent.map(function (x) { return {sec: x.sec, tag: x.tag, players: (x.players || []).slice(), label: x.label || ""}; }) : [];
+  }
   function putClips(date, list) { var l = lget(CK); l[date] = list; lset(CK, l); }
   function getMyShots(date) { var l = lget(SK); return l[date] ? l[date].slice() : []; }
   function putShots(date, list) { var l = lget(SK); l[date] = list; lset(SK, l); }
@@ -817,18 +821,19 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var vk = lget(VK), url = vk[date] || D.videos[date] || "", mark = mode === "mark";
     var h = mark ? "<h2>Coaches corner</h2>" + coachSubTabs("clips") + coachCard() : "<h2>Highlights</h2>";
     h += '<div class="card"' + (mark ? ' style="margin-top:12px"' : "") + '><div class="fld"><label for="clDate">Game</label>' + dateSelect("clDate", dates, date) + "</div>" +
-      '<div class="fld"><label for="clUrl">YouTube link for this game</label><input type="url" id="clUrl" placeholder="https://youtu.be/..." value="' + esc(url) + '"></div>' +
-      '<div class="seg"><button id="clLoad">Load video</button></div>' +
+      (mark ? '<div class="fld"><label for="clUrl">YouTube link for this game</label><input type="url" id="clUrl" placeholder="https://youtu.be/..." value="' + esc(url) + '"></div>' +
+        '<div class="seg"><button id="clLoad">Load video</button></div>' : '<input type="hidden" id="clUrl" value="' + esc(url) + '">') +
       (mark ? '<div class="fld"><label for="clFile">Or open a video file from this device</label><input type="file" id="clFile" accept="video/*"></div>' +
         '<p class="note">The site does not store video. Footage stays on YouTube or on your device. Only the highlight times and labels are saved.</p>' : "") +
-      (mark ? "" : '<p class="note" id="clNote" aria-live="polite">Load the video, then tap a time below to jump to it.</p>') + "</div>" +
+      (mark ? "" : '<p class="note" id="clNote" aria-live="polite">' + (url ? "Loading the video. Tap a time below to jump to it." : "No video for this game yet.") + "</p>") + "</div>" +
       '<div id="clVideo" style="margin-top:12px"></div>';
     if (mark) {
       h += '<div class="card" style="margin-top:12px"><p class="note" style="margin-top:0">Watch the video and tap a button when it happens. That is all. Each tap saves the moment a few seconds earlier.</p>' +
         '<div class="tagbtns" id="clTags">' + TAP_TAGS.map(function (t) { return '<button class="btn" data-tag="' + t + '" disabled>' + t + "</button>"; }).join("") + "</div>" +
         '<p class="note" id="clNote" aria-live="polite">Load a video to start.</p>' +
         '<details><summary class="note">Settings</summary><div class="fld"><label for="clLead">Save each moment this many seconds earlier</label><select id="clLead"><option>0</option><option>5</option><option selected>8</option><option>10</option><option>15</option></select></div></details></div>' +
-        "<h2>Your highlights<small>on this phone</small></h2><div class='card' id='clList'></div>" +
+        "<h2>Your highlights<small>tap Delete to remove one</small></h2><div class='card' id='clList'></div>" +
+        '<div class="seg" style="margin-top:12px"><button class="btn" id="clClear">Delete all of mine for this game</button></div>' +
         '<div class="seg" style="margin-top:12px"><button class="btn" id="clSend" style="width:100%">Share to Kings HUDL</button></div><p class="note" id="clShare" aria-live="polite"></p>';
     } else {
       h += "<h2>All highlights</h2><div class='card'><div class='filters'><div class='fld'><label for='clCoach'>Coach</label><select id='clCoach'></select></div><div class='fld'><label for='clTag'>Type</label><select id='clTag'></select></div></div><div id='clAll'></div></div>";
@@ -861,7 +866,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
         return '<div class="clip" data-i="' + i + '"><button class="tm" data-act="seek">' + hms(c.sec) + "</button><span></span>" +
           '<div class="f"><select data-f="tag" aria-label="Type">' + TAGS.map(function (t) { return "<option" + (t === c.tag ? " selected" : "") + ">" + t + "</option>"; }).join("") + "</select>" +
           '<input type="text" data-f="label" placeholder="What happened?" value="' + esc(c.label) + '" aria-label="Label">' +
-          '<button class="chip" data-act="del" aria-label="Remove highlight">Remove</button>' +
+          '<button class="chip" data-act="del" aria-label="Delete this highlight">Delete</button>' +
           playerPick(c) + "</div></div>";
       }).join("");
       if (focusIdx >= 0) { var inp = box.querySelector('.clip[data-i="' + focusIdx + '"] input[data-f="label"]'); if (inp) inp.focus(); focusIdx = -1; }
@@ -885,7 +890,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     function ready(c) {
       cur = c;
       if (mark) { Array.prototype.forEach.call($("clTags").children, function (b) { b.disabled = false; }); $("clNote").textContent = "Video loaded. Tap a button when something happens."; }
-      else $("clNote").textContent = "Video loaded. Tap a time below to jump to it.";
+      else $("clNote").textContent = "Tap a time below to jump to it.";
     }
     function loadFile(file) {
       var v = document.createElement("video"); v.controls = true; v.playsInline = true; v.src = URL.createObjectURL(file);
@@ -909,7 +914,8 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
           events: {onReady: function () { ready({get: function () { return pl.getCurrentTime(); }, seek: function (s) { pl.seekTo(s, true); pl.playVideo(); }}); }}});
       });
     }
-    $("clLoad").addEventListener("click", function () { loadYT($("clUrl").value.trim()); });
+    if (mark) $("clLoad").addEventListener("click", function () { loadYT($("clUrl").value.trim()); });
+    else if ($("clUrl").value.trim()) loadYT($("clUrl").value.trim());
     if (mark) $("clFile").addEventListener("change", function () { if ($("clFile").files[0]) loadFile($("clFile").files[0]); });
     if (mark) $("clTags").addEventListener("click", function (e) {
       var btn = e.target.closest("button"); if (!btn || !cur) return;
@@ -919,8 +925,14 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       persist(); renderList(); $("clNote").textContent = "Saved: " + tag + " at " + hms(t) + ". " + list.length + " marked so far.";
     });
     if (mark) $("clSend").addEventListener("click", function () {
-      if (!list.length) { $("clShare").textContent = "Nothing marked yet."; return; }
+      if (!list.length && !(D.clips[date] || {})[mySlug()]) { $("clShare").textContent = "Nothing marked yet."; return; }
       submitFile("clips", date, fmtClips(list), $("clShare"));
+    });
+    if (mark) $("clClear").addEventListener("click", function () {
+      if (!list.length) { $("clShare").textContent = "Nothing to delete."; return; }
+      if (!window.confirm("Delete all " + list.length + " of your highlights for this game?")) return;
+      list.length = 0; persist(); renderList();
+      $("clShare").textContent = "Deleted here. Tap Share to Kings HUDL to remove them from the site too.";
     });
     if (mark) return;
     // Everyone's highlights, with filters (watch page)
@@ -945,7 +957,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       var b = e.target.closest("button[data-sec]"); if (!b) return;
       var sec = +b.getAttribute("data-sec");
       if (cur) { cur.seek(sec); window.scrollTo(0, $("clVideo").offsetTop - 80); }
-      else { var u = $("clUrl").value.trim() || url0; if (u) window.open(ytLink(u, sec), "_blank", "noopener"); else $("clNote").textContent = "Load the video first."; }
+      else { var u = $("clUrl").value.trim() || url0; if (u) window.open(ytLink(u, sec), "_blank", "noopener"); else $("clNote").textContent = "No video for this game yet."; }
     });
     renderAll();
   }
