@@ -2,6 +2,10 @@
 
 A season stats website for the team, called Kings HUDL. Open it on a phone or computer to see the record, leaders, player cards, game box scores, goalies and video moments.
 
+## Coaches
+
+Coaches open **Highlights**, type their name and the coach passcode once, load the game video, and tap the buttons (Goal, Save, Chance, Good play, To fix, Breakout, Blocked shot, Review). Share to Kings HUDL sends their file into the games folder, one file per coach. The Highlights page shows everyone's highlights together and can filter by coach and type. Setup for the sending helper is in `worker/SETUP.md`.
+
 ## After each game
 
 1. In Streamn, press End Game. Streamn writes files into its output folder.
