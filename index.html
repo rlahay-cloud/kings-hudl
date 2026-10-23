@@ -544,20 +544,26 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (grp === "W") return [["SOG", v(T.sog)], ["PP G", v(T.ppg)], ["SH G", v(T.shg)], ["Ctrl En%", ctlEn], ["Pen", v(T.pen)], ["GF on", v(T.gf)], ["GA on", v(T.ga)]];
     return [["Blk", v(T.blk)], ["Ctrl Ex%", ctlEx], ["SOG", v(T.sog)], ["Pen", v(T.pen)], ["GF on", v(T.gf)], ["GA on", v(T.ga)]];
   }
+  // Ice time totals per player across every game that has shifts.
+  function iceTotals() {
+    var m = {};
+    iceDates().forEach(function (d) { computeShifts(getShifts(d)).rows.forEach(function (r) { var q = m[r.n] = m[r.n] || {games: 0, shifts: 0, toi: 0}; q.games++; q.shifts += r.count; q.toi += r.toi; }); });
+    return m;
+  }
   function vPlayers() {
-    var P = aggPlayers();
+    var P = aggPlayers(), ICE = iceTotals(), hasIce = P.some(function (p) { return ICE[p.n]; });
     var cols = [["gp", "GP"], ["g", "G"], ["a", "A"], ["p", "P"], ["ppg", "P/GP"], ["pm", "+/-"], ["sog", "SOG"], ["shp", "S%"], ["pim", "PIM"]];
     if (posFilter) P = P.filter(function (p) { return posGroup(D.pos[p.n]) === posFilter; });
     var EX = {}; if (posFilter) { P.forEach(function (p) { EX[p.n] = posExtras(p.n, posFilter); }); }
     var exHead = P.length && posFilter ? EX[P[0].n].map(function (x) { return "<th>" + x[0] + "</th>"; }).join("") : "";
     P.sort(function (a, b) { var x = a[sortKey] === null ? -1 : a[sortKey], y = b[sortKey] === null ? -1 : b[sortKey]; return (y - x) * -sortDir || a.n - b.n; });
     var h = "<h2>Skaters<small>tap a heading to sort</small></h2>" + (Object.keys(D.pos).length ? '<div class="seg" id="posChips" role="group" aria-label="Position">' + [["", "All"], ["C", "Centres"], ["W", "Wings"], ["D", "Defence"]].map(function (x) { return '<button data-pos="' + x[0] + '" aria-pressed="' + (posFilter === x[0]) + '">' + x[1] + "</button>"; }).join("") + "</div>" : "") + "<div class='card scroll'><table><thead><tr><th>Player</th><th>Pos</th>" +
-      cols.map(function (c) { return '<th class="sort' + (c[0] === sortKey ? " on" : "") + '" data-k="' + c[0] + '">' + c[1] + "</th>"; }).join("") + exHead + "</tr></thead><tbody>" +
+      cols.map(function (c) { return '<th class="sort' + (c[0] === sortKey ? " on" : "") + '" data-k="' + c[0] + '">' + c[1] + "</th>"; }).join("") + (hasIce ? "<th>Shifts</th><th>TOI/GP</th>" : "") + exHead + "</tr></thead><tbody>" +
       P.map(function (p) {
-        return '<tr class="click" onclick="location.hash=\'#/player/' + p.n + '\'"><td>' + esc(label(p.n)) + "</td><td>" + esc(D.pos[p.n] || "") + "</td><td>" + p.gp + "</td><td>" + p.g + "</td><td>" + p.a + "</td><td><b>" + p.p + "</b></td><td>" + p.ppg.toFixed(2) + '</td><td class="' + pmCls(p.pm) + '">' + pmText(p.pm) + "</td><td>" + p.sog + "</td><td>" + (p.shp === null ? "-" : Math.round(p.shp * 100) + "%") + "</td><td>" + p.pim + "</td>" + (EX[p.n] || []).map(function (x) { return "<td>" + x[1] + "</td>"; }).join("") + "</tr>";
+        return '<tr class="click" onclick="location.hash=\'#/player/' + p.n + '\'"><td>' + esc(label(p.n)) + "</td><td>" + esc(D.pos[p.n] || "") + "</td><td>" + p.gp + "</td><td>" + p.g + "</td><td>" + p.a + "</td><td><b>" + p.p + "</b></td><td>" + p.ppg.toFixed(2) + '</td><td class="' + pmCls(p.pm) + '">' + pmText(p.pm) + "</td><td>" + p.sog + "</td><td>" + (p.shp === null ? "-" : Math.round(p.shp * 100) + "%") + "</td><td>" + p.pim + "</td>" + (hasIce ? (ICE[p.n] ? "<td>" + ICE[p.n].shifts + "</td><td>" + mss(ICE[p.n].toi / ICE[p.n].games) + "</td>" : "<td>-</td><td>-</td>") : "") + (EX[p.n] || []).map(function (x) { return "<td>" + x[1] + "</td>"; }).join("") + "</tr>";
       }).join("") + "</tbody></table></div>";
     h += "<h2>Player cards</h2><div class='pcards'>" + P.map(function (p) {
-      return '<a class="pcard" href="#/player/' + p.n + '"><div class="top">' + avatar(p.n) + '<div class="n">#' + p.n + '</div></div><div class="nm">' + esc(pname(p.n) || "Player") + (D.pos[p.n] ? ' <span class="mut">' + esc(D.pos[p.n]) + "</span>" : "") + '</div><div class="st"><span><b>' + p.g + "</b>G</span><span><b>" + p.a + "</b>A</span><span><b>" + p.p + "</b>P</span>" + (EX[p.n] || []).map(function (x) { return "<span><b>" + x[1] + "</b>" + esc(x[0]) + "</span>"; }).join("") + "</div></a>";
+      return '<a class="pcard" href="#/player/' + p.n + '"><div class="top">' + avatar(p.n) + '<div class="n">#' + p.n + '</div></div><div class="nm">' + esc(pname(p.n) || "Player") + (D.pos[p.n] ? ' <span class="mut">' + esc(D.pos[p.n]) + "</span>" : "") + '</div><div class="st"><span><b>' + p.g + "</b>G</span><span><b>" + p.a + "</b>A</span><span><b>" + p.p + "</b>P</span>" + (ICE[p.n] ? "<span><b>" + mss(ICE[p.n].toi / ICE[p.n].games) + "</b>TOI/GP</span><span><b>" + (ICE[p.n].shifts / ICE[p.n].games).toFixed(1) + "</b>Shifts/GP</span>" : "") + (EX[p.n] || []).map(function (x) { return "<span><b>" + x[1] + "</b>" + esc(x[0]) + "</span>"; }).join("") + "</div></a>";
     }).join("") + "</div>";
     var G = aggGoalies();
     if (G.length) {
