@@ -526,9 +526,9 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var pct = function (a, b) { return has && b ? Math.round(a * 100 / b) + "%" : "-"; };
     var en = RV_MOVES.reduce(function (s0, m) { return s0 + T.en[m]; }, 0), ex = RV_MOVES.reduce(function (s0, m) { return s0 + T.ex[m]; }, 0);
     var ctlEn = pct(T.en.Carry + T.en.Pass, en), ctlEx = pct(T.ex.Carry + T.ex.Pass, ex);
-    if (grp === "C") return [["FO W-L", v(T.fow + "-" + T.fol)], ["FO%", pct(T.fow, T.fow + T.fol)], ["Att", v(T.att)], ["Ctrl En%", ctlEn], ["Pen", v(T.pen)], ["GF on", v(T.gf)], ["GA on", v(T.ga)]];
-    if (grp === "W") return [["Att", v(T.att)], ["Miss", v(T.miss)], ["PP G", v(T.ppg)], ["SH G", v(T.shg)], ["Ctrl En%", ctlEn], ["Pen", v(T.pen)], ["GF on", v(T.gf)], ["GA on", v(T.ga)]];
-    return [["Blk", v(T.blk)], ["Ctrl Ex%", ctlEx], ["Att", v(T.att)], ["Pen", v(T.pen)], ["GF on", v(T.gf)], ["GA on", v(T.ga)]];
+    if (grp === "C") return [["FO W-L", v(T.fow + "-" + T.fol)], ["FO%", pct(T.fow, T.fow + T.fol)], ["SOG", v(T.sog)], ["Ctrl En%", ctlEn], ["Pen", v(T.pen)], ["GF on", v(T.gf)], ["GA on", v(T.ga)]];
+    if (grp === "W") return [["SOG", v(T.sog)], ["PP G", v(T.ppg)], ["SH G", v(T.shg)], ["Ctrl En%", ctlEn], ["Pen", v(T.pen)], ["GF on", v(T.gf)], ["GA on", v(T.ga)]];
+    return [["Blk", v(T.blk)], ["Ctrl Ex%", ctlEx], ["SOG", v(T.sog)], ["Pen", v(T.pen)], ["GF on", v(T.gf)], ["GA on", v(T.ga)]];
   }
   function vPlayers() {
     var P = aggPlayers();
@@ -655,7 +655,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var en = RV_MOVES.reduce(function (s0, m) { return s0 + T.en[m]; }, 0), ex = RV_MOVES.reduce(function (s0, m) { return s0 + T.ex[m]; }, 0), fo = T.fow + T.fol;
     var pm = '<span class="' + pmCls(p.pm) + '">' + pmText(p.pm) + "</span>", has = T.games.length > 0, v = function (x) { return has ? x : "-"; };
     var k = grp === "C" ? [kpi(p.p, "Points"), kpi(p.g, "Goals"), kpi(p.a, "Assists"), kpi(v(pct(T.fow, fo)), "Faceoff win %"), kpi(v(T.fow + "-" + T.fol), "Faceoffs W-L"), kpi(p.sog, "Shots on goal"), kpi(v(pct(T.en.Carry + T.en.Pass, en)), "Controlled entries"), kpi(pm, "Plus / minus")]
-      : grp === "W" ? [kpi(p.g, "Goals"), kpi(p.sog, "Shots on goal"), kpi(p.shp === null ? "-" : Math.round(p.shp * 100) + "%", "Shooting %"), kpi(p.p, "Points"), kpi(v(T.ppg), "Power play goals"), kpi(v(T.att), "Shot attempts"), kpi(v(pct(T.en.Carry + T.en.Pass, en)), "Controlled entries"), kpi(pm, "Plus / minus")]
+      : grp === "W" ? [kpi(p.g, "Goals"), kpi(p.sog, "Shots on goal"), kpi(p.shp === null ? "-" : Math.round(p.shp * 100) + "%", "Shooting %"), kpi(p.p, "Points"), kpi(v(T.ppg), "Power play goals"), kpi(v(pct(T.en.Carry + T.en.Pass, en)), "Controlled entries"), kpi(pm, "Plus / minus")]
       : [kpi(pm, "Plus / minus"), kpi(v(T.blk), "Shots blocked"), kpi(v(pct(T.ex.Carry + T.ex.Pass, ex)), "Controlled exits"), kpi(p.a, "Assists"), kpi(p.p, "Points"), kpi(p.pim, "Penalty min"), kpi(v(T.ga), "Goals against on ice"), kpi(v(T.pen), "Penalties")];
     return "<h2>Key stats<small>" + esc(POS_NAME[pos] || pos) + ", the numbers that matter most for the position</small></h2><div class='kpis'>" + k.join("") + "</div>";
   }
@@ -664,13 +664,13 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var pct = function (a, b) { return b ? Math.round(a * 100 / b) + "%" : "-"; };
     var en = RV_MOVES.reduce(function (s0, m) { return s0 + T.en[m]; }, 0), ex = RV_MOVES.reduce(function (s0, m) { return s0 + T.ex[m]; }, 0), fo = T.fow + T.fol;
     var h = "<h2>From video review<small>marked in Coaches corner, " + T.games.length + (T.games.length === 1 ? " game" : " games") + "</small></h2><div class='kpis'>" +
-      kpi(T.att, "Shot attempts") + kpi(T.sog, "Shots on goal") + kpi(T.miss, "Missed shots") + kpi(T.blk, "Shots blocked") +
+      kpi(T.sog, "Shots on goal") + kpi(T.blk, "Shots blocked") +
       kpi(T.fow + "-" + T.fol, "Faceoffs W-L") + kpi(pct(T.fow, fo), "Faceoff win %") + kpi(en, "Zone entries") + kpi(pct(T.en.Carry + T.en.Pass, en), "Controlled entries") + kpi(ex, "Zone exits") + kpi(pct(T.ex.Carry + T.ex.Pass, ex), "Controlled exits") +
       kpi(T.pen, "Penalties") + kpi(T.ppg, "Power play goals") + kpi(T.shg, "Short handed goals") + kpi(T.gf, "Goals for on ice") + kpi(T.ga, "Goals against on ice") + "</div>";
-    h += "<div class='card scroll' style='margin-top:12px'><table><thead><tr><th>Game</th><th>Att</th><th>SOG</th><th>Miss</th><th>Blk</th><th>FO</th><th>FO%</th><th>En</th><th>Ex</th><th>Pen</th><th>GF</th><th>GA</th></tr></thead><tbody>" +
+    h += "<div class='card scroll' style='margin-top:12px'><table><thead><tr><th>Game</th><th>SOG</th><th>Blk</th><th>FO</th><th>FO%</th><th>En</th><th>Ex</th><th>Pen</th><th>GF</th><th>GA</th></tr></thead><tbody>" +
       T.games.slice().reverse().map(function (x) {
         var gm = D.games.filter(function (q) { return q.date === x.date; })[0], g = x.g;
-        return "<tr" + (gm ? " class=\"click\" onclick=\"location.hash='#/game/" + gm.id + "'\"" : "") + "><td>" + fmtDate(x.date) + (gm ? " vs " + esc(gm.away) : "") + "</td><td>" + g.att + "</td><td>" + g.sog + "</td><td>" + g.miss + "</td><td>" + g.blk + "</td><td>" + g.fow + "-" + g.fol + "</td><td>" + pct(g.fow, g.fow + g.fol) + "</td><td>" + g.en + "</td><td>" + g.ex + "</td><td>" + g.pen + "</td><td>" + g.gf + "</td><td>" + g.ga + "</td></tr>";
+        return "<tr" + (gm ? " class=\"click\" onclick=\"location.hash='#/game/" + gm.id + "'\"" : "") + "><td>" + fmtDate(x.date) + (gm ? " vs " + esc(gm.away) : "") + "</td><td>" + g.sog + "</td><td>" + g.blk + "</td><td>" + g.fow + "-" + g.fol + "</td><td>" + pct(g.fow, g.fow + g.fol) + "</td><td>" + g.en + "</td><td>" + g.ex + "</td><td>" + g.pen + "</td><td>" + g.gf + "</td><td>" + g.ga + "</td></tr>";
       }).join("") + "</tbody></table></div><p class='note'>Controlled means the puck was carried or passed in or out, not dumped or turned over.</p>";
     return h;
   }
@@ -1660,8 +1660,8 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var en = RV_MOVES.reduce(function (a, m) { return a + s.en[m]; }, 0), ex = RV_MOVES.reduce(function (a, m) { return a + s.ex[m]; }, 0);
     var row = function (l, a, b) { return "<tr><td>" + l + "</td><td>" + a + "</td><td>" + b + "</td></tr>"; };
     return "<div class='card scroll'><table><thead><tr><th></th><th>Us</th><th>Them</th></tr></thead><tbody>" +
-      row("Shot attempts", s.For.att, s.Against.att) + row("Shots on goal", s.For.sog, s.Against.sog) + row("Goals", s.For.goals, s.Against.goals) + row("Power play goals", sitN(list, "For: Goal", "PP"), sitN(list, "Against: Goal", "PP")) + row("Short handed goals", sitN(list, "For: Goal", "SH"), sitN(list, "Against: Goal", "SH")) +
-      row("Missed", s.For.miss, s.Against.miss) + row("Blocked", s.For.blk, s.Against.blk) + "</tbody></table></div>" +
+      row("Shots on goal", s.For.sog, s.Against.sog) + row("Goals", s.For.goals, s.Against.goals) + row("Power play goals", sitN(list, "For: Goal", "PP"), sitN(list, "Against: Goal", "PP")) + row("Short handed goals", sitN(list, "For: Goal", "SH"), sitN(list, "Against: Goal", "SH")) +
+      row("Blocked", s.For.blk, s.Against.blk) + "</tbody></table></div>" +
       "<div class='card scroll' style='margin-top:12px'><table><thead><tr><th></th><th>OZ</th><th>NZ</th><th>DZ</th><th>All</th></tr></thead><tbody>" +
       "<tr><td>Faceoffs won</td>" + ["OZ", "NZ", "DZ"].map(function (z) { return "<td>" + s.fo[z][0] + "/" + (s.fo[z][0] + s.fo[z][1]) + "</td>"; }).join("") + "<td><b>" + fw + "/" + (fw + fl) + " (" + pct(fw, fw + fl) + ")</b></td></tr></tbody></table></div>" +
       "<div class='card scroll' style='margin-top:12px'><table><thead><tr><th></th>" + RV_MOVES.map(function (m) { return "<th>" + m + "</th>"; }).join("") + "<th>Total</th><th>Controlled</th></tr></thead><tbody>" +
