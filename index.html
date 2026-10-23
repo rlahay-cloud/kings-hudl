@@ -601,6 +601,47 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     return h + playerClips(n);
   }
 
+  function playerVideoStats(n) {
+    var dates = {}; Object.keys(D.review).concat(Object.keys(lget(RK))).forEach(function (d) { dates[d] = 1; });
+    var T = {att: 0, sog: 0, miss: 0, blk: 0, blocks: 0, fow: 0, fol: 0, en: {}, ex: {}, pen: 0, gf: 0, ga: 0, games: []};
+    RV_MOVES.forEach(function (m) { T.en[m] = 0; T.ex[m] = 0; });
+    Object.keys(dates).sort().forEach(function (d) {
+      var G = {att: 0, sog: 0, miss: 0, blk: 0, blocks: 0, fow: 0, fol: 0, en: 0, ex: 0, pen: 0, gf: 0, ga: 0, any: false};
+      allReview(d).forEach(function (c) {
+        var a = c.assists || [], me = c.players.indexOf(n) >= 0, t = c.tag, ice = (c.ice || []).indexOf(n) >= 0;
+        if (t === "For: Goal") { if (ice || me) { G.gf++; G.any = true; } if (me && a.indexOf(n) < 0) { G.att++; G.sog++; } return; }
+        if (t === "Against: Goal") { if (ice) { G.ga++; G.any = true; } return; }
+        if (!me) return; G.any = true;
+        if (t === "For: Shot on goal") { G.att++; G.sog++; }
+        else if (t === "For: Missed shot") { G.att++; G.miss++; }
+        else if (t === "For: Blocked shot") { G.att++; G.blk++; }
+        else if (t === "Against: Blocked shot") G.blocks++;
+        else if (t === "Penalty") G.pen++;
+        else if (/^Faceoff:/.test(t)) { if (/Win$/.test(t)) G.fow++; else G.fol++; }
+        else if (/^Entry:/.test(t)) { G.en++; T.en[t.slice(7)]++; }
+        else if (/^Exit:/.test(t)) { G.ex++; T.ex[t.slice(6)]++; }
+      });
+      if (!G.any) return;
+      ["att", "sog", "miss", "blk", "blocks", "fow", "fol", "pen", "gf", "ga"].forEach(function (k) { T[k] += G[k]; });
+      T.games.push({date: d, g: G});
+    });
+    return T;
+  }
+  function playerVideoHtml(n) {
+    var T = playerVideoStats(n); if (!T.games.length) return "<h2>From video review</h2><div class='card'><p class='note' style='margin:0'>No video review marks for this player yet. Shots, faceoffs, zone entries and exits show up here once they are marked in Coaches corner.</p></div>";
+    var pct = function (a, b) { return b ? Math.round(a * 100 / b) + "%" : "-"; };
+    var en = RV_MOVES.reduce(function (s0, m) { return s0 + T.en[m]; }, 0), ex = RV_MOVES.reduce(function (s0, m) { return s0 + T.ex[m]; }, 0), fo = T.fow + T.fol;
+    var h = "<h2>From video review<small>marked in Coaches corner, " + T.games.length + (T.games.length === 1 ? " game" : " games") + "</small></h2><div class='kpis'>" +
+      kpi(T.att, "Shot attempts") + kpi(T.sog, "Shots on goal") + kpi(T.miss, "Missed shots") + kpi(T.blk, "Shots blocked") + kpi(T.blocks, "Shots blocked for us") +
+      kpi(T.fow + "-" + T.fol, "Faceoffs W-L") + kpi(pct(T.fow, fo), "Faceoff win %") + kpi(en, "Zone entries") + kpi(pct(T.en.Carry + T.en.Pass, en), "Controlled entries") + kpi(ex, "Zone exits") + kpi(pct(T.ex.Carry + T.ex.Pass, ex), "Controlled exits") +
+      kpi(T.pen, "Penalties") + kpi(T.gf, "Goals for on ice") + kpi(T.ga, "Goals against on ice") + "</div>";
+    h += "<div class='card scroll' style='margin-top:12px'><table><thead><tr><th>Game</th><th>Att</th><th>SOG</th><th>Miss</th><th>Blk</th><th>FO</th><th>FO%</th><th>En</th><th>Ex</th><th>Pen</th><th>GF</th><th>GA</th></tr></thead><tbody>" +
+      T.games.slice().reverse().map(function (x) {
+        var gm = D.games.filter(function (q) { return q.date === x.date; })[0], g = x.g;
+        return "<tr" + (gm ? " class=\"click\" onclick=\"location.hash='#/game/" + gm.id + "'\"" : "") + "><td>" + fmtDate(x.date) + (gm ? " vs " + esc(gm.away) : "") + "</td><td>" + g.att + "</td><td>" + g.sog + "</td><td>" + g.miss + "</td><td>" + g.blk + "</td><td>" + g.fow + "-" + g.fol + "</td><td>" + pct(g.fow, g.fow + g.fol) + "</td><td>" + g.en + "</td><td>" + g.ex + "</td><td>" + g.pen + "</td><td>" + g.gf + "</td><td>" + g.ga + "</td></tr>";
+      }).join("") + "</tbody></table></div><p class='note'>Controlled means the puck was carried or passed in or out, not dumped or turned over.</p>";
+    return h;
+  }
   function vPlayer(n) {
     if (aggGoalies().some(function (x) { return x.n === n; }) && !aggPlayers().some(function (x) { return x.n === n; })) return vGoalie(n);
     var p = aggPlayers().filter(function (x) { return x.n === n; })[0];
@@ -608,7 +649,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var labels = p.log.map(function (l) { return fmtDate(l.game.date); });
     var cum = 0, cumPm = 0;
     var h = '<a class="back" href="#/players">&larr; All players</a><div class="phead">' + avatar(n, "lg") + "<h2 style='margin:18px 0 10px'>" + esc(label(n)) + "<small>" + p.gp + " games played</small></h2></div>";
-    h += '<div class="kpis">' + kpi(p.g, "Goals") + kpi(p.a, "Assists") + kpi(p.p, "Points") + kpi('<span class="' + pmCls(p.pm) + '">' + pmText(p.pm) + "</span>", "Plus / minus") + kpi(p.sog, "Shots") + kpi(p.shp === null ? "-" : Math.round(p.shp * 100) + "%", "Shooting %") + kpi(p.pim, "Penalty min") + kpi(p.ppg.toFixed(2), "Points / game") + "</div>";
+    h += '<div class="kpis">' + kpi(p.g, "Goals") + kpi(p.a, "Assists") + kpi(p.p, "Points") + kpi('<span class="' + pmCls(p.pm) + '">' + pmText(p.pm) + "</span>", "Plus / minus") + kpi(p.sog, "Shots") + kpi(p.shp === null ? "-" : Math.round(p.shp * 100) + "%", "Shooting %") + kpi(p.pim, "Penalty min") + kpi(p.ppg.toFixed(2), "Points / game") + kpi(p.gp ? (p.g / p.gp).toFixed(2) : "-", "Goals / game") + kpi(p.gp ? (p.sog / p.gp).toFixed(1) : "-", "Shots / game") + "</div>";
     h += "<h2>Game by game</h2><div class='row g2'>" +
       "<div class='card'><h3>Points per game</h3>" + barChart(p.log.map(function (l) { return l.s.p; }), labels, {label: "Points per game"}) + "</div>" +
       "<div class='card'><h3>Shots per game</h3>" + barChart(p.log.map(function (l) { return l.s.sog; }), labels, {c: "var(--blue)", label: "Shots per game"}) + "</div></div>";
@@ -623,6 +664,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (wl.length && wl.length < p.gp) ins.push("Averages " + (sum(wl, function (l) { return l.s.p; }) / wl.length).toFixed(2) + " points per game in wins and " + (sum(p.log.filter(function (l) { return l.game.result !== "W"; }), function (l) { return l.s.p; }) / (p.gp - wl.length)).toFixed(2) + " in other games.");
     var best = p.log.slice().sort(function (a, b) { return b.s.p - a.s.p || b.s.sog - a.s.sog; })[0];
     if (best && best.s.p > 0) ins.push("Best game: " + fmtDate(best.game.date) + " vs " + esc(best.game.away) + " with " + best.s.g + "G " + best.s.a + "A.");
+    h += playerVideoHtml(n);
     h += "<h2>Notes</h2><div class='card'>" + ins.map(function (s) { return '<div class="insight">' + s + "</div>"; }).join("") + "</div>";
     return h + playerClips(n);
   }
@@ -1223,27 +1265,27 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       var a = line.split("|"); if (a.length < 4) return;
       var sec = parseHms(a[0]); if (sec === null) return;
       var tag = a[1].trim();
-      var tk = a[2].match(/a?\d+/gi) || [], ps = [], as = [];
-      tk.forEach(function (t) { var n = +t.replace(/\D/g, ""); if (ps.indexOf(n) < 0) ps.push(n); if (/^a/i.test(t) && as.indexOf(n) < 0) as.push(n); });
+      var tk = a[2].match(/[ai]?\d+/gi) || [], ps = [], as = [], ice = [];
+      tk.forEach(function (t) { var n = +t.replace(/\D/g, ""); if (/^i/i.test(t)) { if (ice.indexOf(n) < 0) ice.push(n); return; } if (ps.indexOf(n) < 0) ps.push(n); if (/^a/i.test(t) && as.indexOf(n) < 0) as.push(n); });
       var m = /^([\d.]*),([\d.]*),(\d)(?:,(f))?$/.exec(a[3].trim());
       var x = m && m[1] !== "" ? +m[1] : null, y = m && m[2] !== "" ? +m[2] : null;
       if (x !== null && y !== null && !(m && m[4])) {
         // older marks were on a single attacking zone: move them onto the full rink
         if (/^Against:/.test(tag)) { x = (100 - x * 100) / 200; y = 1 - y; } else x = (100 + x * 100) / 200;
       }
-      out.push({sec: sec, tag: tag, players: ps, assists: as, x: x, y: y, p: m ? +m[3] : 1});
+      out.push({sec: sec, tag: tag, players: ps, assists: as, ice: ice, x: x, y: y, p: m ? +m[3] : 1});
     });
     return out;
   }
   function fmtReview(list) {
     return list.slice().sort(function (a, b) { return a.sec - b.sec; }).map(function (c) {
-      return hms(c.sec) + "|" + c.tag + "|" + clipPlayersField(c) + "|" + (c.x == null ? "" : (+c.x).toFixed(3)) + "," + (c.y == null ? "" : (+c.y).toFixed(3)) + "," + (c.p || 1) + ",f";
+      return hms(c.sec) + "|" + c.tag + "|" + [clipPlayersField(c)].concat((c.ice || []).map(function (n) { return "i" + n; })).join(" ").trim() + "|" + (c.x == null ? "" : (+c.x).toFixed(3)) + "," + (c.y == null ? "" : (+c.y).toFixed(3)) + "," + (c.p || 1) + ",f";
     }).join("\n") + "\n";
   }
   function getMyReview(date) {
     var l = lget(RK); if (l[date]) return l[date].slice();
     var sent = (D.review[date] || {}).game;
-    return sent ? sent.map(function (x) { return {sec: x.sec, tag: x.tag, players: x.players.slice(), assists: x.assists.slice(), x: x.x, y: x.y, p: x.p}; }) : [];
+    return sent ? sent.map(function (x) { return {sec: x.sec, tag: x.tag, players: x.players.slice(), assists: x.assists.slice(), ice: (x.ice || []).slice(), x: x.x, y: x.y, p: x.p}; }) : [];
   }
   function putReview(date, list) { var l = lget(RK); l[date] = list; lset(RK, l); }
   function allReview(date) {
@@ -1358,16 +1400,26 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var a = c.assists || [], inP = function (n) { return c.players.indexOf(n) >= 0; };
     var g0 = rvGroup(c.tag);
     if (!all.length && g0 && g0.k !== "sp" && c.tag !== "Away Penalty" && c.tag !== "Against: Missed shot") return '<input type="text" class="pl" data-f="players" placeholder="Jersey numbers, like 4 10" value="' + esc(c.players.join(" ")) + '" aria-label="Players">';
-    if (c.tag === "For: Goal") return chipRow("Scored by", skaters, c, "scorer", function (n) { return inP(n) && a.indexOf(n) < 0; }) + chipRow("Assists (up to 2)", skaters, c, "assist", function (n) { return a.indexOf(n) >= 0; });
+    var ice = c.ice || [], onIce = function (n) { return ice.indexOf(n) >= 0 || (c.tag === "For: Goal" && inP(n)); };
+    var iceRow = function () { return chipRow("On the ice (up to 5, for +/-)", skaters, c, "ice", onIce) + '<p class="note" style="margin:2px 0 0">The scorer and assists count as on the ice automatically.</p>'; };
+    if (c.tag === "For: Goal") return chipRow("Scored by", skaters, c, "scorer", function (n) { return inP(n) && a.indexOf(n) < 0; }) + chipRow("Assists (up to 2)", skaters, c, "assist", function (n) { return a.indexOf(n) >= 0; }) + iceRow();
     var g = rvGroup(c.tag); if (!g || g.k === "sp") return "";
     if (g.k === "pen") return c.tag === "Penalty" ? chipRow("Penalty on", skaters, c, "any", inP) : "";
     if (c.tag === "Against: Blocked shot") return chipRow("Blocked by", skaters, c, "any", inP);
     if (c.tag === "Against: Missed shot") return "";
-    if (g.k === "ag") return chipRow("Goalie", goalies.length ? goalies : all, c, "any", inP);
+    if (g.k === "ag") return chipRow("Goalie", goalies.length ? goalies : all, c, "any", inP) + (c.tag === "Against: Goal" ? iceRow() : "");
     return chipRow(g.k === "for" ? "Shooter" : g.k === "fo" ? "Taker" : "Player", skaters, c, "any", inP);
   }
   function applyPick(c, role, n) {
     var as = c.assists = c.assists || [], isA = as.indexOf(n) >= 0, isP = c.players.indexOf(n) >= 0;
+    if (role === "ice") {
+      var ic = c.ice = c.ice || [];
+      if (c.tag === "For: Goal" && isP) return "The scorer and assists are already counted as on the ice.";
+      if (ic.indexOf(n) >= 0) ic.splice(ic.indexOf(n), 1);
+      else if (ic.length + (c.tag === "For: Goal" ? c.players.length : 0) >= 5) return "Up to 5 skaters can be on the ice.";
+      else ic.push(n);
+      return "";
+    }
     if (role === "scorer") {
       c.players = c.players.filter(function (x) { return as.indexOf(x) >= 0; });
       if (!(isP && !isA)) { if (isA) as.splice(as.indexOf(n), 1); else c.players.unshift(n); }
@@ -1798,6 +1850,19 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
         k = +k; if (g.players.some(function (p) { return p.n === k; })) return;
         g.players.push({n: k, g: cnt[k] || 0, a: ast[k] || 0, p: (cnt[k] || 0) + (ast[k] || 0), pm: 0, pim: 0, sog: 0}); g.dnp = g.dnp.filter(function (n) { return n !== k; });
       });
+    }
+    // plus/minus from who was on the ice for each goal
+    var iceOf = function (c, home) { var l = (c.ice || []).slice(); if (home) c.players.forEach(function (n) { if (l.indexOf(n) < 0) l.push(n); }); return l; };
+    var gm = fG.concat(aG);
+    if (gm.some(function (c) { return (c.ice || []).length; })) {
+      var pmv = {}, miss = 0;
+      fG.forEach(function (c) { var l = iceOf(c, true); if (!(c.ice || []).length) miss++; l.forEach(function (n) { pmv[n] = (pmv[n] || 0) + 1; }); });
+      aG.forEach(function (c) { var l = iceOf(c, false); if (!l.length) miss++; l.forEach(function (n) { pmv[n] = (pmv[n] || 0) - 1; }); });
+      Object.keys(pmv).forEach(function (k) { k = +k; if (!g.players.some(function (p) { return p.n === k; })) { g.players.push({n: k, g: 0, a: 0, p: 0, pm: 0, pim: 0, sog: 0}); g.dnp = g.dnp.filter(function (n) { return n !== k; }); } });
+      var diffs = [];
+      g.players.forEach(function (p) { var v = pmv[p.n] || 0; if (v !== p.pm) diffs.push("#" + p.n + " scoreboard " + pmText(p.pm) + ", video review " + pmText(v)); p.pm = v; });
+      if (diffs.length) note("Plus/minus changed for: " + diffs.join("; ") + ".");
+      if (miss) note("Plus/minus: " + miss + " of " + gm.length + " goals have no one marked on the ice yet, so the plus/minus may be off.");
     }
     // shots on goal (goals count as shots on goal)
     if (fS.length) {
