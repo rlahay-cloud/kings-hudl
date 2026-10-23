@@ -724,6 +724,10 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       if (have.some(function (r) { return Math.abs((r.end ? r.end - 2 : r.sec + 8) - c.sec) <= 25 || Math.abs(r.sec - c.sec) <= 25; })) return;
       rows.push({sec: Math.max(0, c.sec - 8), end: c.sec + 2, tag: "Goal", html: whoHtml(c) + ' <span class="mut">(automatic)</span>', goal: true});
     });
+    allReview(g.date).filter(function (c) { return (c.tag === "Penalty" || c.tag === "Away Penalty") && c.until != null; }).forEach(function (c) {
+      if (rows.some(function (r) { return r.pen && (r.tag === c.tag || r.tag === "Penalty") && Math.abs(r.sec - c.sec) <= 25 && r.end; })) return;
+      rows.push({sec: Math.max(0, c.sec - 8), end: c.until + 2, tag: c.tag, html: ' <span class="mut">' + penSpan(c) + "</span>", pen: true});
+    });
     if (!rows.length && !url) return "";
     rows.sort(function (a, b) { return a.sec - b.sec; });
     vp.player = null; vp.id = null; PL = [];
@@ -780,7 +784,8 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
         var tag = RV_DERIVE[c.tag]; if (!tag) return;
         if (items.some(function (o) { return o.date === d && o.tag === tag && Math.abs((o.end ? o.end - 2 : o.sec + 8) - c.sec) <= 25; })) return;
         var sit = /Goal/.test(c.tag) ? goalSit(allReview(d), c) : "";
-        items.push({date: d, game: label, sec: Math.max(0, c.sec - 8), end: c.sec + 2, tag: tag, label: (sit === "PP" ? "Power play" : sit === "SH" ? "Short handed" : "") + (c.until != null ? "Ends " + hms(c.until) : ""), players: c.players || [], assists: c.assists || [], coach: GAME_LABEL});
+        var isPen = tag === "Penalty" || tag === "Away Penalty";
+        items.push({date: d, game: label, sec: Math.max(0, c.sec - 8), end: isPen && c.until != null ? c.until + 2 : c.sec + 2, tag: tag, label: (sit === "PP" ? "Power play" : sit === "SH" ? "Short handed" : "") + (isPen && c.until != null ? "Runs " + penSpan(c) : ""), players: c.players || [], assists: c.assists || [], coach: GAME_LABEL});
       });
     });
     return items.sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : a.sec - b.sec; });
@@ -1307,6 +1312,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     });
   }
   // Which penalties are on at a moment in the video, and so whether a goal was at even strength, on the power play or short handed.
+  function penSpan(c) { var d = c.until - c.sec; return hms(c.sec) + " to " + hms(c.until) + " (" + Math.floor(d / 60) + ":" + ("0" + d % 60).slice(-2) + " of video)"; }
   function goalSit(list, c) {
     var u = 0, th = 0;
     list.forEach(function (p) { if ((p.tag === "Penalty" || p.tag === "Away Penalty") && p.until != null && p.sec <= c.sec && c.sec <= p.until) { if (p.tag === "Penalty") u++; else th++; } });
@@ -1391,14 +1397,14 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       $("geList").innerHTML = f.length ? f.map(function (c) {
         var i = GE.items.indexOf(c);
         var tl = hasVid ? '<button class="tm" style="background:none;border:0;color:var(--accent);font-family:var(--display);font-weight:700;font-size:18px;min-width:70px;text-align:left;padding:0" data-ge="' + i + '">' + hms(c.sec) + "</button>" : '<span class="t" style="font-family:var(--display);font-weight:700;font-size:18px;min-width:70px">' + hms(c.sec) + "</span>";
-        return '<div class="ev ' + (c.cat === "Goals" ? "goal" : c.cat === "Penalties" ? "pen" : "") + '">' + tl + '<span class="lb"><b>' + esc(geName(c.tag)) + "</b>" + (/: Goal$/.test(c.tag) && goalSit(GE.items, c) ? ' <span class="pill W">' + goalSit(GE.items, c) + "</span>" : "") + (c.until != null ? ' <span class="mut">ends ' + hms(c.until) + "</span>" : "") + whoHtml(c) + "</span></div>";
+        return '<div class="ev ' + (c.cat === "Goals" ? "goal" : c.cat === "Penalties" ? "pen" : "") + '">' + tl + '<span class="lb"><b>' + esc(geName(c.tag)) + "</b>" + (/: Goal$/.test(c.tag) && goalSit(GE.items, c) ? ' <span class="pill W">' + goalSit(GE.items, c) + "</span>" : "") + (c.until != null ? ' <span class="mut">' + penSpan(c) + "</span>" : "") + whoHtml(c) + "</span></div>";
       }).join("") : '<p class="note">Nothing matches these filters.</p>';
     }
     ["geCat", "geSort", "gePl"].forEach(function (id) { $(id).addEventListener("change", render); });
     $("geList").addEventListener("click", function (e) {
       var b = e.target.closest("button[data-ge]"); if (!b) return;
       var c = GE.items[+b.getAttribute("data-ge")];
-      playItem({date: GE.date, game: GE.game, sec: Math.max(0, c.sec - 8), end: c.sec + 2, tag: geName(c.tag)});
+      playItem({date: GE.date, game: GE.game, sec: Math.max(0, c.sec - 8), end: (c.until != null ? c.until : c.sec) + 2, tag: geName(c.tag)});
     });
     render();
   }
@@ -1562,7 +1568,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       $("rvCount").textContent = view.length + (view.length === 1 ? " event" : " events");
       $("rvList").innerHTML = view.length ? view.map(function (c, i) {
         var g = itemGroup(c);
-        return '<div class="ev" data-i="' + i + '"><button class="tm" style="background:none;border:0;color:var(--accent);font-family:var(--display);font-weight:700;font-size:18px;min-width:70px;text-align:left;padding:0">' + hms(mark(c)) + '</button><span class="lb"><i class="dot" style="background:' + (g ? g.c : "#93a1bd") + '"></i><b>' + esc(itemLabel(c)) + "</b>" + (c.src === "rv" ? " P" + (c.p || 1) : "") + (c.src === "rv" && /: Goal$/.test(c.tag) && goalSit(allReview(date), c) ? ' <span class="pill W">' + goalSit(allReview(date), c) + "</span>" : "") + (c.src === "rv" && c.until != null ? ' <span class="mut">to ' + hms(c.until) + "</span>" : "") + (c.src === "rv" && (c.tag === "Penalty" || c.tag === "Away Penalty") && c.until == null ? ' <span class="mut" style="color:#e5484d">no end time yet</span>' : "") + whoHtml(c) + (c.x != null ? ' <span class="mut">spot</span>' : "") + (c.label ? " " + esc(c.label) : "") + "</span></div>";
+        return '<div class="ev" data-i="' + i + '"><button class="tm" style="background:none;border:0;color:var(--accent);font-family:var(--display);font-weight:700;font-size:18px;min-width:70px;text-align:left;padding:0">' + hms(mark(c)) + '</button><span class="lb"><i class="dot" style="background:' + (g ? g.c : "#93a1bd") + '"></i><b>' + esc(itemLabel(c)) + "</b>" + (c.src === "rv" ? " P" + (c.p || 1) : "") + (c.src === "rv" && /: Goal$/.test(c.tag) && goalSit(allReview(date), c) ? ' <span class="pill W">' + goalSit(allReview(date), c) + "</span>" : "") + (c.src === "rv" && c.until != null ? ' <span class="mut">to ' + hms(c.until) + " (" + Math.floor((c.until - c.sec) / 60) + ":" + ("0" + (c.until - c.sec) % 60).slice(-2) + ")</span>" : "") + (c.src === "rv" && (c.tag === "Penalty" || c.tag === "Away Penalty") && c.until == null ? ' <span class="mut" style="color:#e5484d">no end time yet</span>' : "") + whoHtml(c) + (c.x != null ? ' <span class="mut">spot</span>' : "") + (c.label ? " " + esc(c.label) : "") + "</span></div>";
       }).join("") : '<p class="note">Nothing marked yet.</p>';
       $("rvSum").innerHTML = RV.length ? reviewSummaryHtml(RV) : '<div class="card empty"><p class="note">Review numbers appear here as you mark.</p></div>';
     }
