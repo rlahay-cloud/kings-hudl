@@ -187,8 +187,10 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
         else if ((m = /^Did not play:\s*(.*)$/.exec(line)))
           (m[1].match(/#(\d+)/g) || []).forEach(function (x) { g.dnp.push(+x.slice(1)); });
       } else if (sect === "g") {
-        if ((m = /^#(\d+)\s+SA\s+(\d+)\s+GA\s+(\d+)\s+SV%\s+(\S+)\s+GAA\s+(\S+)\s+TOI\s+(\d+):(\d+)/.exec(line)))
-          g.goalies.push({n: +m[1], sa: +m[2], ga: +m[3], toi: (+m[6]) * 60 + (+m[7])});
+        if ((m = /^#(\d+)\s+SA\s+(\d+)\s+GA\s+(\d+)\s+SV%\s+(\S+)\s+(?:GAA\s+(\S+)\s+)?TOI\s+(\d+):(\d+)/.exec(line))) {
+          var gt = (+m[6]) * 60 + (+m[7]);
+          if (+m[2] || +m[3] || gt) g.goalies.push({n: +m[1], sa: +m[2], ga: +m[3], toi: gt});
+        }
       }
     });
     g.result = g.hs > g.as ? "W" : g.hs < g.as ? "L" : "T";
