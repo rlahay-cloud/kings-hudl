@@ -63,7 +63,7 @@ The other sections hold the marking tools: **Game analysis** (review, below), **
 
 ## Shifts (ice time)
 
-Open **Coaches corner**, then **Shifts**, pick the game and play the video. Tap a jersey number when that player steps on the ice and tap it again when he comes off. Tap **Whistle** when play stops and **Play on** when it starts again. Time between a whistle and Play on never counts toward ice time, so line changes during stoppages are handled automatically. **Everyone off** and **End of period** clear the ice in one tap, and **Undo last tap** takes back the last tap.
+Open **Coaches corner**, then **Shifts**, pick the game and play the video. Tap **Start tracking** when play starts and **Stop tracking** at every stoppage. Time only counts while tracking is on, measured on the video timeline, so line changes during a stoppage cost nothing. Tap a player's number when he steps on the ice and tap it again when he comes off. Players can be toggled at any time, including while tracking is stopped. **Everyone off** and **End of period** (clears the ice and stops tracking) clear the ice in one tap, and **Undo last tap** takes back the last tap.
 
 Save for everyone writes `shifts_DATE.txt` into the games folder (one line per tap: video second, on, off, stop or go). The game page then shows an Ice time table (shifts, total ice time, average, longest and shortest shift) and each player page shows ice time per game, shifts per game, average shift and longest shift.
 
