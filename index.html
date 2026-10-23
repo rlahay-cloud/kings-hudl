@@ -182,8 +182,8 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
         if ((m = /^Period (\S+) (\d+):(\d{2}) (HOME|AWAY)(?: #(\d+)(?: assists #(\d+)(?: #(\d+))?)?)?$/.exec(line)))
           g.goals.push({per: m[1], sec: (+m[2]) * 60 + (+m[3]), home: m[4] === "HOME", scorer: m[5] ? +m[5] : null, assists: [m[6], m[7]].filter(Boolean).map(Number)});
       } else if (sect === "p") {
-        if ((m = /^#(\d+)\s+(\d+)G\s+(\d+)A\s+(\d+)P\s+\+\/-\s+([+-]?\d+)\s+PIM\s+(\d+)\s+SOG\s+(\d+)/.exec(line)))
-          g.players.push({n: +m[1], g: +m[2], a: +m[3], p: +m[4], pm: +m[5], pim: +m[6], sog: +m[7]});
+        if ((m = /^#(\d+)\s+(\d+)G\s+(\d+)A\s+(\d+)P\s+\+\/-\s+([+-]?\d+)\s+PIM\s+(\d+)(?:\s+SOG\s+(\d+))?/.exec(line)))
+          g.players.push({n: +m[1], g: +m[2], a: +m[3], p: +m[4], pm: +m[5], pim: +m[6], sog: m[7] ? +m[7] : 0});
         else if ((m = /^Did not play:\s*(.*)$/.exec(line)))
           (m[1].match(/#(\d+)/g) || []).forEach(function (x) { g.dnp.push(+x.slice(1)); });
       } else if (sect === "g") {
@@ -445,7 +445,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       leaderboard("Points", P.map(function (p) { return {n: p.n, v: p.p}; }).sort(byV), String, 1) +
       leaderboard("Goals", P.map(function (p) { return {n: p.n, v: p.g}; }).sort(byV), String) +
       leaderboard("Assists", P.map(function (p) { return {n: p.n, v: p.a}; }).sort(byV), String) +
-      leaderboard("Shots on goal", P.map(function (p) { return {n: p.n, v: p.sog}; }).sort(byV), String) +
+      (sum(P, function (p) { return p.sog; }) > 0 ? leaderboard("Shots on goal", P.map(function (p) { return {n: p.n, v: p.sog}; }).sort(byV), String) : "") +
       leaderboard("Plus / minus", P.map(function (p) { return {n: p.n, v: p.pm}; }).sort(byV), pmText) +
       leaderboard("Penalty minutes", P.map(function (p) { return {n: p.n, v: p.pim}; }).sort(byV), String) + "</div>";
     h += "<h2>Recent games</h2>" + gameTable(D.games.slice().reverse().slice(0, 5));
