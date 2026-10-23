@@ -558,31 +558,12 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     });
     return h + "</div>";
   }
-  // Every clip from every game: coach highlights plus Streamn's own goal and penalty log.
-  function eventItems(g) {
-    var ev = D.events[g.date] || [], out = [], gi = 0;
-    var goalCount = ev.filter(function (e) { return /^Goal|^Try/i.test(e.label); }).length, match = goalCount === g.goals.length;
-    ev.forEach(function (e) {
-      var tag = "Event", label = e.label;
-      if (/^Goal|^Try/i.test(e.label)) {
-        tag = "Goal"; label = e.label.replace(/^(Goal|Try):?\s*/i, "");
-        if (match) {
-          var gl = g.goals[gi++];
-          tag = gl.home ? "Goal" : "Goal against";
-          label = gl.home ? (gl.scorer !== null ? label_(gl.scorer) : g.home) + (gl.assists.length ? " (from " + gl.assists.map(label_).join(", ") + ")" : "") : g.away;
-        }
-      } else if (/^Penalty/i.test(e.label)) { tag = "Penalty"; label = e.label.replace(/^Penalty:?\s*/i, ""); }
-      else if (/^Game End/i.test(e.label)) { tag = "Game end"; label = e.label.replace(/^Game End\W*/i, ""); }
-      out.push({sec: e.sec, tag: tag, label: label, players: ((label.match(/#(\d+)/g) || []).map(function (x) { return +x.slice(1); })), coach: "Streamn log"});
-    });
-    return out;
-  }
-  function label_(n) { return label(n); }
+  // Every coach highlight from every game.
   function allVideoItems() {
     var items = [];
     D.games.forEach(function (g) {
       var base = {date: g.date, game: fmtDate(g.date) + " vs " + g.away};
-      eventItems(g).concat(allClips(g.date)).forEach(function (c) {
+      allClips(g.date).forEach(function (c) {
         items.push({date: g.date, game: base.game, sec: c.sec, tag: c.tag, label: c.label || "", players: c.players || [], coach: c.coach});
       });
     });
@@ -594,11 +575,11 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     });
     return items.sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : a.sec - b.sec; });
   }
-  var VID_TAGS = ["Goal", "Goal against", "Penalty", "Save", "Chance", "Good play", "Breakout", "Blocked shot", "Review", "Highlight", "Event", "Game end", "Other"];
+  var VID_TAGS = ["Goal", "Save", "Chance", "Good play", "Breakout", "Blocked shot", "Review", "To fix", "Highlight", "Other"];
   function vVideo() {
     var items = allVideoItems();
     var h = "<h2>Video</h2>";
-    if (!items.length) return h + '<div class="card empty"><p>No clips yet.</p><p class="note">Goals and penalties from Streamn show up here once you upload that game\'s timestamps file, and coaches add more from Coaches corner.</p></div>';
+    if (!items.length) return h + '<div class="card empty"><p>No clips yet.</p><p class="note">Highlights marked by coaches in Coaches corner show up here.</p></div>';
     var games = Object.keys(items.reduce(function (m, c) { m[c.date] = 1; return m; }, {})).sort().reverse();
     var tags = VID_TAGS.filter(function (t) { return items.some(function (c) { return c.tag === t; }); });
     var coaches = Object.keys(items.reduce(function (m, c) { m[c.coach] = 1; return m; }, {})).sort();
@@ -624,8 +605,8 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       var last = "";
       $("vfList").innerHTML = f.length ? f.map(function (x, i) {
         var head = x.game !== last ? '<h3 style="margin:' + (last ? "14px" : "0") + ' 0 4px">' + esc(x.game) + "</h3>" : ""; last = x.game;
-        return head + '<div class="ev ' + (x.tag === "Goal" ? "goal" : x.tag === "Penalty" || x.tag === "Goal against" ? "pen" : "") + '"><button class="tm" style="background:none;border:0;color:var(--accent);font-family:var(--display);font-weight:700;font-size:18px;min-width:70px;text-align:left;padding:0" data-i="' + items.indexOf(x) + '">' + hms(x.sec) + '</button><span class="lb"><b>' + esc(x.tag) + "</b> " + esc(x.label) +
-          (x.players.length && x.tag !== "Goal" && x.tag !== "Penalty" ? ' <span class="mut">' + x.players.map(function (n) { return "#" + n; }).join(" ") + "</span>" : "") + ' <span class="mut">' + esc(x.coach) + "</span></span></div>";
+        return head + '<div class="ev ' + (x.tag === "Goal" ? "goal" : "") + '"><button class="tm" style="background:none;border:0;color:var(--accent);font-family:var(--display);font-weight:700;font-size:18px;min-width:70px;text-align:left;padding:0" data-i="' + items.indexOf(x) + '">' + hms(x.sec) + '</button><span class="lb"><b>' + esc(x.tag) + "</b> " + esc(x.label) +
+          (x.players.length ? ' <span class="mut">' + x.players.map(function (n) { return "#" + n; }).join(" ") + "</span>" : "") + ' <span class="mut">' + esc(x.coach) + "</span></span></div>";
       }).join("") : '<p class="note">Nothing matches these filters.</p>';
     }
     ["vfGame", "vfTag", "vfCoach", "vfPl"].forEach(function (id) { $(id).addEventListener("change", render); });
@@ -698,7 +679,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   function slugify(n) { return String(n || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 20); }
   function coachLabel(slug) { return slug.split("-").map(function (w) { return w.charAt(0).toUpperCase() + w.slice(1); }).join(" "); }
   function coachCfg() { var c = lget(CS); return {name: c.name || "", pass: c.pass || ""}; }
-  function mySlug() { return slugify(coachCfg().name) || "me"; }
+  function mySlug() { return slugify(coachCfg().name) || "team"; }
   // My own marks are kept on this device. Everyone's sent files come from the games folder.
   function getMyClips(date) { var l = lget(CK); return l[date] ? l[date].slice() : []; }
   function putClips(date, list) { var l = lget(CK); l[date] = list; lset(CK, l); }
@@ -735,7 +716,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   function submitFile(kind, date, text, noteEl) {
     var cfg = D.cfg || {}, c = coachCfg(), name = kind + "_" + date + ".txt";
     if (!cfg.submitUrl) { shareSheet(name, text, noteEl); return; }
-    if (!c.name.trim() || !c.pass.trim()) { noteEl.textContent = "Add your name and the coach passcode above first."; return; }
+    if (!c.pass.trim()) { noteEl.textContent = "Add the coach passcode above first."; return; }
     noteEl.textContent = "Sending...";
     var url = /^https?:\/\//.test(cfg.submitUrl) ? cfg.submitUrl : "https://" + cfg.submitUrl;
     fetch(url, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({passcode: c.pass, coach: c.name, date: date, kind: kind, text: text})})
@@ -745,9 +726,9 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   }
   function coachCard() {
     var c = coachCfg();
-    return '<div class="card"><h3>Coach</h3><div class="filters"><div class="fld"><label for="cName">Your name</label><input type="text" id="cName" autocomplete="name" placeholder="Coach Mike" value="' + esc(c.name) + '"></div>' +
+    return '<div class="card"><h3>Coach</h3><div class="filters"><div class="fld"><label for="cName">Your name (optional)</label><input type="text" id="cName" autocomplete="name" placeholder="Blank = Team" value="' + esc(c.name) + '"></div>' +
       '<div class="fld"><label for="cPass">Coach passcode</label><input type="password" id="cPass" autocomplete="off" value="' + esc(c.pass) + '"></div></div>' +
-      '<p class="note" style="margin:0">Saved on this phone. Your name goes on the highlights you send.</p></div>';
+      '<p class="note" style="margin:0">Saved on this phone. Leave the name blank to send as Team.</p></div>';
   }
   function bindCoach() {
     function save() { lset(CS, {name: $("cName").value, pass: $("cPass").value}); }

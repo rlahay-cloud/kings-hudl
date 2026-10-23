@@ -42,8 +42,7 @@ function check(body, env) {
   if (!same(body.passcode, env.PASSCODE || "")) return {error: "Wrong passcode"};
   if (body.kind !== "clips" && body.kind !== "shots") return {error: "Unknown kind"};
   if (!/^\d{4}-\d{2}-\d{2}$/.test(body.date || "")) return {error: "Bad date"};
-  const coach = slugify(body.coach);
-  if (!coach) return {error: "Add your name first"};
+  const coach = slugify(body.coach) || "team";
   const text = String(body.text || "");
   if (text.length === 0 || text.length > MAX_BYTES) return {error: "File is empty or too big"};
   const lines = text.split(/\r?\n/).filter(function (l) { return l.trim() !== ""; });
