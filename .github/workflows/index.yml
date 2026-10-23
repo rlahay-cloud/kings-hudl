@@ -1,0 +1,22 @@
+name: Update games index
+on:
+  push:
+    branches: [main]
+    paths: ["games/**"]
+permissions:
+  contents: write
+jobs:
+  index:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Write games/index.json
+        run: |
+          cd games
+          ls -1 | grep -E '\.txt$' | grep -v '^README.txt$' | python3 -c "import sys,json; print(json.dumps(sorted(l.strip() for l in sys.stdin)))" > index.json
+      - name: Commit if changed
+        run: |
+          git config user.name "kings-hudl-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add games/index.json
+          git diff --cached --quiet || (git commit -m "Update games index" && git push)

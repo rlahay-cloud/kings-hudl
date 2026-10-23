@@ -40,8 +40,13 @@ function b64(text) {
 function check(body, env) {
   if (!body || typeof body !== "object") return {error: "Bad request"};
   if (!same(body.passcode, env.PASSCODE || "")) return {error: "Wrong passcode"};
-  if (body.kind !== "clips" && body.kind !== "shots") return {error: "Unknown kind"};
+  if (body.kind !== "clips" && body.kind !== "shots" && body.kind !== "video") return {error: "Unknown kind"};
   if (!/^\d{4}-\d{2}-\d{2}$/.test(body.date || "")) return {error: "Bad date"};
+  if (body.kind === "video") {
+    const u = String(body.text || "").trim();
+    if (!/^https:\/\/(www\.|m\.)?(youtube\.com|youtu\.be)\/[^\s]{3,200}$/.test(u)) return {error: "That does not look like a YouTube link"};
+    return {path: "games/video_" + body.date + ".txt", text: u + "\n", coach: "video"};
+  }
   const coach = slugify(body.coach) || "team";
   const text = String(body.text || "");
   if (text.length > MAX_BYTES) return {error: "File is too big"};
@@ -86,7 +91,7 @@ export default {
     const r = check(body, env);
     if (r.error) return reply(env, r.error === "Wrong passcode" ? 401 : 400, {ok: false, error: r.error});
     try {
-      await saveToGitHub(env, r.path, r.text, (body.kind === "clips" ? "Highlights" : "Shots") + " from " + r.coach + " for " + body.date);
+      await saveToGitHub(env, r.path, r.text, (body.kind === "clips" ? "Highlights" : body.kind === "video" ? "Video link" : "Shots") + " from " + r.coach + " for " + body.date);
     } catch (e) {
       const why = String(e && e.message || e);
       let hint = "";

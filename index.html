@@ -261,10 +261,15 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var videosP = getText("videos.txt").then(function (t) {
       t.split(/\r?\n/).forEach(function (l) { var m = /^(\d{4}-\d{2}-\d{2})\s+(\S+)/.exec(l.trim()); if (m) D.videos[m[1]] = m[2]; });
     }).catch(function () {});
+    var videoJobs = [];
     var gamesP = listGameFiles().then(function (names) {
       var sums = names.filter(function (n) { return /^game_summary_\d{4}-\d{2}-\d{2}_\d{6}\.txt$/.test(n); }).sort();
       var evs = names.filter(function (n) { return /^timestamps_\d{4}-\d{2}-\d{2}\.txt$/.test(n); });
       var clipFiles = names.filter(function (n) { return /^clips_\d{4}-\d{2}-\d{2}(_[a-z0-9-]+)?\.txt$/.test(n); });
+      names.filter(function (n) { return /^video_\d{4}-\d{2}-\d{2}\.txt$/.test(n); }).forEach(function (n) {
+        var d = /(\d{4}-\d{2}-\d{2})/.exec(n)[1];
+        videoJobs.push(getText("games/" + n).then(function (t) { var u = (t.split(/\r?\n/)[0] || "").trim(); if (u) D.videos[d] = u; }).catch(function () {}));
+      });
       var shotFiles = names.filter(function (n) { return /^shots_\d{4}-\d{2}-\d{2}(_[a-z0-9-]+)?\.txt$/.test(n); });
       var jobs = sums.map(function (n) {
         var d = /(\d{4}-\d{2}-\d{2})_(\d{6})/.exec(n);
@@ -282,7 +287,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
         var m = /(\d{4}-\d{2}-\d{2})(?:_([a-z0-9-]+))?\.txt$/.exec(n), d = m[1], slug = m[2] || "coach";
         jobs.push(getText("games/" + n).then(function (t) { (D.shots[d] = D.shots[d] || {})[slug] = parseShots(t); }).catch(function () {}));
       });
-      return Promise.all(jobs);
+      return Promise.all(jobs.concat(videoJobs));
     });
     return Promise.all([backupP, videosP, gamesP, cfgP]).then(function () {
       D.games.sort(function (a, b) { return a.id < b.id ? -1 : 1; });
@@ -498,7 +503,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var last = "";
     vp.player = null; vp.id = null; PL = [];
     return "<h2>Highlights<small>" + items.length + (items.length === 1 ? " clip" : " clips") + "</small></h2>" + playCard() + "<div class='card'>" + items.map(function (x) {
-      var url = lget(VK)[x.date] || D.videos[x.date] || "";
+      var url = D.videos[x.date] || lget(VK)[x.date] || "";
       var head = x.game !== last ? '<h3 style="margin:' + (last ? "14px" : "0") + ' 0 4px">' + esc(x.game) + "</h3>" : ""; last = x.game;
       var t = timeBtn(x, !!ytId(url));
       var role = x.assists.indexOf(n) >= 0 ? "Assist" : x.tag;
@@ -638,7 +643,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   // Inline player used by the Video tab, player pages and game pages. Needs #vpCard, #vpBox and #vpNow on the page.
   function embedSrc(id, sec, auto) { return "https://www.youtube.com/embed/" + id + "?start=" + sec + (auto ? "&autoplay=1" : "") + "&playsinline=1&rel=0"; }
   function playItem(it) {
-    var url = lget(VK)[it.date] || D.videos[it.date] || "", id = ytId(url);
+    var url = D.videos[it.date] || lget(VK)[it.date] || "", id = ytId(url);
     $("vpCard").hidden = false;
     var now = it.game + ", " + hms(it.sec) + " " + it.tag;
     if (!id) { $("vpBox").innerHTML = ""; $("vpBox").style.display = "none"; $("vpNow").textContent = now + ". No video link for this game yet. Add it to videos.txt or on the Highlights page."; return; }
@@ -874,7 +879,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   function vClips(dateParam, mode) {
     var dates = dateChoices(), date = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : (D.games.length ? D.games[D.games.length - 1].date : dates[0]);
     if (dates.indexOf(date) < 0) dates.unshift(date);
-    var vk = lget(VK), url = vk[date] || D.videos[date] || "", ev = mode === "events", mark = mode === "mark" || ev;
+    var vk = lget(VK), url = D.videos[date] || vk[date] || "", ev = mode === "events", mark = mode === "mark" || ev;
     var h = mark ? "<h2>Coaches corner</h2>" + coachSubTabs(ev ? "events" : "clips") + coachCard(ev) : "<h2>Highlights</h2>";
     h += '<div class="card"' + (mark ? ' style="margin-top:12px"' : "") + '><div class="fld"><label for="clDate">Game</label>' + dateSelect("clDate", dates, date) + "</div>" +
       (mark ? '<div class="fld"><label for="clUrl">YouTube link for this game</label><input type="url" id="clUrl" placeholder="https://youtu.be/..." value="' + esc(url) + '"></div>' +
@@ -988,6 +993,12 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       var id = ytId(url);
       if (!id) { $("clNote").textContent = "That does not look like a YouTube link."; return; }
       var vk = lget(VK); vk[date] = url; lset(VK, vk);
+      if (mark && D.cfg && D.cfg.submitUrl && D.videos[date] !== url && !needLock()) {
+        fetch(workerUrl(), {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({kind: "video", date: date, passcode: coachCfg().pass, text: url})})
+          .then(function (r) { return r.json().catch(function () { return {ok: false}; }); })
+          .then(function (j) { if (j.ok) { D.videos[date] = url; $("clShare").textContent = "Video link saved for everyone. It can take a minute to show on other phones."; } else $("clShare").textContent = "Video link not saved for everyone: " + (j.error || "unknown problem") + "."; })
+          .catch(function () { $("clShare").textContent = "Video link only saved on this phone (no connection)."; });
+      }
       if (!mark) {
         var mk = function (sec, auto) { return '<iframe title="Game video" src="' + embedSrc(id, sec, auto) + '" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen style="width:100%;height:100%;border:0;border-radius:12px"></iframe>'; };
         $("clVideo").innerHTML = '<div class="ytbox" id="ytp">' + mk(0, false) + "</div>";
@@ -1022,7 +1033,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     });
     if (mark) return;
     // Everyone's highlights, with filters (watch page)
-    var everyone = allClips(date), url0 = (lget(VK)[date] || D.videos[date] || "");
+    var everyone = allClips(date), url0 = (D.videos[date] || lget(VK)[date] || "");
     function fillSelect(id, label, values) {
       var cur0 = $(id).value;
       $(id).innerHTML = '<option value="">' + label + "</option>" + values.map(function (v) { return '<option>' + esc(v) + "</option>"; }).join("");
