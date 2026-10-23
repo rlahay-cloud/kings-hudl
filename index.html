@@ -114,7 +114,6 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
 .stickybar { position: sticky; bottom: 0; z-index: 3; justify-content: center; margin: 12px -14px 0; padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); background: var(--panel); border-top: 1px solid var(--line); }
 .tagbtns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .tagbtns .btn { min-height: 72px; font-size: 24px; }
-.tagbtns .btn:last-child { grid-column: 1 / -1; }
 .tagbtns .btn:first-child { grid-column: 1 / -1; background: var(--good); color: #02170d; }
 .steps { margin: 6px 0 0; padding-left: 20px; } .steps li { margin: 4px 0; }
 @media (max-width: 520px) { .score .s { font-size: 52px; } th, td { padding: 8px 6px; } }
@@ -133,7 +132,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
 (function () {
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
-  var D = {games: [], roster: {}, home: "", videos: {}, events: {}, clips: {}, shots: {}, cfg: {}, sample: false, error: ""};
+  var D = {games: [], roster: {}, goalieNums: {}, home: "", videos: {}, events: {}, clips: {}, shots: {}, cfg: {}, sample: false, error: ""};
 
   // ---------- helpers ----------
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return {"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]; }); }
@@ -195,6 +194,19 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     g.result = g.hs > g.as ? "W" : g.hs < g.as ? "L" : "T";
     return g.home ? g : null;
   }
+  // Streamn's season_backup.txt has the roster and goalies with names: number:...=Name
+  function parseBackup(text) {
+    var out = {players: [], goalies: []};
+    text.split(/\r?\n/).forEach(function (line) {
+      var m = /^(roster|goalies)=(.*)$/.exec(line.trim()); if (!m) return;
+      var body = m[1] === "goalies" ? m[2].split(";")[0] : m[2];
+      body.split(",").forEach(function (item) {
+        var q = /^(\d+):[^=]*(?:=(.*))?$/.exec(item.trim()); if (!q) return;
+        (m[1] === "roster" ? out.players : out.goalies).push({n: +q[1], name: (q[2] || "").trim()});
+      });
+    });
+    return out;
+  }
   function parseEvents(text) {
     var out = [];
     text.split(/\r?\n/).forEach(function (line) {
@@ -231,6 +243,15 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       (r.roster || []).forEach(function (p) { D.roster[p.n] = p.name || ""; });
       (r.goalies || []).forEach(function (p) { D.roster[p.n] = p.name || ""; });
     }).catch(function () {});
+    var backupP = rosterP.then(function () { return getText("season_backup.txt"); }).then(function (t) {
+      var b = parseBackup(t);
+      if (!b.players.length && !b.goalies.length) return;
+      // Streamn's roster is the source of truth. roster.json only fills in missing names.
+      var old = D.roster, fresh = {};
+      b.players.forEach(function (p) { fresh[p.n] = p.name || old[p.n] || ""; });
+      b.goalies.forEach(function (g) { D.goalieNums[g.n] = true; fresh[g.n] = g.name || old[g.n] || ""; });
+      D.roster = fresh;
+    }).catch(function () {});
     var cfgP = getText("config.json").then(JSON.parse).then(function (c) { D.cfg = c || {}; }).catch(function () { D.cfg = {}; });
     var videosP = getText("videos.txt").then(function (t) {
       t.split(/\r?\n/).forEach(function (l) { var m = /^(\d{4}-\d{2}-\d{2})\s+(\S+)/.exec(l.trim()); if (m) D.videos[m[1]] = m[2]; });
@@ -258,7 +279,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       });
       return Promise.all(jobs);
     });
-    return Promise.all([rosterP, videosP, gamesP, cfgP]).then(function () {
+    return Promise.all([backupP, videosP, gamesP, cfgP]).then(function () {
       D.games.sort(function (a, b) { return a.id < b.id ? -1 : 1; });
     });
   }
@@ -555,7 +576,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   function hms(sec) { return Math.floor(sec / 3600) + ":" + ("0" + Math.floor(sec % 3600 / 60)).slice(-2) + ":" + ("0" + sec % 60).slice(-2); }
   function parseHms(t) { var m = /^(\d+):(\d{2}):(\d{2})$/.exec(String(t).trim()); return m ? (+m[1]) * 3600 + (+m[2]) * 60 + (+m[3]) : null; }
   var TAGS = ["Highlight", "Goal", "Save", "Chance", "Good play", "To fix", "Breakout", "Blocked shot", "Review", "Other"];
-  var TAP_TAGS = ["Goal", "Save", "Chance", "Good play", "To fix", "Breakout", "Blocked shot", "Review"];
+  var TAP_TAGS = ["Goal", "Save", "Chance", "Good play", "Breakout", "Blocked shot", "Review"];
 
   function parseClips(text) {
     var out = [];
@@ -815,6 +836,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   function rosterNums() {
     var set = {}; Object.keys(D.roster).forEach(function (k) { set[k] = 1; });
     D.games.forEach(function (g) { g.players.forEach(function (p) { set[p.n] = 1; }); });
+    Object.keys(D.goalieNums).forEach(function (k) { delete set[k]; });
     return Object.keys(set).map(Number).sort(function (a, b) { return a - b; });
   }
   function shotTabs(sub) {
