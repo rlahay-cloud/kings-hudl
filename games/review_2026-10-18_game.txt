@@ -3,7 +3,7 @@
 0:10:00|For: Shot on goal|86|0.766,0.656,1,f
 0:10:21|Faceoff: OZ Loss|97|,,1,f
 0:11:40|Against: Shot on goal|33|0.092,0.447,1,f
-0:13:35|Penalty|17|,,1,f
+0:13:35|Penalty|17|,,1,f,s855,e997|Penalty Kill|Tripping
 0:13:36|Against: Shot on goal|33|0.205,0.494,1,f
 0:13:38|Against: Shot on goal|33|0.081,0.432,1,f
 0:14:13|Penalty kill||,,1,f
@@ -74,6 +74,6 @@
 0:53:40|Faceoff: DZ Loss|17|,,3,f
 0:53:44|Against: Shot on goal|33|0.345,0.752,3,f
 0:54:05|Faceoff: DZ Win|17|,,3,f
-0:55:19|Against: Shot on goal||0.075,0.263,3,f
+0:55:19|Against: Shot on goal|33|0.075,0.263,3,f
 0:55:27|Against: Shot on goal|33|0.339,0.833,3,f
 0:56:04|Faceoff: NZ Loss|97|,,3,f
