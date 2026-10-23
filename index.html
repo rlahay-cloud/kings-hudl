@@ -1269,10 +1269,14 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var goalies = all.filter(function (n) { return isG[n]; }), skaters = all.filter(function (n) { return !isG[n]; });
     c.players.forEach(function (n) { if (all.indexOf(n) < 0) skaters.push(n); });
     var a = c.assists || [], inP = function (n) { return c.players.indexOf(n) >= 0; };
+    var g0 = rvGroup(c.tag);
+    if (!all.length && g0 && g0.k !== "sp" && c.tag !== "Away Penalty" && c.tag !== "Against: Missed shot") return '<input type="text" class="pl" data-f="players" placeholder="Jersey numbers, like 4 10" value="' + esc(c.players.join(" ")) + '" aria-label="Players">';
     if (c.tag === "For: Goal") return chipRow("Scored by", skaters, c, "scorer", function (n) { return inP(n) && a.indexOf(n) < 0; }) + chipRow("Assists (up to 2)", skaters, c, "assist", function (n) { return a.indexOf(n) >= 0; });
     var g = rvGroup(c.tag); if (!g || g.k === "sp") return "";
     if (g.k === "pen") return c.tag === "Penalty" ? chipRow("Penalty on", skaters, c, "any", inP) : "";
-    if (g.k === "ag") return goalies.length ? chipRow("Goalie", goalies, c, "any", inP) : "";
+    if (c.tag === "Against: Blocked shot") return chipRow("Blocked by", skaters, c, "any", inP);
+    if (c.tag === "Against: Missed shot") return "";
+    if (g.k === "ag") return chipRow("Goalie", goalies.length ? goalies : all, c, "any", inP);
     return chipRow(g.k === "for" ? "Shooter" : g.k === "fo" ? "Taker" : "Player", skaters, c, "any", inP);
   }
   function applyPick(c, role, n) {
@@ -1491,7 +1495,11 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       var tr = e.target.closest(".tltrack"); if (!tr || !cur) return;
       var r = tr.getBoundingClientRect(); cur.seek(Math.max(0, (e.clientX - r.left) / r.width * dur()));
     });
-    $("rvSel").addEventListener("input", function (e) { if (e.target.id === "rvLabel" && st.sel) { st.sel.label = e.target.value; persist(); drawList(); } });
+    $("rvSel").addEventListener("input", function (e) {
+      if (!st.sel) return;
+      if (e.target.id === "rvLabel") { st.sel.label = e.target.value; persist(); drawList(); }
+      else if (e.target.getAttribute("data-f") === "players") { st.sel.players = (e.target.value.match(/\d+/g) || []).map(Number); persist(); drawList(); }
+    });
     $("rvSel").addEventListener("click", function (e) {
       var b = e.target.closest("button"); if (!b) return; var c = st.sel; if (!c) return;
       var act = b.getAttribute("data-act");
