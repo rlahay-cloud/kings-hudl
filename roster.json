@@ -62,5 +62,15 @@
    "n": 97,
    "name": "Everett Lalonde"
   }
+ ],
+ "goalies": [
+  {
+   "n": 2,
+   "name": "Matthew Petr"
+  },
+  {
+   "n": 33,
+   "name": "Archer LaHay"
+  }
  ]
 }
