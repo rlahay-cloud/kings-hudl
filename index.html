@@ -520,18 +520,30 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   function vGames() { return "<h2>All games</h2>" + gameTable(D.games.slice().reverse()); }
 
   var sortKey = "p", sortDir = -1, posFilter = "";
+  // Extra numbers shown when the list is filtered to one position (from video review marks).
+  function posExtras(n, grp) {
+    var T = playerVideoStats(n), has = T.games.length > 0, v = function (x) { return has ? x : "-"; };
+    var pct = function (a, b) { return has && b ? Math.round(a * 100 / b) + "%" : "-"; };
+    var en = RV_MOVES.reduce(function (s0, m) { return s0 + T.en[m]; }, 0), ex = RV_MOVES.reduce(function (s0, m) { return s0 + T.ex[m]; }, 0);
+    var ctlEn = pct(T.en.Carry + T.en.Pass, en), ctlEx = pct(T.ex.Carry + T.ex.Pass, ex);
+    if (grp === "C") return [["FO W-L", v(T.fow + "-" + T.fol)], ["FO%", pct(T.fow, T.fow + T.fol)], ["Att", v(T.att)], ["Ctrl En%", ctlEn], ["Pen", v(T.pen)], ["GF on", v(T.gf)], ["GA on", v(T.ga)]];
+    if (grp === "W") return [["Att", v(T.att)], ["Miss", v(T.miss)], ["PP G", v(T.ppg)], ["SH G", v(T.shg)], ["Ctrl En%", ctlEn], ["Pen", v(T.pen)], ["GF on", v(T.gf)], ["GA on", v(T.ga)]];
+    return [["Blk for us", v(T.blocks)], ["Ctrl Ex%", ctlEx], ["Att", v(T.att)], ["Pen", v(T.pen)], ["GF on", v(T.gf)], ["GA on", v(T.ga)]];
+  }
   function vPlayers() {
     var P = aggPlayers();
     var cols = [["gp", "GP"], ["g", "G"], ["a", "A"], ["p", "P"], ["ppg", "P/GP"], ["pm", "+/-"], ["sog", "SOG"], ["shp", "S%"], ["pim", "PIM"]];
     if (posFilter) P = P.filter(function (p) { return posGroup(D.pos[p.n]) === posFilter; });
+    var EX = {}; if (posFilter) { P.forEach(function (p) { EX[p.n] = posExtras(p.n, posFilter); }); }
+    var exHead = P.length && posFilter ? EX[P[0].n].map(function (x) { return "<th>" + x[0] + "</th>"; }).join("") : "";
     P.sort(function (a, b) { var x = a[sortKey] === null ? -1 : a[sortKey], y = b[sortKey] === null ? -1 : b[sortKey]; return (y - x) * -sortDir || a.n - b.n; });
     var h = "<h2>Skaters<small>tap a heading to sort</small></h2>" + (Object.keys(D.pos).length ? '<div class="seg" id="posChips" role="group" aria-label="Position">' + [["", "All"], ["C", "Centres"], ["W", "Wings"], ["D", "Defence"]].map(function (x) { return '<button data-pos="' + x[0] + '" aria-pressed="' + (posFilter === x[0]) + '">' + x[1] + "</button>"; }).join("") + "</div>" : "") + "<div class='card scroll'><table><thead><tr><th>Player</th><th>Pos</th>" +
-      cols.map(function (c) { return '<th class="sort' + (c[0] === sortKey ? " on" : "") + '" data-k="' + c[0] + '">' + c[1] + "</th>"; }).join("") + "</tr></thead><tbody>" +
+      cols.map(function (c) { return '<th class="sort' + (c[0] === sortKey ? " on" : "") + '" data-k="' + c[0] + '">' + c[1] + "</th>"; }).join("") + exHead + "</tr></thead><tbody>" +
       P.map(function (p) {
-        return '<tr class="click" onclick="location.hash=\'#/player/' + p.n + '\'"><td>' + esc(label(p.n)) + "</td><td>" + esc(D.pos[p.n] || "") + "</td><td>" + p.gp + "</td><td>" + p.g + "</td><td>" + p.a + "</td><td><b>" + p.p + "</b></td><td>" + p.ppg.toFixed(2) + '</td><td class="' + pmCls(p.pm) + '">' + pmText(p.pm) + "</td><td>" + p.sog + "</td><td>" + (p.shp === null ? "-" : Math.round(p.shp * 100) + "%") + "</td><td>" + p.pim + "</td></tr>";
+        return '<tr class="click" onclick="location.hash=\'#/player/' + p.n + '\'"><td>' + esc(label(p.n)) + "</td><td>" + esc(D.pos[p.n] || "") + "</td><td>" + p.gp + "</td><td>" + p.g + "</td><td>" + p.a + "</td><td><b>" + p.p + "</b></td><td>" + p.ppg.toFixed(2) + '</td><td class="' + pmCls(p.pm) + '">' + pmText(p.pm) + "</td><td>" + p.sog + "</td><td>" + (p.shp === null ? "-" : Math.round(p.shp * 100) + "%") + "</td><td>" + p.pim + "</td>" + (EX[p.n] || []).map(function (x) { return "<td>" + x[1] + "</td>"; }).join("") + "</tr>";
       }).join("") + "</tbody></table></div>";
     h += "<h2>Player cards</h2><div class='pcards'>" + P.map(function (p) {
-      return '<a class="pcard" href="#/player/' + p.n + '"><div class="top">' + avatar(p.n) + '<div class="n">#' + p.n + '</div></div><div class="nm">' + esc(pname(p.n) || "Player") + (D.pos[p.n] ? ' <span class="mut">' + esc(D.pos[p.n]) + "</span>" : "") + '</div><div class="st"><span><b>' + p.g + "</b>G</span><span><b>" + p.a + "</b>A</span><span><b>" + p.p + "</b>P</span></div></a>";
+      return '<a class="pcard" href="#/player/' + p.n + '"><div class="top">' + avatar(p.n) + '<div class="n">#' + p.n + '</div></div><div class="nm">' + esc(pname(p.n) || "Player") + (D.pos[p.n] ? ' <span class="mut">' + esc(D.pos[p.n]) + "</span>" : "") + '</div><div class="st"><span><b>' + p.g + "</b>G</span><span><b>" + p.a + "</b>A</span><span><b>" + p.p + "</b>P</span>" + (EX[p.n] || []).map(function (x) { return "<span><b>" + x[1] + "</b>" + esc(x[0]) + "</span>"; }).join("") + "</div></a>";
     }).join("") + "</div>";
     var G = aggGoalies();
     if (G.length) {
@@ -738,24 +750,24 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
         var gx = g.goals[gi++];
         lb = (gx.home ? "Goal: " + (gx.scorer !== null ? label(gx.scorer) : g.home) : "Goal against: " + g.away) + (gx.home && gx.assists.length ? " (from " + gx.assists.map(label).join(", ") + ")" : "");
       }
-      rows.push({sec: e.sec, tag: lb, html: "", goal: /^Goal|^Try/i.test(e.label), pen: /^Penalty/i.test(e.label)});
+      rows.push({sec: Math.max(0, e.sec - LEAD), end: e.sec + TAIL, mark: e.sec, tag: lb, html: "", goal: /^Goal|^Try/i.test(e.label), pen: /^Penalty/i.test(e.label)});
     });
-    clips.forEach(function (c) { rows.push({sec: c.sec, end: c.end, tag: c.tag, html: " " + esc(c.label) + whoHtml(c) + coachSpan(c), goal: c.tag === "Goal", pen: /Penalty/.test(c.tag)}); });
+    clips.forEach(function (c) { rows.push({sec: Math.max(0, c.sec - LEAD), end: c.sec + TAIL, mark: c.sec, tag: c.tag, html: " " + esc(c.label) + whoHtml(c) + coachSpan(c), goal: c.tag === "Goal", pen: /Penalty/.test(c.tag)}); });
     var have = rows.filter(function (r) { return r.goal; });
     allReview(g.date).filter(function (c) { return c.tag === "For: Goal"; }).forEach(function (c) {
-      if (have.some(function (r) { return Math.abs((r.end ? r.end - 2 : r.sec + 8) - c.sec) <= 25 || Math.abs(r.sec - c.sec) <= 25; })) return;
-      rows.push({sec: Math.max(0, c.sec - 8), end: c.sec + 2, tag: "Goal", html: whoHtml(c) + ' <span class="mut">(automatic)</span>', goal: true});
+      if (have.some(function (r) { return Math.abs(r.mark - c.sec) <= 25; })) return;
+      rows.push({sec: Math.max(0, c.sec - LEAD), end: c.sec + TAIL, mark: c.sec, tag: "Goal", html: whoHtml(c) + ' <span class="mut">(automatic)</span>', goal: true});
     });
     allReview(g.date).filter(function (c) { return (c.tag === "Penalty" || c.tag === "Away Penalty") && c.until != null; }).forEach(function (c) {
-      if (rows.some(function (r) { return r.pen && (r.tag === c.tag || r.tag === "Penalty") && Math.abs(r.sec - c.sec) <= 25 && r.end; })) return;
-      rows.push({sec: Math.max(0, c.sec - 8), end: c.until + 2, tag: c.tag, html: ' <span class="mut">' + penSpan(c) + "</span>", pen: true});
+      if (rows.some(function (r) { return r.pen && (r.tag === c.tag || r.tag === "Penalty") && Math.abs(r.mark - c.sec) <= 25 && r.end; })) return;
+      rows.push({sec: Math.max(0, c.sec - LEAD), end: c.until + TAIL, mark: c.sec, tag: c.tag, html: ' <span class="mut">' + penSpan(c) + "</span>", pen: true});
     });
     if (!rows.length && !url) return "";
     rows.sort(function (a, b) { return a.sec - b.sec; });
     vp.player = null; vp.id = null; PL = [];
-    var h = "<h2>Highlights<small><a href='#/clips/" + g.date + "'>filter and watch</a></small></h2>";
+    var h = "<h2>Highlights<small><a href='#/video/" + g.date + "'>filter and watch</a></small></h2>";
     h += playCard() + "<div class='card'>";
-    if (!url) h += '<p class="note">Add this game\'s YouTube link in videos.txt or on the Highlights page to make these times clickable.</p>';
+    if (!url) h += '<p class="note">Add this game\'s YouTube link in videos.txt or in Coaches corner to make these times clickable.</p>';
     if (!rows.length) h += '<p class="note">No highlights yet. Our goals show up here by themselves once they are marked in Coaches corner.</p>';
     h += rows.map(function (r) {
       var tl = timeBtn({date: g.date, game: gl, sec: r.sec, end: r.end, tag: r.tag}, !!ytId(url));
@@ -783,19 +795,23 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     return h + "</div>";
   }
   // Every coach highlight from every game.
+  // Every marked moment plays from 8 seconds before it to 2 seconds after it (about 10 seconds in all).
+  var LEAD = 8, TAIL = 2;
+  function leadWin(m) { return {sec: Math.max(0, m - LEAD), end: m + TAIL, mark: m}; }
+  var HL_TAGS = ["Goal", "Goal against", "Penalty", "Away Penalty"];
   function allVideoItems() {
     var items = [];
     D.games.forEach(function (g) {
       var base = {date: g.date, game: fmtDate(g.date) + " vs " + g.away};
       allClips(g.date).forEach(function (c) {
-        items.push({date: g.date, game: base.game, sec: c.sec, tag: c.tag, label: c.label || "", players: c.players || [], assists: c.assists || [], end: c.end || 0, coach: c.coach, lists: c.lists || []});
+        var w = leadWin(c.sec); items.push({date: g.date, game: base.game, sec: w.sec, end: w.end, mark: w.mark, tag: c.tag, label: c.label || "", players: c.players || [], assists: c.assists || [], coach: c.coach, lists: c.lists || []});
       });
     });
     // Highlights for dates with no game summary yet
     var known = {}; D.games.forEach(function (g) { known[g.date] = 1; });
     dateChoices().forEach(function (d) {
       if (known[d]) return;
-      allClips(d).forEach(function (c) { items.push({date: d, game: fmtDate(d), sec: c.sec, tag: c.tag, label: c.label || "", players: c.players || [], assists: c.assists || [], end: c.end || 0, coach: c.coach, lists: c.lists || []}); });
+      allClips(d).forEach(function (c) { var w = leadWin(c.sec); items.push({date: d, game: fmtDate(d), sec: w.sec, end: w.end, mark: w.mark, tag: c.tag, label: c.label || "", players: c.players || [], assists: c.assists || [], coach: c.coach, lists: c.lists || []}); });
     });
     // Goals and penalties marked in the review become clips too, unless an older game event already covers them
     var dseen = {}; D.games.forEach(function (g) { dseen[g.date] = g; });
@@ -804,14 +820,34 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       var gm = dseen[d], label = fmtDate(d) + (gm ? " vs " + gm.away : "");
       allReview(d).forEach(function (c) {
         var tag = RV_DERIVE[c.tag];
-        if (!tag) { items.push({date: d, game: label, sec: Math.max(0, c.sec - 3), end: c.sec + 3, tag: c.tag, disp: geName(c.tag), players: c.players || [], assists: c.assists || [], label: "", coach: c.coach || GAME_LABEL, lists: c.lists || [], rvAll: true}); return; }
-        var dup = items.filter(function (o) { return o.date === d && o.tag === tag && Math.abs((o.end ? o.end - 2 : o.sec + 8) - c.sec) <= 25; })[0];
+        if (!tag) { items.push({date: d, game: label, sec: Math.max(0, c.sec - LEAD), end: c.sec + TAIL, mark: c.sec, tag: c.tag, disp: geName(c.tag), players: c.players || [], assists: c.assists || [], label: "", coach: c.coach || GAME_LABEL, lists: c.lists || [], rvAll: true}); return; }
+        var dup = items.filter(function (o) { return o.date === d && o.tag === tag && Math.abs(o.mark - c.sec) <= 25; })[0];
         if (dup) { dup.lists = (dup.lists || []).concat((c.lists || []).filter(function (n) { return (dup.lists || []).indexOf(n) < 0; })); return; }
         var sit = /Goal/.test(c.tag) ? goalSit(allReview(d), c) : "";
         var isPen = tag === "Penalty" || tag === "Away Penalty";
-        items.push({date: d, game: label, sec: Math.max(0, c.sec - 8), end: isPen && c.until != null ? c.until + 2 : c.sec + 2, tag: tag, label: [c.infr || "", sit === "PP" ? "Power play" : sit === "SH" ? "Short handed" : "", isPen && c.until != null ? penSpan(c) : ""].filter(Boolean).join(", "), players: c.players || [], assists: c.assists || [], coach: GAME_LABEL, lists: c.lists || []});
+        items.push({date: d, game: label, sec: Math.max(0, c.sec - LEAD), end: isPen && c.until != null ? c.until + TAIL : c.sec + TAIL, mark: c.sec, tag: tag, label: [c.infr || "", sit === "PP" ? "Power play" : sit === "SH" ? "Short handed" : "", isPen && c.until != null ? penSpan(c) : ""].filter(Boolean).join(", "), players: c.players || [], assists: c.assists || [], coach: GAME_LABEL, lists: c.lists || []});
       });
     });
+    // Streamn's own goal and penalty times fill in anything the review and clips do not already cover.
+    D.games.forEach(function (g) {
+      var ev = D.events[g.date] || []; if (!ev.length) return;
+      var isG = function (e) { return /^Goal|^Try/i.test(e.label); };
+      var match = ev.filter(isG).length === g.goals.length, gi = 0, gl = fmtDate(g.date) + " vs " + g.away;
+      ev.forEach(function (e) {
+        var g1 = isG(e), p1 = /^Penalty/i.test(e.label); if (!g1 && !p1) return;
+        var tag = "Penalty", pl = [], as = [];
+        if (g1) {
+          if (match) { var gx = g.goals[gi++]; tag = gx.home ? "Goal" : "Goal against"; if (gx.home) { pl = gx.scorer !== null && gx.scorer !== undefined ? [gx.scorer] : []; as = gx.assists || []; } }
+          else tag = e.label.indexOf(g.away) >= 0 ? "Goal against" : "Goal";
+        }
+        var covered = items.some(function (o) { return o.date === g.date && (g1 ? /^Goal/.test(o.tag) : /Penalty/.test(o.tag)) && Math.abs(o.mark - e.sec) <= 25; });
+        if (covered) return;
+        var w = leadWin(e.sec);
+        items.push({date: g.date, game: gl, sec: w.sec, end: w.end, mark: w.mark, tag: tag, label: "", players: pl, assists: as, coach: GAME_LABEL, lists: []});
+      });
+    });
+    // Every goal and penalty is in the Highlights playlist automatically.
+    items.forEach(function (x) { if (HL_TAGS.indexOf(x.tag) >= 0 && (x.lists || []).indexOf("Highlights") < 0) x.lists = (x.lists || []).concat(["Highlights"]); });
     return items.sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : a.sec - b.sec; });
   }
   var VID_TAGS = ["Goal", "Goal against", "Penalty", "Away Penalty", "Save", "Chance", "Good play", "Breakout", "Blocked shot", "Review", "To fix", "Highlight", "Other"];
@@ -859,7 +895,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var url = D.videos[it.date] || lget(VK)[it.date] || "", id = ytId(url);
     var first = $("vpCard").hidden; $("vpCard").hidden = false;
     var now = it.game + ", " + hms(it.sec) + " " + (it.disp || it.tag);
-    if (!id) { $("vpBox").innerHTML = ""; $("vpBox").style.display = "none"; $("vpNow").textContent = now + ". No video link for this game yet. Add it to videos.txt or on the Highlights page."; return; }
+    if (!id) { $("vpBox").innerHTML = ""; $("vpBox").style.display = "none"; $("vpNow").textContent = now + ". No video link for this game yet. Add it to videos.txt or in Coaches corner."; return; }
     $("vpBox").style.display = "";
     ytPlay($("vpBox"), id, it.sec, clipEnd(it)); teleAttach($("vpBox"), it);
     $("vpNow").innerHTML = esc(now) + ' &middot; <a href="' + esc(ytLink(url, it.sec)) + '" target="_blank" rel="noopener">Open in YouTube</a>';
@@ -892,6 +928,8 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       }).join("") : '<p class="note">Nothing matches these filters.</p>';
     }
     ["vfGame", "vfTag", "vfCoach", "vfPl", "vfList2"].forEach(function (id) { $(id).addEventListener("change", render); });
+    var pg = location.hash.split("/")[2] || "";
+    if (pg && $("vfGame").querySelector('option[value="' + pg + '"]')) $("vfGame").value = pg;
     render();
     $("vfList").addEventListener("click", function (e) {
       var b = e.target.closest("button[data-i]"); if (b) playItem(items[+b.getAttribute("data-i")]);
@@ -2135,10 +2173,10 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   }
   // Pinch, wheel or button zoom and drag to pan for an SVG, by moving its viewBox.
   function attachZoom(svg, W, H) {
-    var vb = {x: 0, y: 0, w: W, h: H}, ptrs = {}, last = null;
+    var bx = 0, by = 0, vb = {x: 0, y: 0, w: W, h: H}, ptrs = {}, last = null;
     function apply() {
       vb.w = Math.max(W / 14, Math.min(W, vb.w)); vb.h = vb.w * H / W;
-      vb.x = Math.max(0, Math.min(W - vb.w, vb.x)); vb.y = Math.max(0, Math.min(H - vb.h, vb.y));
+      vb.x = Math.max(bx, Math.min(bx + W - vb.w, vb.x)); vb.y = Math.max(by, Math.min(by + H - vb.h, vb.y));
       svg.setAttribute("viewBox", vb.x + " " + vb.y + " " + vb.w + " " + vb.h); svg.style.touchAction = vb.w < W - .01 ? "none" : "pan-y";
     }
     function at(f, cx, cy) { var nw = Math.max(W / 14, Math.min(W, vb.w / f)), k = nw / vb.w; vb.x = cx - (cx - vb.x) * k; vb.y = cy - (cy - vb.y) * k; vb.w = nw; apply(); }
@@ -2161,7 +2199,8 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     });
     function up(e) { delete ptrs[e.pointerId]; }
     svg.addEventListener("pointerup", up); svg.addEventListener("pointercancel", up);
-    return {zoom: function (f) { at(f, vb.x + vb.w / 2, vb.y + vb.h / 2); }, reset: function () { vb = {x: 0, y: 0, w: W, h: H}; apply(); }};
+    return {zoom: function (f) { at(f, vb.x + vb.w / 2, vb.y + vb.h / 2); }, reset: function () { vb = {x: bx, y: by, w: W, h: H}; apply(); },
+      base: function (x, y, w, h) { bx = x; by = y; W = w; H = h; vb = {x: bx, y: by, w: W, h: H}; apply(); }};
   }
   function bindShots(sub) {
     if (sub === "mark") return bindMark();
@@ -2181,9 +2220,15 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       });
       return out;
     }
-    var data = all();
+    var data = all(), lastT = null;
     function draw() {
       var g = $("mpGame").value, pl = $("mpPl").value, r = $("mpRes").value, t = $("mpTeam").value, co = $("mpCoach").value, heat = $("mpHeat").checked;
+      if (t !== lastT) {
+        lastT = t;
+        // One team picked: show only the half of the rink where that team shoots, as big as the page allows.
+        if (t === "H") zm.base(100, 0, 100, 85); else if (t === "A") zm.base(0, 0, 100, 85); else zm.base(0, 0, 200, 85);
+        $("rinkF").parentNode.style.maxWidth = t ? "780px" : "";
+      }
       var f = data.filter(function (s0) { return (!g || s0.d === g) && (!pl || s0.n === +pl) && (!r || s0.r === r) && (!t || s0.t === t) && (!co || s0.c === co); });
       var h = '<defs><radialGradient id="heat"><stop offset="0" stop-color="#8a4dff" stop-opacity=".42"/><stop offset="1" stop-color="#8a4dff" stop-opacity="0"/></radialGradient></defs>', m = "";
       f.forEach(function (s0) {
@@ -2254,7 +2299,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   }
 
   // ---------- router ----------
-  var tabs = [["", "Overview"], ["players", "Players"], ["games", "Games"], ["clips", "Highlights"], ["shots", "Shot map"], ["video", "Video"], ["coach", "Coaches corner"]];
+  var tabs = [["", "Overview"], ["players", "Players"], ["games", "Games"], ["shots", "Shot map"], ["video", "Video"], ["coach", "Coaches corner"]];
   // Video review beats the scoreboard, but only for what was actually marked. Starts from Streamn's numbers every time.
   function applyReview(g) {
     if (!g._o) g._o = JSON.parse(JSON.stringify({hs: g.hs, as: g.as, hShots: g.hShots, aShots: g.aShots, goals: g.goals, players: g.players, goalies: g.goalies, dnp: g.dnp, fo: g.fo}));
@@ -2349,9 +2394,9 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     document.title = "Kings HUDL";
     var h = D.sample ? '<div class="banner">This is sample data to show how the site looks. It is not real.</div>' : "";
     if (base === "shots" && parts[1] === "mark") { location.replace("#/coach"); return; }
+    if (base === "clips") { location.replace("#/video" + (parts[1] ? "/" + parts[1] : "")); return; }
     if (base === "coach" && needLock()) h += lockView();
     else if (base === "coach") h += parts[1] === "shots" ? vShots("mark") : parts[1] === "players" ? vCoachPlayers() : parts[1] === "clip" ? vClipEditor(parts[2], +parts[3], +parts[4]) : (parts[1] === "analysis" || /^\d{4}-\d{2}-\d{2}$/.test(parts[1] || "")) ? vReview(parts.filter(function (x) { return /^\d{4}-\d{2}-\d{2}$/.test(x); })[0]) : vCoachClips();
-    else if (base === "clips") h += vClips(parts[1], "watch");
     else if (base === "shots") h += vShots();
     else if (!D.games.length) h += vEmpty();
     else if (base === "players") h += vPlayers();
@@ -2364,7 +2409,6 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     $("app").innerHTML = h;
     if (base === "coach" && needLock()) bindLock();
     else if (base === "coach") { if (parts[1] === "shots") bindShots("mark"); else if (parts[1] === "players") bindPlayersEditor(); else if (parts[1] === "clip") bindClipEditor(parts[2], +parts[3], +parts[4]); else if (parts[1] === "analysis" || /^\d{4}-\d{2}-\d{2}$/.test(parts[1] || "")) bindReview(); else bindCoachClips(); }
-    if (base === "clips") bindClips(parts[1], "watch");
     if (base === "video") bindVideo();
     if (base === "player") bindPlayerClips(+parts[1]);
     if (base === "game") bindGameEvents();

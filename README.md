@@ -4,7 +4,7 @@ A season stats website for the team, called Kings HUDL. Open it on a phone or co
 
 ## Coaches
 
-Coaches open **Coaches corner**, type their name and the coach passcode once, load the game video, and tap the buttons (Goal, Save, Chance, Good play, Breakout, Blocked shot, Review). Share to Kings HUDL sends their file into the games folder, one file per coach. The Highlights tab (view only) shows everyone's highlights together and can filter by coach and type. Setup for the sending helper is in `worker/SETUP.md`.
+Coaches open **Coaches corner**, type their name and the coach passcode once, load the game video, and tap the buttons (Goal, Save, Chance, Good play, Breakout, Blocked shot, Review). Share to Kings HUDL sends their file into the games folder, one file per coach. The Video tab shows everyone's clips together and can filter by game, coach, type, player and playlist. Setup for the sending helper is in `worker/SETUP.md`.
 
 ## After each game
 
@@ -36,7 +36,7 @@ Open **Coaches corner**, then **Mark shots**. Tap where the shot was taken, pick
 
 ## Video tab
 
-The Video tab collects every clip from every game: coach highlights plus Streamn's goals and penalties (from the timestamps files). Filter by game, type, who marked it, or player. Tap a time to watch it. A game needs its YouTube link in `videos.txt`.
+The Video tab collects every clip from every game: coach highlights plus Streamn's goals and penalties (from the timestamps files). Every marked moment plays from 8 seconds before it to 2 seconds after it. Every goal and penalty is added to a playlist called Highlights automatically. Filter by game, type, who marked it, or player. Tap a time to watch it. A game needs its YouTube link in `videos.txt`.
 
 ## Roster from Streamn
 
