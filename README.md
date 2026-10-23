@@ -4,7 +4,7 @@ A season stats website for the team, called Kings HUDL. Open it on a phone or co
 
 ## Coaches
 
-Coaches open **Highlights**, type their name and the coach passcode once, load the game video, and tap the buttons (Goal, Save, Chance, Good play, Breakout, Blocked shot, Review). Share to Kings HUDL sends their file into the games folder, one file per coach. The Highlights page shows everyone's highlights together and can filter by coach and type. Setup for the sending helper is in `worker/SETUP.md`.
+Coaches open **Coaches corner**, type their name and the coach passcode once, load the game video, and tap the buttons (Goal, Save, Chance, Good play, Breakout, Blocked shot, Review). Share to Kings HUDL sends their file into the games folder, one file per coach. The Highlights tab (view only) shows everyone's highlights together and can filter by coach and type. Setup for the sending helper is in `worker/SETUP.md`.
 
 ## After each game
 
@@ -28,11 +28,11 @@ Put one photo per player in the **photos** folder, named by jersey number: `4.jp
 
 ## Highlights
 
-Open the **Highlights** tab, pick the game, load the YouTube link (or open a video file from the device), and tap **Highlight** whenever something happens. Label it, tag it and add player numbers afterwards. Then Save file and upload it to the games folder as `clips_2026-10-24.txt`. The site does not store video.
+Open **Coaches corner**, pick the game, load the YouTube link (or open a video file from the device), and tap **Highlight** whenever something happens. Label it, tag it and add player numbers afterwards. Then Save file and upload it to the games folder as `clips_2026-10-24.txt`. The site does not store video.
 
 ## Shot map
 
-Open **Shot map**, then **Mark shots**. Tap where the shot was taken, pick the player, then tap Goal or Saved. Mark every shot as if attacking the net on the right. Save the file and upload it as `shots_2026-10-24.txt`. The Shot map tab then shows dots and heat by game, player and result.
+Open **Coaches corner**, then **Mark shots**. Tap where the shot was taken, pick the player, then tap Goal or Saved. Mark every shot as if attacking the net on the right. Save the file and upload it as `shots_2026-10-24.txt`. The Shot map tab then shows dots and heat by game, player and result.
 
 ## Roster from Streamn
 

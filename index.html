@@ -700,29 +700,37 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       return '<div class="ev">' + tl + '<span class="lb"><b>' + esc(c.tag) + "</b> " + esc(c.label) + (c.players.length ? ' <span class="mut">' + c.players.map(function (n) { return "#" + n; }).join(" ") + "</span>" : "") + ' <span class="mut">' + esc(c.coach) + "</span></span></div>";
     }).join("") + "</div>";
   }
-  function vClips(dateParam) {
+  function coachSubTabs(active) {
+    return '<div class="seg" role="group"><button onclick="location.hash=\'#/coach\'" aria-pressed="' + (active === "clips") + '">Highlights</button><button onclick="location.hash=\'#/coach/shots\'" aria-pressed="' + (active === "shots") + '">Mark shots</button></div>';
+  }
+  function vClips(dateParam, mode) {
     var dates = dateChoices(), date = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : (D.games.length ? D.games[D.games.length - 1].date : dates[0]);
     if (dates.indexOf(date) < 0) dates.unshift(date);
-    var vk = lget(VK), url = vk[date] || D.videos[date] || "";
-    return "<h2>Highlights</h2>" + coachCard() +
-      '<div class="card" style="margin-top:12px"><div class="fld"><label for="clDate">Game</label>' + dateSelect("clDate", dates, date) + "</div>" +
+    var vk = lget(VK), url = vk[date] || D.videos[date] || "", mark = mode === "mark";
+    var h = mark ? "<h2>Coaches corner</h2>" + coachSubTabs("clips") + coachCard() : "<h2>Highlights</h2>";
+    h += '<div class="card"' + (mark ? ' style="margin-top:12px"' : "") + '><div class="fld"><label for="clDate">Game</label>' + dateSelect("clDate", dates, date) + "</div>" +
       '<div class="fld"><label for="clUrl">YouTube link for this game</label><input type="url" id="clUrl" placeholder="https://youtu.be/..." value="' + esc(url) + '"></div>' +
       '<div class="seg"><button id="clLoad">Load video</button></div>' +
-      '<div class="fld"><label for="clFile">Or open a video file from this device</label><input type="file" id="clFile" accept="video/*"></div>' +
-      '<p class="note">The site does not store video. Footage stays on YouTube or on your device. Only the highlight times and labels are saved.</p></div>' +
-      '<div id="clVideo" style="margin-top:12px"></div>' +
-      '<div class="card" style="margin-top:12px"><p class="note" style="margin-top:0">Watch the video and tap a button when it happens. That is all. Each tap saves the moment a few seconds earlier.</p>' +
-      '<div class="tagbtns" id="clTags">' + TAP_TAGS.map(function (t) { return '<button class="btn" data-tag="' + t + '" disabled>' + t + "</button>"; }).join("") + "</div>" +
-      '<p class="note" id="clNote" aria-live="polite">Load a video to start.</p>' +
-      '<details><summary class="note">Settings</summary><div class="fld"><label for="clLead">Save each moment this many seconds earlier</label><select id="clLead"><option>0</option><option>5</option><option selected>8</option><option>10</option><option>15</option></select></div></details></div>' +
-      "<h2>Your highlights<small>on this phone</small></h2><div class='card' id='clList'></div>" +
-      '<div class="seg" style="margin-top:12px"><button class="btn" id="clSend" style="width:100%">Share to Kings HUDL</button></div><p class="note" id="clShare" aria-live="polite"></p>' +
-      "<h2>Everyone's highlights</h2><div class='card'><div class='filters'><div class='fld'><label for='clCoach'>Coach</label><select id='clCoach'></select></div><div class='fld'><label for='clTag'>Type</label><select id='clTag'></select></div></div><div id='clAll'></div></div>";
+      (mark ? '<div class="fld"><label for="clFile">Or open a video file from this device</label><input type="file" id="clFile" accept="video/*"></div>' +
+        '<p class="note">The site does not store video. Footage stays on YouTube or on your device. Only the highlight times and labels are saved.</p>' : "") +
+      (mark ? "" : '<p class="note" id="clNote" aria-live="polite">Load the video, then tap a time below to jump to it.</p>') + "</div>" +
+      '<div id="clVideo" style="margin-top:12px"></div>';
+    if (mark) {
+      h += '<div class="card" style="margin-top:12px"><p class="note" style="margin-top:0">Watch the video and tap a button when it happens. That is all. Each tap saves the moment a few seconds earlier.</p>' +
+        '<div class="tagbtns" id="clTags">' + TAP_TAGS.map(function (t) { return '<button class="btn" data-tag="' + t + '" disabled>' + t + "</button>"; }).join("") + "</div>" +
+        '<p class="note" id="clNote" aria-live="polite">Load a video to start.</p>' +
+        '<details><summary class="note">Settings</summary><div class="fld"><label for="clLead">Save each moment this many seconds earlier</label><select id="clLead"><option>0</option><option>5</option><option selected>8</option><option>10</option><option>15</option></select></div></details></div>' +
+        "<h2>Your highlights<small>on this phone</small></h2><div class='card' id='clList'></div>" +
+        '<div class="seg" style="margin-top:12px"><button class="btn" id="clSend" style="width:100%">Share to Kings HUDL</button></div><p class="note" id="clShare" aria-live="polite"></p>';
+    } else {
+      h += "<h2>All highlights</h2><div class='card'><div class='filters'><div class='fld'><label for='clCoach'>Coach</label><select id='clCoach'></select></div><div class='fld'><label for='clTag'>Type</label><select id='clTag'></select></div></div><div id='clAll'></div></div>";
+    }
+    return h;
   }
-  function bindClips(dateParam) {
-    var date = $("clDate").value, list = getMyClips(date), cur = null, focusIdx = -1;
-    bindCoach();
-    $("clDate").addEventListener("change", function () { location.hash = "#/clips/" + $("clDate").value; });
+  function bindClips(dateParam, mode) {
+    var mark = mode === "mark", date = $("clDate").value, list = getMyClips(date), cur = null, focusIdx = -1;
+    if (mark) bindCoach();
+    $("clDate").addEventListener("change", function () { location.hash = (mark ? "#/coach/" : "#/clips/") + $("clDate").value; });
     function persist() { putClips(date, list); }
     function renderList() {
       var box = $("clList");
@@ -736,18 +744,22 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       }).join("");
       if (focusIdx >= 0) { var inp = box.querySelector('.clip[data-i="' + focusIdx + '"] input[data-f="label"]'); if (inp) inp.focus(); focusIdx = -1; }
     }
-    $("clList").addEventListener("input", function (e) {
+    if (mark) $("clList").addEventListener("input", function (e) {
       var row = e.target.closest(".clip"); if (!row) return; var c = list[+row.getAttribute("data-i")], f = e.target.getAttribute("data-f");
       if (f === "label") c.label = e.target.value; else if (f === "tag") c.tag = e.target.value; else if (f === "players") c.players = (e.target.value.match(/\d+/g) || []).map(Number);
       persist();
     });
-    $("clList").addEventListener("click", function (e) {
+    if (mark) $("clList").addEventListener("click", function (e) {
       var b = e.target.closest("button"); if (!b) return; var row = b.closest(".clip"), i = +row.getAttribute("data-i"), act = b.getAttribute("data-act");
       if (act === "seek" && cur) cur.seek(list[i].sec);
       if (act === "del") { list.splice(i, 1); persist(); renderList(); }
     });
-    renderList();
-    function ready(c) { cur = c; Array.prototype.forEach.call($("clTags").children, function (b) { b.disabled = false; }); $("clNote").textContent = "Video loaded. Tap a button when something happens."; }
+    if (mark) renderList();
+    function ready(c) {
+      cur = c;
+      if (mark) { Array.prototype.forEach.call($("clTags").children, function (b) { b.disabled = false; }); $("clNote").textContent = "Video loaded. Tap a button when something happens."; }
+      else $("clNote").textContent = "Video loaded. Tap a time below to jump to it.";
+    }
     function loadFile(file) {
       var v = document.createElement("video"); v.controls = true; v.playsInline = true; v.src = URL.createObjectURL(file);
       $("clVideo").innerHTML = ""; $("clVideo").appendChild(v);
@@ -771,19 +783,20 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       });
     }
     $("clLoad").addEventListener("click", function () { loadYT($("clUrl").value.trim()); });
-    $("clFile").addEventListener("change", function () { if ($("clFile").files[0]) loadFile($("clFile").files[0]); });
-    $("clTags").addEventListener("click", function (e) {
+    if (mark) $("clFile").addEventListener("change", function () { if ($("clFile").files[0]) loadFile($("clFile").files[0]); });
+    if (mark) $("clTags").addEventListener("click", function (e) {
       var btn = e.target.closest("button"); if (!btn || !cur) return;
       var lead = +$("clLead").value, t = Math.max(0, Math.floor(cur.get()) - lead), tag = btn.getAttribute("data-tag");
       list.push({sec: t, tag: tag, players: [], label: ""});
       list.sort(function (a, b) { return a.sec - b.sec; });
       persist(); renderList(); $("clNote").textContent = "Saved: " + tag + " at " + hms(t) + ". " + list.length + " marked so far.";
     });
-    $("clSend").addEventListener("click", function () {
+    if (mark) $("clSend").addEventListener("click", function () {
       if (!list.length) { $("clShare").textContent = "Nothing marked yet."; return; }
       submitFile("clips", date, fmtClips(list), $("clShare"));
     });
-    // Everyone's highlights, with filters
+    if (mark) return;
+    // Everyone's highlights, with filters (watch page)
     var everyone = allClips(date), url0 = (lget(VK)[date] || D.videos[date] || "");
     function fillSelect(id, label, values) {
       var cur0 = $(id).value;
@@ -840,14 +853,11 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     Object.keys(D.goalieNums).forEach(function (k) { delete set[k]; });
     return Object.keys(set).map(Number).sort(function (a, b) { return a - b; });
   }
-  function shotTabs(sub) {
-    return '<div class="seg" role="group"><button onclick="location.hash=\'#/shots\'" aria-pressed="' + (sub !== "mark") + '">Shot map</button><button onclick="location.hash=\'#/shots/mark\'" aria-pressed="' + (sub === "mark") + '">Mark shots</button></div>';
-  }
   function vShots(sub) {
     if (sub === "mark") {
       var dates = dateChoices(), date = D.games.length ? D.games[D.games.length - 1].date : dates[0];
       if (dates.indexOf(todayStr()) >= 0 && !D.games.some(function (g) { return g.date === todayStr(); })) date = todayStr();
-      return "<h2>Shot map</h2>" + shotTabs(sub) + coachCard() +
+      return "<h2>Coaches corner</h2>" + coachSubTabs("shots") + coachCard() +
         '<div class="card" style="margin-top:12px"><div class="fld"><label for="shDate">Game</label>' + dateSelect("shDate", dates, date) + "</div>" +
         '<div class="fld"><label>Whose shot</label><div class="seg" id="shTeam"><button data-v="H" aria-pressed="true">Us</button><button data-v="A" aria-pressed="false">Opponent</button></div></div>' +
         '<div class="fld"><label>Period</label><div class="seg" id="shPer">' + [1, 2, 3, 4].map(function (p, i) { return '<button data-v="' + p + '" aria-pressed="' + (i === 0) + '">' + PERIODS_LABEL[i] + "</button>"; }).join("") + "</div></div>" +
@@ -859,7 +869,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
         '<div class="seg"><button id="shUndo">Undo last</button></div><button class="btn" id="shSend" style="width:100%">Share to Kings HUDL</button><p class="note" id="shShare" aria-live="polite"></p></div>';
     }
     var ds = shotDates(), nums = rosterNums();
-    return "<h2>Shot map</h2>" + shotTabs(sub) +
+    return "<h2>Shot map</h2>" +
       '<div class="card"><div class="filters"><div class="fld"><label for="mpGame">Game</label><select id="mpGame"><option value="">All games</option>' + ds.map(function (d) { return '<option value="' + d + '">' + fmtDate(d) + "</option>"; }).join("") + "</select></div>" +
       '<div class="fld"><label for="mpPl">Player</label><select id="mpPl"><option value="">Everyone</option>' + nums.map(function (n) { return '<option value="' + n + '">' + esc(label(n)) + "</option>"; }).join("") + "</select></div>" +
       '<div class="fld"><label for="mpRes">Result</label><select id="mpRes"><option value="">All shots</option><option value="G">Goals</option><option value="S">Saved</option></select></div>' +
@@ -868,7 +878,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       '<label class="note"><input type="checkbox" id="mpHeat" checked> Show heat</label>' +
       '<div class="kpis" id="mpKpi"></div>' + rinkSvg() +
       '<div class="leg"><span><i style="background:#ff7a1a;border-radius:50%"></i>Goal</span><span><i style="border:2px solid #1e5fd0;border-radius:50%"></i>Saved</span></div>' +
-      (ds.length ? "" : '<p class="note">No shots marked yet. Use Mark shots to add some.</p>') + "</div>";
+      (ds.length ? "" : '<p class="note">No shots marked yet. Coaches can add shots in Coaches corner.</p>') + "</div>";
   }
   var PERIODS_LABEL = ["1", "2", "3", "OT"];
   function coachesWithShots() {
@@ -938,7 +948,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   }
 
   // ---------- router ----------
-  var tabs = [["", "Overview"], ["players", "Players"], ["games", "Games"], ["goalies", "Goalies"], ["clips", "Highlights"], ["shots", "Shot map"], ["video", "Video"]];
+  var tabs = [["", "Overview"], ["players", "Players"], ["games", "Games"], ["goalies", "Goalies"], ["clips", "Highlights"], ["shots", "Shot map"], ["video", "Video"], ["coach", "Coaches corner"]];
   function route() {
     var parts = location.hash.replace(/^#\/?/, "").split("/");
     var base = parts[0] || "";
@@ -950,8 +960,10 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     $("rec").textContent = D.games.length ? t.w + "-" + t.l + "-" + t.t + (D.sample ? " (sample)" : "") : "";
     document.title = "Kings HUDL";
     var h = D.sample ? '<div class="banner">This is sample data to show how the site looks. It is not real.</div>' : "";
-    if (base === "clips") h += vClips(parts[1]);
-    else if (base === "shots") h += vShots(parts[1]);
+    if (base === "shots" && parts[1] === "mark") { location.replace("#/coach/shots"); return; }
+    if (base === "coach") h += parts[1] === "shots" ? vShots("mark") : vClips(parts[1], "mark");
+    else if (base === "clips") h += vClips(parts[1], "watch");
+    else if (base === "shots") h += vShots();
     else if (!D.games.length) h += vEmpty();
     else if (base === "players") h += vPlayers();
     else if (base === "player") h += vPlayer(+parts[1]);
@@ -961,8 +973,9 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     else if (base === "video") h += vVideo();
     else h += vOverview();
     $("app").innerHTML = h;
-    if (base === "clips") bindClips(parts[1]);
-    if (base === "shots") bindShots(parts[1]);
+    if (base === "coach") { if (parts[1] === "shots") bindShots("mark"); else bindClips(parts[1], "mark"); }
+    if (base === "clips") bindClips(parts[1], "watch");
+    if (base === "shots") bindShots();
     var sb = $("sampleBtn"); if (sb) sb.addEventListener("click", function () { sampleData(); route(); });
     Array.prototype.forEach.call(document.querySelectorAll("th.sort"), function (th) {
       th.addEventListener("click", function () { var k = th.getAttribute("data-k"); if (k === sortKey) sortDir = -sortDir; else { sortKey = k; sortDir = -1; } route(); });
