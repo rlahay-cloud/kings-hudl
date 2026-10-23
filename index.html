@@ -764,17 +764,17 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
         var gx = g.goals[gi++];
         lb = (gx.home ? "Goal: " + (gx.scorer !== null ? label(gx.scorer) : g.home) : "Goal against: " + g.away) + (gx.home && gx.assists.length ? " (from " + gx.assists.map(label).join(", ") + ")" : "");
       }
-      rows.push({sec: Math.max(0, e.sec - LEAD), end: e.sec + TAIL, mark: e.sec, tag: lb, html: "", goal: /^Goal|^Try/i.test(e.label), pen: /^Penalty/i.test(e.label)});
+      rows.push({sec: e.sec, start: Math.max(0, e.sec - LEAD), end: e.sec + TAIL, mark: e.sec, tag: lb, html: "", goal: /^Goal|^Try/i.test(e.label), pen: /^Penalty/i.test(e.label)});
     });
-    clips.forEach(function (c) { rows.push({sec: Math.max(0, c.sec - LEAD), end: c.sec + TAIL, mark: c.sec, tag: c.tag, html: " " + esc(c.label) + whoHtml(c) + coachSpan(c), goal: c.tag === "Goal", pen: /Penalty/.test(c.tag)}); });
+    clips.forEach(function (c) { rows.push({sec: c.sec, start: Math.max(0, c.sec - LEAD), end: c.sec + TAIL, mark: c.sec, tag: c.tag, html: " " + esc(c.label) + whoHtml(c) + coachSpan(c), goal: c.tag === "Goal", pen: /Penalty/.test(c.tag)}); });
     var have = rows.filter(function (r) { return r.goal; });
     allReview(g.date).filter(function (c) { return c.tag === "For: Goal"; }).forEach(function (c) {
       if (have.some(function (r) { return Math.abs(r.mark - c.sec) <= 25; })) return;
-      rows.push({sec: Math.max(0, c.sec - LEAD), end: c.sec + TAIL, mark: c.sec, tag: "Goal", html: whoHtml(c) + ' <span class="mut">(automatic)</span>', goal: true});
+      rows.push({sec: c.sec, start: Math.max(0, c.sec - LEAD), end: c.sec + TAIL, mark: c.sec, tag: "Goal", html: whoHtml(c) + ' <span class="mut">(automatic)</span>', goal: true});
     });
     allReview(g.date).filter(function (c) { return (c.tag === "Penalty" || c.tag === "Away Penalty") && c.until != null; }).forEach(function (c) {
       if (rows.some(function (r) { return r.pen && (r.tag === c.tag || r.tag === "Penalty") && Math.abs(r.mark - c.sec) <= 25 && r.end; })) return;
-      rows.push({sec: Math.max(0, c.sec - LEAD), end: c.until + TAIL, mark: c.sec, tag: c.tag, html: ' <span class="mut">' + penSpan(c) + "</span>", pen: true});
+      rows.push({sec: c.sec, start: Math.max(0, c.sec - LEAD), end: c.until + TAIL, mark: c.sec, tag: c.tag, html: ' <span class="mut">' + penSpan(c) + "</span>", pen: true});
     });
     if (!rows.length && !url) return "";
     rows.sort(function (a, b) { return a.sec - b.sec; });
@@ -784,7 +784,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (!url) h += '<p class="note">Add this game\'s YouTube link in videos.txt or in Coaches corner to make these times clickable.</p>';
     if (!rows.length) h += '<p class="note">No highlights yet. Our goals show up here by themselves once they are marked in Coaches corner.</p>';
     h += rows.map(function (r) {
-      var tl = timeBtn({date: g.date, game: gl, sec: r.sec, end: r.end, tag: r.tag}, !!ytId(url));
+      var tl = timeBtn({date: g.date, game: gl, sec: r.sec, start: r.start, end: r.end, tag: r.tag}, !!ytId(url));
       return '<div class="ev ' + (r.goal ? "goal" : r.pen ? "pen" : "") + '">' + tl + '<span class="lb"><b>' + esc(r.tag) + "</b>" + r.html + "</span></div>";
     }).join("");
     return h + "</div>";
@@ -811,21 +811,21 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   // Every coach highlight from every game.
   // Every marked moment plays from 8 seconds before it to 2 seconds after it (about 10 seconds in all).
   var LEAD = 8, TAIL = 2;
-  function leadWin(m) { return {sec: Math.max(0, m - LEAD), end: m + TAIL, mark: m}; }
+  function leadWin(m) { return {sec: m, start: Math.max(0, m - LEAD), end: m + TAIL, mark: m}; }
   var AUTO_HL_TAGS = ["Goal", "Goal against", "Penalty", "Away Penalty"];
   function allVideoItems() {
     var items = [];
     D.games.forEach(function (g) {
       var base = {date: g.date, game: fmtDate(g.date) + " vs " + g.away};
       allClips(g.date).forEach(function (c) {
-        var w = leadWin(c.sec); items.push({date: g.date, game: base.game, sec: w.sec, end: w.end, mark: w.mark, tag: c.tag, label: c.label || "", players: c.players || [], assists: c.assists || [], coach: c.coach, lists: c.lists || []});
+        var w = leadWin(c.sec); items.push({date: g.date, game: base.game, sec: w.sec, start: w.start, end: w.end, mark: w.mark, tag: c.tag, label: c.label || "", players: c.players || [], assists: c.assists || [], coach: c.coach, lists: c.lists || []});
       });
     });
     // Highlights for dates with no game summary yet
     var known = {}; D.games.forEach(function (g) { known[g.date] = 1; });
     dateChoices().forEach(function (d) {
       if (known[d]) return;
-      allClips(d).forEach(function (c) { var w = leadWin(c.sec); items.push({date: d, game: fmtDate(d), sec: w.sec, end: w.end, mark: w.mark, tag: c.tag, label: c.label || "", players: c.players || [], assists: c.assists || [], coach: c.coach, lists: c.lists || []}); });
+      allClips(d).forEach(function (c) { var w = leadWin(c.sec); items.push({date: d, game: fmtDate(d), sec: w.sec, start: w.start, end: w.end, mark: w.mark, tag: c.tag, label: c.label || "", players: c.players || [], assists: c.assists || [], coach: c.coach, lists: c.lists || []}); });
     });
     // Goals and penalties marked in the review become clips too, unless an older game event already covers them
     var dseen = {}; D.games.forEach(function (g) { dseen[g.date] = g; });
@@ -834,12 +834,12 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       var gm = dseen[d], label = fmtDate(d) + (gm ? " vs " + gm.away : "");
       allReview(d).forEach(function (c) {
         var tag = RV_DERIVE[c.tag];
-        if (!tag) { items.push({date: d, game: label, sec: Math.max(0, c.sec - LEAD), end: c.sec + TAIL, mark: c.sec, tag: c.tag, disp: geName(c.tag), players: c.players || [], assists: c.assists || [], label: "", coach: c.coach || GAME_LABEL, lists: c.lists || [], rvAll: true}); return; }
+        if (!tag) { items.push({date: d, game: label, sec: c.sec, start: Math.max(0, c.sec - LEAD), end: c.sec + TAIL, mark: c.sec, tag: c.tag, disp: geName(c.tag), players: c.players || [], assists: c.assists || [], label: "", coach: c.coach || GAME_LABEL, lists: c.lists || [], rvAll: true}); return; }
         var dup = items.filter(function (o) { return o.date === d && o.tag === tag && Math.abs(o.mark - c.sec) <= 25; })[0];
         if (dup) { dup.lists = (dup.lists || []).concat((c.lists || []).filter(function (n) { return (dup.lists || []).indexOf(n) < 0; })); return; }
         var sit = /Goal/.test(c.tag) ? goalSit(allReview(d), c) : "";
         var isPen = tag === "Penalty" || tag === "Away Penalty";
-        items.push({date: d, game: label, sec: Math.max(0, c.sec - LEAD), end: isPen && c.until != null ? c.until + TAIL : c.sec + TAIL, mark: c.sec, tag: tag, label: [c.infr || "", sit === "PP" ? "Power play" : sit === "SH" ? "Short handed" : "", isPen && c.until != null ? penSpan(c) : ""].filter(Boolean).join(", "), players: c.players || [], assists: c.assists || [], coach: GAME_LABEL, lists: c.lists || []});
+        items.push({date: d, game: label, sec: c.sec, start: Math.max(0, c.sec - LEAD), end: isPen && c.until != null ? c.until + TAIL : c.sec + TAIL, mark: c.sec, tag: tag, label: [c.infr || "", sit === "PP" ? "Power play" : sit === "SH" ? "Short handed" : "", isPen && c.until != null ? penSpan(c) : ""].filter(Boolean).join(", "), players: c.players || [], assists: c.assists || [], coach: GAME_LABEL, lists: c.lists || []});
       });
     });
     // Streamn's own goal and penalty times fill in anything the review and clips do not already cover.
@@ -857,7 +857,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
         var covered = items.some(function (o) { return o.date === g.date && (g1 ? /^Goal/.test(o.tag) : /Penalty/.test(o.tag)) && Math.abs(o.mark - e.sec) <= 25; });
         if (covered) return;
         var w = leadWin(e.sec);
-        items.push({date: g.date, game: gl, sec: w.sec, end: w.end, mark: w.mark, tag: tag, label: "", players: pl, assists: as, coach: GAME_LABEL, lists: []});
+        items.push({date: g.date, game: gl, sec: w.sec, start: w.start, end: w.end, mark: w.mark, tag: tag, label: "", players: pl, assists: as, coach: GAME_LABEL, lists: []});
       });
     });
     // Every goal and penalty is in the Highlights playlist automatically.
@@ -911,8 +911,8 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var now = it.game + ", " + hms(it.sec) + " " + (it.disp || it.tag);
     if (!id) { $("vpBox").innerHTML = ""; $("vpBox").style.display = "none"; $("vpNow").textContent = now + ". No video link for this game yet. Add it to videos.txt or in Coaches corner."; return; }
     $("vpBox").style.display = "";
-    ytPlay($("vpBox"), id, it.sec, clipEnd(it)); teleAttach($("vpBox"), it);
-    $("vpNow").innerHTML = esc(now) + ' &middot; <a href="' + esc(ytLink(url, it.sec)) + '" target="_blank" rel="noopener">Open in YouTube</a>';
+    ytPlay($("vpBox"), id, it.start != null ? it.start : it.sec, clipEnd(it)); teleAttach($("vpBox"), it);
+    $("vpNow").innerHTML = esc(now) + ' &middot; <a href="' + esc(ytLink(url, it.start != null ? it.start : it.sec)) + '" target="_blank" rel="noopener">Open in YouTube</a>';
     if (first) $("vpCard").scrollIntoView({block: "nearest"});
   }
   var PL = [];
@@ -1478,7 +1478,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   }
   function bindClipEditor(date, start, end) {
     if (!$("teYt")) return;
-    var url = D.videos[date] || lget(VK)[date] || "", id = ytId(url), key = drawKey(date, start);
+    var url = D.videos[date] || lget(VK)[date] || "", id = ytId(url), key = drawKey(date, start), begin = Math.max(0, start - LEAD);
     var frames = JSON.parse(JSON.stringify(getDraws(key))), pl = null, ready = false;
     var st = {tool: "arrow", col: TE_COLORS[0], editing: null, cur: null};
     var cv = $("teCv");
@@ -1540,7 +1540,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     $("teFrames").addEventListener("change", function (e) { var s = e.target.getAttribute("data-hold"); if (s !== null) { frames[+s].hold = +e.target.value; persist(); } });
     $("teBack").addEventListener("click", function () { if (ready) pl.seekTo(Math.max(0, now() - 2), true); });
     $("teFwd").addEventListener("click", function () { if (ready) pl.seekTo(now() + 2, true); });
-    $("teRestart").addEventListener("click", function () { if (ready) { pl.seekTo(start, true); pl.playVideo(); } });
+    $("teRestart").addEventListener("click", function () { if (ready) { pl.seekTo(begin, true); pl.playVideo(); } });
     $("tePlay").addEventListener("click", function () { if (!ready) return; var s = pl.getPlayerState(); if (s === 1) pl.pauseVideo(); else pl.playVideo(); });
     $("teSpeed").addEventListener("change", function () { if (ready) pl.setPlaybackRate(+$("teSpeed").value); });
     window.addEventListener("resize", function () { if ($("teCv")) repaint(); });
@@ -1548,7 +1548,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var done = {}, busy = false;
     var tm = setInterval(function () {
       if (!$("teYt")) { clearInterval(tm); return; }
-      var t = now(); $("teTime").textContent = ready ? hms(Math.floor(t)) + " · clip runs " + hms(start) + " to " + hms(end) : "Loading the video.";
+      var t = now(); $("teTime").textContent = ready ? hms(Math.floor(t)) + " · clip runs " + hms(begin) + " to " + hms(end) : "Loading the video.";
       if (!ready || st.editing || busy) return;
       for (var i = 0; i < frames.length; i++) {
         var f = frames[i];
@@ -1557,7 +1557,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
           setTimeout(function () { busy = false; if (!st.editing) paintFrame(cv, []); try { pl.playVideo(); } catch (x) {} }, f.hold * 1000); return;
         }
       }
-      if (t < start - 1 || t > end + 30) done = {};
+      if (t < begin - 1 || t > end + 30) done = {};
     }, 150);
     $("teSave").addEventListener("click", function () {
       var note = $("teSaved"); frames = frames.filter(function (f) { return f.strokes.length; }); persist();
@@ -1578,7 +1578,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     }
     loadApi(function () {
       $("teYt").innerHTML = '<div id="teP"></div>';
-      pl = new window.YT.Player("teP", {videoId: id, width: "100%", height: "100%", playerVars: {playsinline: 1, rel: 0, start: start}, events: {onReady: function () { ready = true; try { pl.seekTo(start, true); } catch (e) {} }}});
+      pl = new window.YT.Player("teP", {videoId: id, width: "100%", height: "100%", playerVars: {playsinline: 1, rel: 0, start: begin}, events: {onReady: function () { ready = true; try { pl.seekTo(begin, true); } catch (e) {} }}});
     });
   }
 

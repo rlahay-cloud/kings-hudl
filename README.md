@@ -36,7 +36,7 @@ Open **Coaches corner**, then **Mark shots**. Tap where the shot was taken, pick
 
 ## Video tab
 
-The Video tab collects every clip from every game: coach highlights plus Streamn's goals and penalties (from the timestamps files). Every marked moment plays from 8 seconds before it to 2 seconds after it. Every goal and penalty is added to a playlist called Highlights automatically. Filter by game, type, who marked it, or player. Tap a time to watch it. A game needs its YouTube link in `videos.txt`.
+The Video tab collects every clip from every game: coach highlights plus Streamn's goals and penalties (from the timestamps files). Each clip is listed at the time it was marked, and plays from 8 seconds before that time to 2 seconds after it. Every goal and penalty is added to a playlist called Highlights automatically. Filter by game, type, who marked it, or player. Tap a time to watch it. A game needs its YouTube link in `videos.txt`.
 
 ## Roster from Streamn
 
