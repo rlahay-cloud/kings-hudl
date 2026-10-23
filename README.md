@@ -32,7 +32,7 @@ Open **Coaches corner**, pick the game, load the YouTube link (or open a video f
 
 ## Shot map
 
-Open **Coaches corner**, then **Mark shots**. Tap where the shot was taken, pick the player, then tap Goal or Saved. Mark every shot as if attacking the net on the right. Save the file and upload it as `shots_2026-10-24.txt`. The Shot map tab then shows dots and heat by game, player and result.
+Open **Coaches corner**, then **Mark shots**. Tap where the shot was taken, pick the player, then tap Goal or Saved. Mark every shot as if attacking the net on the right. Save the file and upload it as `shots_2026-10-24.txt`. The Shot map tab then shows dots and heat by game, player and result. Under the map, a Shot zones table splits the rink into slot, circles, boards and corners, point and long range, with shots, shots on goal, goals and shooting % for each team, plus slot shots and average shot distance. A Situation filter shows even strength, power play or penalty kill shots (only shots marked in Game analysis have a time, and a penalty needs an end time marked to count as power play).
 
 ## Video tab
 

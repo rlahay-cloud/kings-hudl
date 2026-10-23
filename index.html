@@ -2366,10 +2366,12 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       '<div class="fld"><label for="mpPl">Player</label><select id="mpPl"><option value="">Everyone</option>' + nums.map(function (n) { return '<option value="' + n + '">' + esc(label(n)) + "</option>"; }).join("") + "</select></div>" +
       '<div class="fld"><label for="mpRes">Result</label><select id="mpRes"><option value="">All shots</option><option value="G">Goals</option><option value="S">Saved</option><option value="B">Blocked</option></select></div>' +
       '<div class="fld"><label for="mpTeam">Team</label><select id="mpTeam"><option value="">Both teams</option><option value="H">Us</option><option value="A">Opponent</option></select></div>' +
+      '<div class="fld"><label for="mpSit">Situation</label><select id="mpSit"><option value="">All situations</option><option value="E">Even strength</option><option value="PP">Power play</option><option value="SH">Penalty kill</option></select></div>' +
       '<div class="fld"><label for="mpCoach">Marked by</label><select id="mpCoach"><option value="">Everyone</option>' + coachesWithShots().map(function (c) { return "<option>" + esc(c) + "</option>"; }).join("") + "</select></div></div>" +
       '<label class="note"><input type="checkbox" id="mpHeat" checked> Show heat</label>' +
       '<div class="kpis" id="mpKpi"></div>' + '<div class="seg" role="group" aria-label="Zoom the rink"><button id="mpZin">Zoom in</button><button id="mpZout">Zoom out</button><button id="mpZreset">Reset view</button></div>' + fullRink() +
       '<div class="leg"><span><i style="background:#a974ff;border-radius:50%"></i>Our goal</span><span><i style="background:#e5484d;border-radius:50%"></i>Their goal</span><span><i style="border:2px solid #1e5fd0;border-radius:50%"></i>Our shot</span><span><i style="border:2px dashed #e5484d;border-radius:50%"></i>Their shot</span></div>' +
+      '<div id="mpZones"></div>' +
       '<p class="note">We attack the net on the right. Older shots marked on one end only are placed on the correct end. Blocked shots are small dots. Missed shots are not shown.</p>' +
       (ds.length ? "" : '<p class="note">No shots marked yet. Coaches can add shots in Coaches corner.</p>') + "</div>";
   }
@@ -2409,6 +2411,38 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     return {zoom: function (f) { at(f, vb.x + vb.w / 2, vb.y + vb.h / 2); }, reset: function () { vb = {x: bx, y: by, w: W, h: H}; apply(); },
       base: function (x, y, w, h) { bx = x; by = y; W = w; H = h; vb = {x: bx, y: by, w: W, h: H}; apply(); }};
   }
+  // Shot zones. Every shot is turned around so the team shoots at the net on the right (rink units are feet, the net is at 189).
+  var SHOT_ZONES = [["Slot", "Right in front of the net"], ["Upper circle", "Between the slot and the boards, upper side"], ["Lower circle", "Between the slot and the boards, lower side"], ["Boards and corners", "Tight angle or behind the goal line"], ["Point", "Between the blue line and the circles"], ["Long range", "From the neutral zone or beyond"]];
+  function shotZone(s0) {
+    var ax = s0.t === "A" ? 200 - s0.x * 200 : s0.x * 200, dy = s0.y * 85 - 42.5, ady = Math.abs(dy);
+    if (ax < 125) return 5;
+    if (ax < 150) return 4;
+    if (ax > 189 || ady > 28) return 3;
+    if (ady <= 12 && ax >= 164) return 0;
+    return dy < 0 ? 1 : 2;
+  }
+  function shotDist(s0) { var ax = s0.t === "A" ? 200 - s0.x * 200 : s0.x * 200, dy = s0.y * 85 - 42.5; return Math.sqrt((189 - ax) * (189 - ax) + dy * dy); }
+  function zonesHtml(list, team) {
+    if (!list.length) return "<h2>Shot zones</h2><p class='note'>No shots match these filters.</p>";
+    var sides = team === "H" ? ["H"] : team === "A" ? ["A"] : ["H", "A"].filter(function (s) { return list.some(function (x) { return x.t === s; }); }), name = {H: "Us", A: "Them"};
+    var Z = {H: SHOT_ZONES.map(function () { return {n: 0, sog: 0, g: 0}; }), A: SHOT_ZONES.map(function () { return {n: 0, sog: 0, g: 0}; })}, dist = {H: [], A: []}, tot = {H: 0, A: 0};
+    list.forEach(function (s0) {
+      var z = Z[s0.t][shotZone(s0)]; z.n++; tot[s0.t]++; if (s0.r === "G" || s0.r === "S") { z.sog++; dist[s0.t].push(shotDist(s0)); } if (s0.r === "G") z.g++;
+    });
+    var pct = function (a, b) { return b ? Math.round(a * 100 / b) + "%" : "-"; };
+    var avg = function (a) { return a.length ? Math.round(a.reduce(function (x, y) { return x + y; }, 0) / a.length) + " ft" : "-"; };
+    var k = "";
+    sides.forEach(function (s) {
+      k += kpi(Z[s][0].n, name[s] + ": slot shots") + kpi(pct(Z[s][0].n, tot[s]), name[s] + ": from the slot") + kpi(avg(dist[s]), name[s] + ": average distance");
+    });
+    var h = "<h2>Shot zones<small>shots, shots on goal and goals by area</small></h2><div class='kpis'>" + k + "</div>" +
+      "<div class='card scroll' style='margin-top:12px'><table><thead><tr><th>Zone</th>" + sides.map(function (s) { return "<th>" + name[s] + " shots</th><th>" + name[s] + " SOG</th><th>" + name[s] + " goals</th><th>" + name[s] + " shooting %</th>"; }).join("") + "</tr></thead><tbody>" +
+      SHOT_ZONES.map(function (zn, i) {
+        return "<tr><td title='" + esc(zn[1]) + "'><b>" + zn[0] + "</b></td>" + sides.map(function (s) { var z = Z[s][i]; return "<td>" + z.n + "</td><td>" + z.sog + "</td><td>" + z.g + "</td><td>" + pct(z.g, z.sog) + "</td>"; }).join("") + "</tr>";
+      }).join("") + "</tbody></table></div>" +
+      "<p class='note'>Shots include blocked ones. Shooting % is goals divided by shots on goal. Percentages move a lot with only a few shots, so read them next to the shot counts. The slot is the high danger area. Power play and penalty kill filters only use shots marked in Game analysis, because those have a time.</p>";
+    return h;
+  }
   function bindShots(sub) {
     if (sub === "mark") return bindMark();
     function all() {
@@ -2422,21 +2456,24 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
           if (c.x == null || c.y == null) return;
           var m = /^(For|Against): (Goal|Shot on goal|Missed shot|Blocked shot)$/.exec(c.tag); if (!m) return;
           var us = m[1] === "For", a = c.assists || [], sc = c.players.filter(function (n) { return a.indexOf(n) < 0; })[0];
-          out.push({d: d, x: c.x, y: c.y, n: us && sc !== undefined ? sc : null, r: m[2] === "Goal" ? "G" : m[2] === "Shot on goal" ? "S" : m[2] === "Missed shot" ? "M" : "B", t: us ? "H" : "A", c: c.coach});
+          var rl = allReview(d), pu = 0, pt = 0;
+          rl.forEach(function (q) { if ((q.tag === "Penalty" || q.tag === "Away Penalty") && q.until != null && penStart(q) <= c.sec && c.sec <= q.until) { if (q.tag === "Penalty") pu++; else pt++; } });
+          var sit = pu === pt ? "E" : (us ? (pt > pu ? "PP" : "SH") : (pu > pt ? "PP" : "SH"));
+          out.push({d: d, sit: sit, x: c.x, y: c.y, n: us && sc !== undefined ? sc : null, r: m[2] === "Goal" ? "G" : m[2] === "Shot on goal" ? "S" : m[2] === "Missed shot" ? "M" : "B", t: us ? "H" : "A", c: c.coach});
         });
       });
       return out;
     }
     var data = all().filter(function (s0) { return s0.r !== "M"; }), lastT = null;
     function draw() {
-      var g = $("mpGame").value, pl = $("mpPl").value, r = $("mpRes").value, t = $("mpTeam").value, co = $("mpCoach").value, heat = $("mpHeat").checked;
+      var g = $("mpGame").value, pl = $("mpPl").value, r = $("mpRes").value, t = $("mpTeam").value, co = $("mpCoach").value, heat = $("mpHeat").checked, sit = $("mpSit").value;
       if (t !== lastT) {
         lastT = t;
         // One team picked: show only the half of the rink where that team shoots, as big as the page allows.
         if (t === "H") zm.base(100, 0, 100, 85); else if (t === "A") zm.base(0, 0, 100, 85); else zm.base(0, 0, 200, 85);
         $("rinkF").parentNode.style.maxWidth = t ? "780px" : "";
       }
-      var f = data.filter(function (s0) { return (!g || s0.d === g) && (!pl || s0.n === +pl) && (!r || s0.r === r) && (!t || s0.t === t) && (!co || s0.c === co); });
+      var f = data.filter(function (s0) { return (!g || s0.d === g) && (!pl || s0.n === +pl) && (!r || s0.r === r) && (!t || s0.t === t) && (!co || s0.c === co) && (!sit || s0.sit === sit); });
       var h = '<defs><radialGradient id="heat"><stop offset="0" stop-color="#8a4dff" stop-opacity=".42"/><stop offset="1" stop-color="#8a4dff" stop-opacity="0"/></radialGradient></defs>', m = "";
       f.forEach(function (s0) {
         var x = s0.x * 200, y = s0.y * 85, them = s0.t === "A";
@@ -2451,11 +2488,12 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       if (t !== "A") k += kpi(us.n, "Our shot attempts") + kpi(us.sog, "Our shots on goal") + kpi(us.gl, "Our goals") + kpi(us.sog ? Math.round(us.gl * 100 / us.sog) + "%" : "-", "Our shooting %");
       if (t !== "H") k += kpi(th.n, "Their shot attempts") + kpi(th.sog, "Their shots on goal") + kpi(th.gl, "Their goals") + kpi(th.sog ? Math.round(th.gl * 100 / th.sog) + "%" : "-", "Their shooting %");
       $("mpKpi").innerHTML = k;
+      $("mpZones").innerHTML = zonesHtml(f, t);
       $("cntR").textContent = t === "A" ? "" : "Us " + us.sog + " SOG, " + us.gl + " G"; $("cntL").textContent = t === "H" ? "" : "Them " + th.sog + " SOG, " + th.gl + " G";
     }
     var zm = attachZoom($("rinkF"), 200, 85);
     $("mpZin").addEventListener("click", function () { zm.zoom(1.6); }); $("mpZout").addEventListener("click", function () { zm.zoom(1 / 1.6); }); $("mpZreset").addEventListener("click", function () { zm.reset(); });
-    ["mpGame", "mpPl", "mpRes", "mpTeam", "mpCoach", "mpHeat"].forEach(function (id) { $(id).addEventListener("change", draw); });
+    ["mpGame", "mpPl", "mpRes", "mpTeam", "mpCoach", "mpHeat", "mpSit"].forEach(function (id) { $(id).addEventListener("change", draw); });
     draw();
   }
   function bindMark() {
