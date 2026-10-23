@@ -53,6 +53,14 @@ Player names come from `roster.json`. Edit it to add or fix names. Goalies can g
 - Two games on the same date share one video link and one timestamps file.
 - Add `?sample` to the site address to preview it with made up data.
 
+## Coaches corner
+
+Coaches corner opens on **Clips**: a list of every clip that already exists, with filters for game, type, playlist and "only clips with drawings". Tap a clip and it opens in the clip editor.
+
+In the editor the coach pauses the video, taps **Draw on this frame**, and uses the pen, arrow, line, circle or text tools in six colours to explain the play. Each drawing keeps its own hold time (2 to 12 seconds). **Save drawings for everyone** sends them to the games folder as `draw_DATE_STARTSECOND.txt`. When anyone plays that clip in the Video tab, the video pauses at the drawing, shows it for the hold time, then carries on. Drawings belong to a clip by game date and start second, so changing a clip's start time detaches them.
+
+The other sections hold the marking tools: **Game analysis** (review, below), **Shot marker** and **Players** (names and positions).
+
 ## Coaches corner (game review)
 
 One screen, Review, holds everything for coaches.

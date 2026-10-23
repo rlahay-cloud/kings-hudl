@@ -158,7 +158,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
 (function () {
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
-  var D = {games: [], roster: {}, goalieNums: {}, home: "", videos: {}, events: {}, clips: {}, shots: {}, review: {}, cfg: {}, pos: {}, sample: false, error: ""};
+  var D = {games: [], roster: {}, goalieNums: {}, home: "", videos: {}, events: {}, clips: {}, shots: {}, review: {}, cfg: {}, pos: {}, draws: {}, sample: false, error: ""};
 
   // ---------- helpers ----------
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return {"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]; }); }
@@ -310,6 +310,10 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       names.filter(function (n) { return /^review_\d{4}-\d{2}-\d{2}(_[a-z0-9-]+)?\.txt$/.test(n); }).forEach(function (n) {
         var m = /(\d{4}-\d{2}-\d{2})(?:_([a-z0-9-]+))?\.txt$/.exec(n), d = m[1], slug = m[2] || "coach";
         videoJobs.push(getText("games/" + n).then(function (t) { (D.review[d] = D.review[d] || {})[slug] = parseReview(t); }).catch(function () {}));
+      });
+      names.filter(function (n) { return /^draw_\d{4}-\d{2}-\d{2}_\d+\.txt$/.test(n); }).forEach(function (n) {
+        var m = /^draw_(\d{4}-\d{2}-\d{2})_(\d+)\.txt$/.exec(n);
+        videoJobs.push(getText("games/" + n).then(function (t) { D.draws[m[1] + "_" + m[2]] = parseDraw(t); }).catch(function () {}));
       });
       var shotFiles = names.filter(function (n) { return /^shots_\d{4}-\d{2}-\d{2}(_[a-z0-9-]+)?\.txt$/.test(n); });
       var jobs = sums.map(function (n) {
@@ -857,7 +861,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var now = it.game + ", " + hms(it.sec) + " " + (it.disp || it.tag);
     if (!id) { $("vpBox").innerHTML = ""; $("vpBox").style.display = "none"; $("vpNow").textContent = now + ". No video link for this game yet. Add it to videos.txt or on the Highlights page."; return; }
     $("vpBox").style.display = "";
-    ytPlay($("vpBox"), id, it.sec, clipEnd(it));
+    ytPlay($("vpBox"), id, it.sec, clipEnd(it)); teleAttach($("vpBox"), it);
     $("vpNow").innerHTML = esc(now) + ' &middot; <a href="' + esc(ytLink(url, it.sec)) + '" target="_blank" rel="noopener">Open in YouTube</a>';
     if (first) $("vpCard").scrollIntoView({block: "nearest"});
   }
@@ -884,7 +888,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       $("vfList").innerHTML = f.length ? f.map(function (x, i) {
         var head = x.game !== last ? '<h3 style="margin:' + (last ? "14px" : "0") + ' 0 4px">' + esc(x.game) + "</h3>" : ""; last = x.game;
         return head + '<div class="ev ' + (x.tag === "Goal" ? "goal" : "") + '"><button class="tm" style="background:none;border:0;color:var(--accent);font-family:var(--display);font-weight:700;font-size:18px;min-width:70px;text-align:left;padding:0" data-i="' + items.indexOf(x) + '">' + hms(x.sec) + '</button><span class="lb"><b>' + esc(x.disp || x.tag) + "</b> " + esc(x.label) +
-          whoHtml(x) + coachSpan(x) + (x.lists || []).map(function (n) { return ' <span class="pill">' + esc(n) + "</span>"; }).join("") + "</span></div>";
+          whoHtml(x) + coachSpan(x) + (hasDraws(drawKey(x.date, x.sec)) ? ' <span class="pill W">drawn on</span>' : "") + (x.lists || []).map(function (n) { return ' <span class="pill">' + esc(n) + "</span>"; }).join("") + "</span></div>";
       }).join("") : '<p class="note">Nothing matches these filters.</p>';
     }
     ["vfGame", "vfTag", "vfCoach", "vfPl", "vfList2"].forEach(function (id) { $(id).addEventListener("change", render); });
@@ -1098,7 +1102,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   }
   function coachSubTabs(active) {
     function b(h, label, key) { return '<button onclick="location.hash=\'' + h + '\'" aria-pressed="' + (active === key) + '">' + label + "</button>"; }
-    return '<div class="seg" role="group" aria-label="Coaches corner sections">' + b("#/coach", "Game review", "review") + b("#/coach/shots", "Shot marker", "shots") + b("#/coach/players", "Players", "players") + "</div>";
+    return '<div class="seg" role="group" aria-label="Coaches corner sections">' + b("#/coach", "Clips", "clips") + b("#/coach/analysis", "Game analysis", "review") + b("#/coach/shots", "Shot marker", "shots") + b("#/coach/players", "Players", "players") + "</div>";
   }
   function vClips(dateParam, mode) {
     var dates = dateChoices(), date = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : (D.games.length ? D.games[D.games.length - 1].date : dates[0]);
@@ -1282,6 +1286,248 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       else { var u = $("clUrl").value.trim() || url0; if (u) window.open(ytLink(u, sec), "_blank", "noopener"); else $("clNote").textContent = "No video for this game yet."; }
     });
     renderAll();
+  }
+
+  // ---------- telestration: drawing on clips ----------
+  var DK = "kh-draw-v1";
+  function parseDraw(text) {
+    var fr = {};
+    String(text || "").split(/\r?\n/).forEach(function (l) {
+      var a = l.split("|"); if (a.length < 7) return;
+      var t = parseFloat(a[0]); if (!(t >= 0)) return;
+      var f = fr[a[0]] || (fr[a[0]] = {t: t, hold: Math.max(1, Math.min(30, parseInt(a[1], 10) || 4)), strokes: []});
+      var pts = a[5].split(";").map(function (p) { return p.split(",").map(Number); }).filter(function (p) { return p.length === 2 && isFinite(p[0]) && isFinite(p[1]); });
+      f.strokes.push({k: a[2], c: a[3], w: +a[4] || 3, p: pts, s: a[6] || ""});
+    });
+    return Object.keys(fr).map(function (k) { return fr[k]; }).sort(function (a, b) { return a.t - b.t; });
+  }
+  function fmtDraw(frames) {
+    var out = [];
+    frames.forEach(function (f) { f.strokes.forEach(function (s) { out.push([f.t.toFixed(2), f.hold, s.k, s.c, s.w, s.p.map(function (p) { return p[0].toFixed(3) + "," + p[1].toFixed(3); }).join(";"), (s.s || "").replace(/[|\r\n]+/g, " ").slice(0, 60)].join("|")); }); });
+    return out.join("\n") + (out.length ? "\n" : "");
+  }
+  function getDraws(key) { var l = lget(DK); if (l[key]) return l[key]; return D.draws[key] || []; }
+  function hasDraws(key) { return getDraws(key).some(function (f) { return f.strokes.length; }); }
+  function drawKey(date, sec) { return date + "_" + Math.floor(sec); }
+  function paintStroke(ctx, w, h, s) {
+    var u = w / 640, p = s.p; if (!p.length) return;
+    ctx.strokeStyle = s.c; ctx.fillStyle = s.c; ctx.lineWidth = Math.max(1.5, s.w * u * 1.6); ctx.lineCap = "round"; ctx.lineJoin = "round";
+    var X = function (q) { return q[0] * w; }, Y = function (q) { return q[1] * h; };
+    ctx.beginPath();
+    if (s.k === "pen") { ctx.moveTo(X(p[0]), Y(p[0])); for (var i = 1; i < p.length; i++) ctx.lineTo(X(p[i]), Y(p[i])); if (p.length === 1) ctx.lineTo(X(p[0]) + .1, Y(p[0])); ctx.stroke(); }
+    else if (s.k === "line" || s.k === "arrow") {
+      var a = p[0], b = p[p.length - 1]; ctx.moveTo(X(a), Y(a)); ctx.lineTo(X(b), Y(b)); ctx.stroke();
+      if (s.k === "arrow") { var ang = Math.atan2(Y(b) - Y(a), X(b) - X(a)), hl = Math.max(10, s.w * u * 6); ctx.beginPath(); ctx.moveTo(X(b), Y(b)); ctx.lineTo(X(b) - hl * Math.cos(ang - .45), Y(b) - hl * Math.sin(ang - .45)); ctx.lineTo(X(b) - hl * Math.cos(ang + .45), Y(b) - hl * Math.sin(ang + .45)); ctx.closePath(); ctx.fill(); }
+    } else if (s.k === "circle") {
+      var c0 = p[0], c1 = p[p.length - 1]; ctx.ellipse((X(c0) + X(c1)) / 2, (Y(c0) + Y(c1)) / 2, Math.abs(X(c1) - X(c0)) / 2 + .1, Math.abs(Y(c1) - Y(c0)) / 2 + .1, 0, 0, Math.PI * 2); ctx.stroke();
+    } else if (s.k === "text") {
+      ctx.font = "700 " + Math.round(20 * u + 6) + "px sans-serif"; ctx.lineWidth = Math.max(2, 4 * u); ctx.strokeStyle = "rgba(0,0,0,.7)"; ctx.strokeText(s.s, X(p[0]), Y(p[0])); ctx.fillText(s.s, X(p[0]), Y(p[0]));
+    }
+  }
+  function sizeCanvas(cv) { var r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1; cv.width = Math.max(1, Math.round(r.width * d)); cv.height = Math.max(1, Math.round(r.height * d)); return {w: cv.width, h: cv.height}; }
+  function paintFrame(cv, strokes) {
+    var z = sizeCanvas(cv), ctx = cv.getContext("2d"); ctx.clearRect(0, 0, z.w, z.h);
+    (strokes || []).forEach(function (s) { paintStroke(ctx, z.w, z.h, s); });
+  }
+  // Plays drawings while a video runs: at each drawing's time it freezes the video, shows the drawing for its hold time, then carries on.
+  var tele = null;
+  function teleStop() { if (tele) { clearTimeout(tele.timer); clearInterval(tele.ping); } tele = null; }
+  function teleAttach(box, it) {
+    var old = box.querySelector("canvas.tvo"); if (old) old.remove();
+    teleStop();
+    var frames = getDraws(drawKey(it.date, it.sec)).filter(function (f) { return f.strokes.length; });
+    var f = box.querySelector("iframe");
+    box.style.position = ""; box.style.maxHeight = ""; box.style.maxWidth = "";
+    if (!frames.length || !f) return;
+    box.style.position = "relative"; box.style.maxHeight = "none"; box.style.maxWidth = "860px"; box.style.margin = "0 auto";
+    var cv = document.createElement("canvas"); cv.className = "tvo"; cv.style.cssText = "position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;border-radius:12px"; box.appendChild(cv);
+    tele = {f: f, frames: frames, done: {}, timer: null, cv: cv, end: clipEnd(it), ping: null};
+    var T = tele;
+    T.ping = setInterval(function () { if (!document.body.contains(f)) { teleStop(); return; } try { f.contentWindow.postMessage(JSON.stringify({event: "listening", id: 1, channel: "widget"}), "*"); } catch (e) {} }, 1500);
+    T.tick = function (t) {
+      if (T.busy) return;
+      for (var i = 0; i < T.frames.length; i++) {
+        var fr = T.frames[i];
+        if (!T.done[i] && t >= fr.t - .1 && t < fr.t + 1.5) {
+          T.done[i] = 1; T.busy = true; paintFrame(cv, fr.strokes); clearTimeout(ytTimer);
+          ytCmd(f, "seekTo", [fr.t, true]); ytCmd(f, "pauseVideo");
+          T.timer = setTimeout(function () { T.busy = false; paintFrame(cv, []); ytCmd(f, "playVideo"); clearTimeout(ytTimer); ytTimer = setTimeout(function () { if (document.body.contains(f)) ytCmd(f, "pauseVideo"); }, Math.max(1, T.end - fr.t) * 1000 + 600); }, fr.hold * 1000);
+          return;
+        }
+      }
+    };
+    try { f.contentWindow.postMessage(JSON.stringify({event: "listening", id: 1, channel: "widget"}), "*"); } catch (e) {}
+    f.addEventListener("load", function () { try { f.contentWindow.postMessage(JSON.stringify({event: "listening", id: 1, channel: "widget"}), "*"); } catch (e) {} });
+  }
+  window.addEventListener("message", function (e) {
+    if (!tele || !tele.f || e.source !== tele.f.contentWindow) return;
+    var d = e.data; if (typeof d === "string") { try { d = JSON.parse(d); } catch (x) { return; } }
+    if (d && d.event === "infoDelivery" && d.info && typeof d.info.currentTime === "number") tele.tick(d.info.currentTime);
+  });
+  // ---------- Coaches corner: pick a clip, then draw on it ----------
+  function vCoachClips() {
+    var items = allVideoItems();
+    var h = "<h2>Coaches corner</h2>" + coachSubTabs("clips");
+    if (!items.length) return h + '<div class="card empty" style="margin-top:12px"><p>No clips yet.</p><p class="note">Mark the game in <b>Game analysis</b> and the clips show up here to draw on.</p></div>';
+    var games = Object.keys(items.reduce(function (m, c) { m[c.date] = 1; return m; }, {})).sort().reverse();
+    var seenT = {}; items.forEach(function (c) { seenT[c.disp || c.tag] = 1; });
+    var tags = VID_TAGS.filter(function (t) { return seenT[t]; }).concat(Object.keys(seenT).filter(function (t) { return VID_TAGS.indexOf(t) < 0; }).sort());
+    var lists = Object.keys(items.reduce(function (m, c) { (c.lists || []).forEach(function (n) { m[n] = 1; }); return m; }, {})).sort();
+    h += '<div class="card" style="margin-top:12px"><h3 style="margin-top:0">Pick a clip to teach with</h3><p class="note" style="margin-top:0">Tap a clip to open it in the editor. There you can pause the video and draw on it with arrows, circles and notes.</p><div class="filters">' +
+      '<div class="fld"><label for="ccGame">Game</label><select id="ccGame"><option value="">All games</option>' + games.map(function (d) { var g = D.games.filter(function (x) { return x.date === d; })[0]; return '<option value="' + d + '">' + fmtDate(d) + (g ? " vs " + esc(g.away) : "") + "</option>"; }).join("") + "</select></div>" +
+      '<div class="fld"><label for="ccTag">Type</label><select id="ccTag"><option value="">All types</option>' + tags.map(function (t) { return "<option>" + esc(t) + "</option>"; }).join("") + "</select></div>" +
+      '<div class="fld"><label for="ccList">Playlist</label><select id="ccList"><option value="">All clips</option>' + lists.map(function (n) { return "<option>" + esc(n) + "</option>"; }).join("") + "</select></div>" +
+      '<div class="fld"><label for="ccDrawn">Show</label><select id="ccDrawn"><option value="">All clips</option><option value="1">Only clips with drawings</option></select></div></div><p class="note" id="ccCount" style="margin:0"></p></div>' +
+      '<div class="card" id="ccList2" style="margin-top:12px"></div>';
+    return h;
+  }
+  function bindCoachClips() {
+    if (!$("ccList2")) return;
+    var items = allVideoItems();
+    function render() {
+      var g = $("ccGame").value, t = $("ccTag").value, pl = $("ccList").value, dr = $("ccDrawn").value;
+      var f = items.filter(function (x) { return (!g || x.date === g) && (!t || (x.disp || x.tag) === t) && (!pl || (x.lists || []).indexOf(pl) >= 0) && (!dr || hasDraws(drawKey(x.date, x.sec))); });
+      $("ccCount").textContent = f.length + (f.length === 1 ? " clip" : " clips");
+      var last = "";
+      $("ccList2").innerHTML = f.length ? f.map(function (x) {
+        var head = x.game !== last ? '<h3 style="margin:' + (last ? "14px" : "0") + ' 0 4px">' + esc(x.game) + "</h3>" : ""; last = x.game;
+        var has = !!ytId(D.videos[x.date] || lget(VK)[x.date] || "");
+        return head + '<div class="ev ' + (x.tag === "Goal" ? "goal" : "") + '"><a class="tm" style="color:var(--accent);font-family:var(--display);font-weight:700;font-size:18px;min-width:70px" href="#/coach/clip/' + x.date + "/" + Math.floor(x.sec) + "/" + Math.floor(clipEnd(x)) + '">' + hms(x.sec) + '</a><span class="lb"><b>' + esc(x.disp || x.tag) + "</b> " + esc(x.label) + whoHtml(x) +
+          (hasDraws(drawKey(x.date, x.sec)) ? ' <span class="pill W">drawn on</span>' : "") + (has ? "" : ' <span class="mut">no video link</span>') + (x.lists || []).map(function (n) { return ' <span class="pill">' + esc(n) + "</span>"; }).join("") + "</span></div>";
+      }).join("") : '<p class="note">Nothing matches these filters.</p>';
+    }
+    ["ccGame", "ccTag", "ccList", "ccDrawn"].forEach(function (id) { $(id).addEventListener("change", render); });
+    render();
+  }
+
+  var TE_COLORS = ["#ff3b30", "#ffd60a", "#ffffff", "#34c759", "#a974ff", "#0a84ff"];
+  function vClipEditor(date, start, end) {
+    var it = allVideoItems().filter(function (x) { return x.date === date && Math.floor(x.sec) === start; })[0];
+    var g = D.games.filter(function (x) { return x.date === date; })[0];
+    var title = it ? (it.disp || it.tag) : "Clip";
+    var url = D.videos[date] || lget(VK)[date] || "";
+    var h = '<a class="back" href="#/coach">&larr; All clips</a><h2>Clip editor<small>' + fmtDate(date) + (g ? " vs " + esc(g.away) : "") + ", " + esc(title) + " at " + hms(start) + "</small></h2>";
+    if (!ytId(url)) return h + '<div class="card empty"><p>This game has no video link yet.</p><p class="note">Add the YouTube link in <b>Game analysis</b> first, then come back.</p></div>';
+    h += '<div class="card"><div id="teBox" style="position:relative;max-width:860px;margin:0 auto"><div class="ytbox" id="teYt" style="max-height:none"></div><canvas id="teCv" style="position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;border-radius:12px;touch-action:none"></canvas></div>' +
+      '<p class="note" id="teTime" style="text-align:center;margin:6px 0">Loading the video.</p>' +
+      '<div class="seg" role="group" aria-label="Video controls"><button id="teBack">&larr; 2s</button><button id="tePlay">Play / Pause</button><button id="teFwd">2s &rarr;</button><button id="teRestart">Restart clip</button>' +
+      '<select id="teSpeed" aria-label="Speed"><option value="1">Normal speed</option><option value="0.5">Half speed</option><option value="0.25">Quarter speed</option></select></div></div>' +
+      '<div class="card" style="margin-top:12px"><h3 style="margin-top:0">Draw</h3>' +
+      '<div class="seg"><button class="btn" id="teDraw">Draw on this frame</button><button id="teDone" disabled>Done drawing</button></div>' +
+      '<p class="note" id="teNote">Pause where you want it, then tap Draw on this frame. The video freezes while you draw.</p>' +
+      '<div class="seg" id="teTools" role="group" aria-label="Drawing tool">' + [["pen", "Pen"], ["arrow", "Arrow"], ["line", "Line"], ["circle", "Circle"], ["text", "Text"]].map(function (t, i) { return '<button data-tool="' + t[0] + '" aria-pressed="' + (i === 1) + '">' + t[1] + "</button>"; }).join("") + "</div>" +
+      '<div class="seg" id="teCols" role="group" aria-label="Colour">' + TE_COLORS.map(function (c, i) { return '<button data-col="' + c + '" aria-pressed="' + (i === 0) + '" aria-label="Colour ' + c + '" style="background:' + c + ';min-width:44px;min-height:36px;border:2px solid var(--line)"></button>'; }).join("") + '<select id="teWidth" aria-label="Line thickness"><option value="2">Thin</option><option value="3" selected>Medium</option><option value="5">Thick</option></select></div>' +
+      '<div class="fld"><label for="teText">Text to place (for the Text tool)</label><input type="text" id="teText" maxlength="40" placeholder="Like Cover the slot"></div>' +
+      '<div class="seg"><button id="teUndo">Undo</button><button id="teClear">Clear this drawing</button></div></div>' +
+      '<h2>Drawings on this clip</h2><div class="card" id="teFrames"></div>' +
+      '<div class="seg" style="margin-top:12px"><button class="btn" id="teSave" style="width:100%">Save drawings for everyone</button></div><p class="note" id="teSaved" aria-live="polite"></p>' +
+      '<p class="note">Players and coaches see the drawings when they play this clip in the Video tab. The video pauses on each drawing for the time you choose, then carries on.</p>';
+    return h;
+  }
+  function bindClipEditor(date, start, end) {
+    if (!$("teYt")) return;
+    var url = D.videos[date] || lget(VK)[date] || "", id = ytId(url), key = drawKey(date, start);
+    var frames = JSON.parse(JSON.stringify(getDraws(key))), pl = null, ready = false;
+    var st = {tool: "arrow", col: TE_COLORS[0], editing: null, cur: null};
+    var cv = $("teCv");
+    function now() { try { return ready ? pl.getCurrentTime() || 0 : 0; } catch (e) { return 0; } }
+    function frameAt(t, make) {
+      var f = frames.filter(function (x) { return Math.abs(x.t - t) < .35; })[0];
+      if (!f && make) { f = {t: Math.round(t * 100) / 100, hold: 4, strokes: []}; frames.push(f); frames.sort(function (a, b) { return a.t - b.t; }); }
+      return f;
+    }
+    function persist() { var l = lget(DK); l[key] = JSON.parse(JSON.stringify(frames.filter(function (f) { return f.strokes.length; }))); lset(DK, l); }
+    function repaint() { paintFrame(cv, st.editing ? st.editing.strokes.concat(st.cur ? [st.cur] : []) : []); }
+    function drawFramesList() {
+      var live = frames.filter(function (f) { return f.strokes.length; });
+      $("teFrames").innerHTML = live.length ? live.map(function (f, i) {
+        var idx = frames.indexOf(f);
+        return '<div class="ev"><button class="tm" style="background:none;border:0;color:var(--accent);font-family:var(--display);font-weight:700;font-size:18px;min-width:70px;text-align:left;padding:0" data-go="' + idx + '">' + hms(Math.floor(f.t)) + '</button><span class="lb">' + f.strokes.length + (f.strokes.length === 1 ? " mark" : " marks") + ', stays on screen <select data-hold="' + idx + '" aria-label="How long it stays">' + [2, 3, 4, 6, 8, 12].map(function (n) { return "<option" + (f.hold === n ? " selected" : "") + ' value="' + n + '">' + n + " s</option>"; }).join("") + '</select> <button data-del="' + idx + '">Delete</button></span></div>';
+      }).join("") : '<p class="note" style="margin:0">No drawings yet.</p>';
+    }
+    function setSel(btns, attr, val) { Array.prototype.forEach.call(btns.children, function (b) { b.setAttribute("aria-pressed", String(b.getAttribute(attr) === val)); }); }
+    function startDraw() {
+      if (!ready) return;
+      try { pl.pauseVideo(); } catch (e) {}
+      var t = now(); st.editing = frameAt(t, true); cv.style.pointerEvents = "auto"; $("teDraw").disabled = true; $("teDone").disabled = false;
+      $("teNote").textContent = "Drawing at " + hms(Math.floor(st.editing.t)) + ". Drag on the video to draw.";
+      repaint();
+    }
+    function stopDraw() {
+      st.editing = null; st.cur = null; cv.style.pointerEvents = "none"; $("teDraw").disabled = false; $("teDone").disabled = true; paintFrame(cv, []);
+      frames = frames.filter(function (f) { return f.strokes.length; }); persist(); drawFramesList(); $("teNote").textContent = "Saved on this device. Tap Save drawings for everyone to share them.";
+    }
+    function pt(e) { var r = cv.getBoundingClientRect(); return [Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), Math.min(1, Math.max(0, (e.clientY - r.top) / r.height))]; }
+    cv.addEventListener("pointerdown", function (e) {
+      if (!st.editing) return; e.preventDefault(); try { cv.setPointerCapture(e.pointerId); } catch (x) {}
+      var p = pt(e);
+      if (st.tool === "text") {
+        var tx = $("teText").value.trim(); if (!tx) { $("teNote").textContent = "Type the text in the box below first, then tap the video."; return; }
+        st.editing.strokes.push({k: "text", c: st.col, w: +$("teWidth").value, p: [p], s: tx}); persist(); repaint(); return;
+      }
+      st.cur = {k: st.tool, c: st.col, w: +$("teWidth").value, p: [p], s: ""}; repaint();
+    });
+    cv.addEventListener("pointermove", function (e) { if (!st.cur) return; var p = pt(e), q = st.cur.p; if (st.cur.k === "pen") { var l = q[q.length - 1]; if (Math.hypot(p[0] - l[0], p[1] - l[1]) > .004) q.push(p); } else q[1] = p; repaint(); });
+    function endStroke() {
+      if (!st.cur) return; var s = st.cur; st.cur = null;
+      if (s.k === "pen" && s.p.length > 250) { var n = Math.ceil(s.p.length / 250); s.p = s.p.filter(function (x, i) { return i % n === 0 || i === s.p.length - 1; }); }
+      if (s.k !== "pen" && s.p.length < 2) { repaint(); return; }
+      st.editing.strokes.push(s); persist(); repaint();
+    }
+    cv.addEventListener("pointerup", endStroke); cv.addEventListener("pointercancel", endStroke);
+    $("teDraw").addEventListener("click", startDraw); $("teDone").addEventListener("click", stopDraw);
+    $("teTools").addEventListener("click", function (e) { var b = e.target.closest("button"); if (!b) return; st.tool = b.getAttribute("data-tool"); setSel($("teTools"), "data-tool", st.tool); });
+    $("teCols").addEventListener("click", function (e) { var b = e.target.closest("button[data-col]"); if (!b) return; st.col = b.getAttribute("data-col"); setSel($("teCols"), "data-col", st.col); });
+    $("teUndo").addEventListener("click", function () { if (st.editing) { st.editing.strokes.pop(); persist(); repaint(); } });
+    $("teClear").addEventListener("click", function () { if (st.editing) { st.editing.strokes = []; persist(); repaint(); } });
+    $("teFrames").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      if (b.hasAttribute("data-go") && ready) { try { pl.seekTo(frames[+b.getAttribute("data-go")].t, true); pl.pauseVideo(); } catch (x) {} setTimeout(function () { if (!st.editing) paintFrame(cv, frames[+b.getAttribute("data-go")].strokes); }, 300); }
+      if (b.hasAttribute("data-del")) { frames.splice(+b.getAttribute("data-del"), 1); if (st.editing && frames.indexOf(st.editing) < 0) { st.editing = null; cv.style.pointerEvents = "none"; $("teDraw").disabled = false; $("teDone").disabled = true; } persist(); paintFrame(cv, []); drawFramesList(); }
+    });
+    $("teFrames").addEventListener("change", function (e) { var s = e.target.getAttribute("data-hold"); if (s !== null) { frames[+s].hold = +e.target.value; persist(); } });
+    $("teBack").addEventListener("click", function () { if (ready) pl.seekTo(Math.max(0, now() - 2), true); });
+    $("teFwd").addEventListener("click", function () { if (ready) pl.seekTo(now() + 2, true); });
+    $("teRestart").addEventListener("click", function () { if (ready) { pl.seekTo(start, true); pl.playVideo(); } });
+    $("tePlay").addEventListener("click", function () { if (!ready) return; var s = pl.getPlayerState(); if (s === 1) pl.pauseVideo(); else pl.playVideo(); });
+    $("teSpeed").addEventListener("change", function () { if (ready) pl.setPlaybackRate(+$("teSpeed").value); });
+    window.addEventListener("resize", function () { if ($("teCv")) repaint(); });
+    // playing back what has been drawn, so the coach can check it
+    var done = {}, busy = false;
+    var tm = setInterval(function () {
+      if (!$("teYt")) { clearInterval(tm); return; }
+      var t = now(); $("teTime").textContent = ready ? hms(Math.floor(t)) + " · clip runs " + hms(start) + " to " + hms(end) : "Loading the video.";
+      if (!ready || st.editing || busy) return;
+      for (var i = 0; i < frames.length; i++) {
+        var f = frames[i];
+        if (f.strokes.length && !done[i] && t >= f.t - .1 && t < f.t + 1) {
+          done[i] = 1; busy = true; paintFrame(cv, f.strokes); try { pl.seekTo(f.t, true); pl.pauseVideo(); } catch (x) {}
+          setTimeout(function () { busy = false; if (!st.editing) paintFrame(cv, []); try { pl.playVideo(); } catch (x) {} }, f.hold * 1000); return;
+        }
+      }
+      if (t < start - 1 || t > end + 30) done = {};
+    }, 150);
+    $("teSave").addEventListener("click", function () {
+      var note = $("teSaved"); frames = frames.filter(function (f) { return f.strokes.length; }); persist();
+      if (!(D.cfg && D.cfg.submitUrl)) { note.textContent = "Saved on this device only (no helper is set up)."; return; }
+      note.textContent = "Sending...";
+      fetch(workerUrl(), {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({kind: "draw", date: date, start: start, passcode: coachCfg().pass, text: fmtDraw(frames)})})
+        .then(function (r) { return r.json().catch(function () { return {ok: false, error: "Bad reply"}; }); })
+        .then(function (j) { if (j.ok) { D.draws[key] = JSON.parse(JSON.stringify(frames)); var l = lget(DK); delete l[key]; lset(DK, l); } note.textContent = j.ok ? "Saved for everyone. They show on the clip in a minute." : "Not saved for everyone: " + (j.error || "unknown problem") + ". It is saved on this device."; })
+        .catch(function () { note.textContent = "No connection. Saved on this device only."; });
+    });
+    drawFramesList();
+    // load the video
+    function loadApi(cb) {
+      if (window.YT && window.YT.Player) return cb();
+      var prev = window.onYouTubeIframeAPIReady; window.onYouTubeIframeAPIReady = function () { if (prev) prev(); cb(); };
+      if (!document.getElementById("yt-api")) { var sc = document.createElement("script"); sc.id = "yt-api"; sc.src = "https://www.youtube.com/iframe_api"; document.head.appendChild(sc); }
+      setTimeout(function () { if (!(window.YT && window.YT.Player)) $("teTime").textContent = "YouTube did not load. Check the connection."; }, 9000);
+    }
+    loadApi(function () {
+      $("teYt").innerHTML = '<div id="teP"></div>';
+      pl = new window.YT.Player("teP", {videoId: id, width: "100%", height: "100%", playerVars: {playsinline: 1, rel: 0, start: start}, events: {onReady: function () { ready = true; try { pl.seekTo(start, true); } catch (e) {} }}});
+    });
   }
 
   // ---------- game review (coaches corner) ----------
@@ -1589,7 +1835,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     function mark(c) { return c.src === "rv" ? c.sec : (c.end ? c.end - 2 : c.sec + 8); }
     function rows() { return [RV_GOAL, RV_HL].concat(RVG, EV.length ? [RV_EV] : []); }
     function buildView() { view = HL.concat(EV, RV); view.sort(function (a, b) { return mark(a) - mark(b); }); }
-    $("rvDate").addEventListener("change", function () { location.hash = "#/coach/" + $("rvDate").value; });
+    $("rvDate").addEventListener("change", function () { location.hash = "#/coach/analysis/" + $("rvDate").value; });
     $("cName").addEventListener("input", function () { lset(CS, {name: $("cName").value, pass: coachCfg().pass}); });
     $("rvAuto").addEventListener("input", function () { st.auto = cleanList($("rvAuto").value); });
     function dur() { var d = cur && cur.dur ? cur.dur() : 0; if (d > 0) return d; var mx = view.reduce(function (m, c) { return Math.max(m, mark(c)); }, 0); return Math.max(600, mx + 120); }
@@ -2104,7 +2350,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var h = D.sample ? '<div class="banner">This is sample data to show how the site looks. It is not real.</div>' : "";
     if (base === "shots" && parts[1] === "mark") { location.replace("#/coach"); return; }
     if (base === "coach" && needLock()) h += lockView();
-    else if (base === "coach") h += parts[1] === "shots" ? vShots("mark") : parts[1] === "players" ? vCoachPlayers() : vReview(parts.filter(function (x) { return /^\d{4}-\d{2}-\d{2}$/.test(x); })[0]);
+    else if (base === "coach") h += parts[1] === "shots" ? vShots("mark") : parts[1] === "players" ? vCoachPlayers() : parts[1] === "clip" ? vClipEditor(parts[2], +parts[3], +parts[4]) : (parts[1] === "analysis" || /^\d{4}-\d{2}-\d{2}$/.test(parts[1] || "")) ? vReview(parts.filter(function (x) { return /^\d{4}-\d{2}-\d{2}$/.test(x); })[0]) : vCoachClips();
     else if (base === "clips") h += vClips(parts[1], "watch");
     else if (base === "shots") h += vShots();
     else if (!D.games.length) h += vEmpty();
@@ -2117,7 +2363,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     else h += vOverview();
     $("app").innerHTML = h;
     if (base === "coach" && needLock()) bindLock();
-    else if (base === "coach") { if (parts[1] === "shots") bindShots("mark"); else if (parts[1] === "players") bindPlayersEditor(); else bindReview(); }
+    else if (base === "coach") { if (parts[1] === "shots") bindShots("mark"); else if (parts[1] === "players") bindPlayersEditor(); else if (parts[1] === "clip") bindClipEditor(parts[2], +parts[3], +parts[4]); else if (parts[1] === "analysis" || /^\d{4}-\d{2}-\d{2}$/.test(parts[1] || "")) bindReview(); else bindCoachClips(); }
     if (base === "clips") bindClips(parts[1], "watch");
     if (base === "video") bindVideo();
     if (base === "player") bindPlayerClips(+parts[1]);
