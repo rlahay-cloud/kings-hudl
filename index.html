@@ -709,16 +709,18 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     h += '<div class="card"><div class="score"><div class="t">' + esc(g.home) + '</div><div class="s">' + g.hs + '</div><div class="s mut">-</div><div class="s">' + g.as + '</div><div class="t">' + esc(g.away) + "</div></div>" +
       cmpRow(g.hShots, "Shots", g.aShots, g.hShots, g.aShots) +
       (g.fo ? '<div class="cmp"><b class="l">' + esc(g.fo) + '</b><span class="c">Faceoffs won</span><b></b></div>' : "") + "</div>";
-    if (g.goals.length) h += "<h2>Goals</h2><div class='card'>" + g.goals.map(function (x) {
+    var goalsH = !g.goals.length ? "" : "<h2>Goals</h2><div class='card'>" + g.goals.map(function (x) {
       return '<div class="ev ' + (x.home ? "goal" : "pen") + '"><span class="t" style="font-family:var(--display);font-weight:700;font-size:18px;min-width:90px">' + (x.nc ? "P" + esc(x.per) + " video " + hms(x.vsec) : "P" + esc(x.per) + " " + Math.floor(x.sec / 60) + ":" + ("0" + x.sec % 60).slice(-2)) + '</span><span class="lb">' + (x.sit ? '<span class="pill W">' + x.sit + "</span> " : "") +
         (x.home ? (x.scorer !== null ? esc(label(x.scorer)) + (x.assists.length ? ' <span class="mut">from ' + x.assists.map(function (n) { return esc(label(n)); }).join(", ") + "</span>" : ' <span class="mut">unassisted</span>') : esc(g.home)) : esc(g.away)) + "</span></div>";
     }).join("") + "</div>";
+    var hlH = highlightsBlock(g);
+    h += hlH.indexOf('class="ev goal"') >= 0 ? hlH : goalsH + hlH;
     h += "<h2>Skaters</h2><div class='card scroll'><table><thead><tr><th>Player</th><th>G</th><th>A</th><th>P</th><th>+/-</th><th>SOG</th><th>PIM</th></tr></thead><tbody>" +
       g.players.map(function (p) { return '<tr class="click" onclick="location.hash=\'#/player/' + p.n + '\'"><td>' + esc(label(p.n)) + "</td><td>" + p.g + "</td><td>" + p.a + "</td><td>" + p.p + '</td><td class="' + pmCls(p.pm) + '">' + pmText(p.pm) + "</td><td>" + p.sog + "</td><td>" + p.pim + "</td></tr>"; }).join("") + "</tbody></table></div>";
     if (g.dnp.length) h += '<p class="note">Did not play: ' + g.dnp.map(function (n) { return esc(label(n)); }).join(", ") + "</p>";
     if (g.goalies.length) h += "<h2>Goalies</h2><div class='card scroll'><table><thead><tr><th>Goalie</th><th>SA</th><th>GA</th><th>SV%</th></tr></thead><tbody>" +
       g.goalies.map(function (x) { return "<tr><td>" + esc(label(x.n)) + "</td><td>" + x.sa + "</td><td>" + x.ga + "</td><td>" + svText(svp(x.sa, x.ga)) + "</td></tr>"; }).join("") + "</tbody></table></div>";
-    h += reviewBlock(g.date) + highlightsBlock(g) + gameEventsBlock(g);
+    h += reviewBlock(g.date) + gameEventsBlock(g);
     return h;
   }
   // One Highlights list per game: coach clips, the Streamn timestamps, and every Us goal marked in the Review screen (added automatically).
@@ -1096,7 +1098,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   }
   function coachSubTabs(active) {
     function b(h, label, key) { return '<button onclick="location.hash=\'' + h + '\'" aria-pressed="' + (active === key) + '">' + label + "</button>"; }
-    return '<div class="seg" role="group">' + b("#/coach", "Highlights", "clips") + b("#/coach/events", "Game events", "events") + b("#/coach/review", "Review", "review") + b("#/coach/shots", "Mark shots", "shots") + "</div>";
+    return '<div class="seg" role="group" aria-label="Coaches corner sections">' + b("#/coach", "Game review", "review") + b("#/coach/shots", "Shot marker", "shots") + b("#/coach/players", "Players", "players") + "</div>";
   }
   function vClips(dateParam, mode) {
     var dates = dateChoices(), date = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : (D.games.length ? D.games[D.games.length - 1].date : dates[0]);
@@ -1386,7 +1388,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   }
   function reviewBlock(date) {
     var l = allReview(date); if (!l.length) return "";
-    return "<h2>Coach review<small>marked by coaches in Coaches corner</small></h2>" + reviewSummaryHtml(l);
+    return "<h2>Game review stats</h2>" + reviewSummaryHtml(l);
   }
   // Every event marked in the Review screen, listed on the game page with a filter and a sort.
   var GE_CATS = ["Goals", "Shots", "Penalties", "Faceoffs", "Entries and exits", "Special teams", "Coach notes"];
@@ -1408,7 +1410,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var list = allReview(g.date).map(function (c) { c.cat = geCat(c.tag); return c; });
     if (!list.length) return "";
     GE = {items: list, url: D.videos[g.date] || lget(VK)[g.date] || "", game: fmtDate(g.date) + " vs " + g.away, date: g.date};
-    var h = "<h2>Game events<small>everything marked in Coaches corner</small></h2>";
+    var h = "<h2>Game events</h2>";
     var nums = {}; list.forEach(function (c) { c.players.forEach(function (n) { nums[n] = 1; }); });
     h += '<div class="card"><div class="fld"><label for="geCat">Show</label><select id="geCat"><option value="">All events</option>' + GE_CATS.filter(function (k) { return list.some(function (c) { return c.cat === k; }); }).map(function (k) { return "<option>" + k + "</option>"; }).join("") + "</select></div>" +
       '<div class="fld"><label for="geSort">Sort by</label><select id="geSort"><option value="time">Time in game</option><option value="type">Type of event</option><option value="player">Player number</option></select></div>' +
@@ -1509,8 +1511,8 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var url = D.videos[date] || lget(VK)[date] || "";
     var btns = function (src, tags, extra) { return '<div class="rvbtns">' + tags.map(function (t) { return '<button class="rvb" ' + (extra || "") + ' data-src="' + src + '" data-tag="' + t + '" disabled>' + t + "</button>"; }).join("") + "</div>"; };
     var sect = function (name, c, body, id) { return '<div class="card rvgrp" ' + (id ? 'id="' + id + '" ' : "") + 'style="--c:' + c + '"><h3>' + name + "</h3>" + body + "</div>"; };
-    var h = "<h2>Game review</h2>";
-    h += '<div class="card"><div class="filters"><div class="fld"><label for="rvDate">Game</label>' + dateSelect("rvDate", dates, date) + "</div>" +
+    var h = "<h2>Coaches corner</h2>" + coachSubTabs("review");
+    h += '<div class="card" style="margin-top:12px"><div class="filters"><div class="fld"><label for="rvDate">Game</label>' + dateSelect("rvDate", dates, date) + "</div>" +
       '<div class="fld"><label for="clUrl">YouTube link for this game</label><input type="url" id="clUrl" placeholder="https://youtu.be/..." value="' + esc(url) + '"></div>' +
       '<div class="fld"><label for="cName">Your name (optional, used on coach notes)</label><input type="text" id="cName" autocomplete="name" placeholder="Blank = Team" value="' + esc(coachCfg().name) + '"></div>' +
       '<div class="fld"><label for="rvAuto">New marks go to a playlist (optional)</label><input type="text" id="rvAuto" list="rvPlAuto" maxlength="40" placeholder="Like Breakouts to fix"><datalist id="rvPlAuto">' + allPlaylistNames().map(function (n) { return '<option value="' + esc(n) + '">'; }).join("") + "</datalist></div></div>" +
@@ -1533,13 +1535,13 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       sect("Special teams", "#a974ff", btns("rv", ["Power play", "Penalty kill"])) +
       sect("Coach notes (saved with your name)", "#d2b4ff", btns("hl", HL_TAGS) + '<div class="fld" style="margin-top:8px"><label for="rvLead">Start each note this many seconds earlier</label><select id="rvLead"><option>0</option><option>5</option><option selected>8</option><option>10</option><option>15</option></select></div>') +
       "</div></div>";
-    h += '<h2>Players<small>names and positions</small></h2><div class="card" id="plEd"></div>' +
-      '<h2>Review summary</h2><div id="rvSum"></div>' +
+    h += '<h2>Review summary</h2><div id="rvSum"></div>' +
       '<h2>Events<small id="rvCount"></small></h2><div class="card" id="rvList"></div>' +
       '<div class="seg" style="margin-top:12px"><button class="btn" id="rvUndo">Undo last</button><button class="btn" id="rvClear">Delete all of mine for this game</button></div>' +
       '<div class="seg" style="margin-top:12px"><button class="btn" id="rvSend" style="width:100%">Share to Kings HUDL</button></div><p class="note" id="rvShare" aria-live="polite"></p>';
     return h;
   }
+  function vCoachPlayers() { return "<h2>Coaches corner</h2>" + coachSubTabs("players") + '<div class="card" style="margin-top:12px" id="plEd"></div>'; }
   function bindPlayersEditor() {
     var box = $("plEd"); if (!box) return;
     var extra = [];
@@ -1578,7 +1580,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   }
   function bindReview() {
     if (window.__rvT) { clearInterval(window.__rvT); window.__rvT = null; }
-    var date = $("rvDate").value, cur = null, st = {p: 1, team: "For", pend: null, sel: null, last: null, zone: "", filt: {on: true, H: true, A: true, G: true, S: true}};
+    var date = $("rvDate").value, cur = null, st = {p: 1, team: "For", pend: null, sel: null, last: null, zone: "", filt: {on: true, H: true, A: true, G: true, S: true}, tz: {z: 1, s: 0, row: ""}};
     var HL = getMyClips(date, false), EV = getMyClips(date, true), RV = getMyReview(date), view = [];
     HL.forEach(function (c) { c.src = "hl"; }); EV.forEach(function (c) { c.src = "ev"; }); RV.forEach(function (c) { c.src = "rv"; });
     function store(src) { return src === "hl" ? HL : src === "ev" ? EV : RV; }
@@ -1589,16 +1591,29 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     function buildView() { view = HL.concat(EV, RV); view.sort(function (a, b) { return mark(a) - mark(b); }); }
     $("rvDate").addEventListener("change", function () { location.hash = "#/coach/" + $("rvDate").value; });
     $("cName").addEventListener("input", function () { lset(CS, {name: $("cName").value, pass: coachCfg().pass}); });
-    bindPlayersEditor();
     $("rvAuto").addEventListener("input", function () { st.auto = cleanList($("rvAuto").value); });
     function dur() { var d = cur && cur.dur ? cur.dur() : 0; if (d > 0) return d; var mx = view.reduce(function (m, c) { return Math.max(m, mark(c)); }, 0); return Math.max(600, mx + 120); }
+    function tlWin() {
+      var d = dur(), z = st.tz.z, len = d / z, s0 = Math.max(0, Math.min(d - len, st.tz.s)); st.tz.s = s0;
+      return {s: s0, len: len, d: d};
+    }
+    function tlCenter() { var t = 0; try { t = cur ? cur.get() || 0 : 0; } catch (e) {} var W = tlWin(); return t >= W.s && t <= W.s + W.len ? t : W.s + W.len / 2; }
+    function tlZoom(f) {
+      var c = tlCenter(), d = dur(), z = Math.max(1, Math.min(40, st.tz.z * f)), len = d / z;
+      st.tz.z = z; st.tz.s = Math.max(0, Math.min(d - len, c - len / 2)); drawTl();
+    }
     function drawTl() {
-      var d = dur();
-      $("rvTl").innerHTML = '<div class="tlwrap">' + rows().map(function (g) {
-        var spans = g.k === "pen" ? view.filter(function (c) { return c.src === "rv" && itemGroup(c) === g && c.until != null; }).map(function (c) { var l0 = penStart(c) * 100 / d; return '<span style="position:absolute;top:8px;height:6px;border-radius:3px;pointer-events:none;background:#ff8fab;opacity:.55;left:' + Math.min(99, l0) + "%;width:" + Math.max(.6, Math.min(100 - l0, (c.until - penStart(c)) * 100 / d)) + '%"></span>'; }).join("") : "";
+      var W = tlWin(), pos = function (t) { return (t - W.s) * 100 / W.len; };
+      var all = rows(), rs = all.filter(function (g) { return !st.tz.row || g.k === st.tz.row; });
+      var ctrl = '<div class="seg tlctl" style="margin-bottom:8px"><select id="tlRow" aria-label="Which timeline to show"><option value="">All timelines</option>' + all.map(function (g) { return '<option value="' + g.k + '"' + (st.tz.row === g.k ? " selected" : "") + ">" + g.name + "</option>"; }).join("") + '</select><button data-tl="in">Zoom in</button><button data-tl="out">Zoom out</button><button data-tl="fit">Fit all</button>' + (st.tz.z > 1 ? '<button data-tl="left" aria-label="Move earlier">&larr;</button><button data-tl="right" aria-label="Move later">&rarr;</button>' : "") + "</div>";
+      $("rvTl").innerHTML = ctrl + '<div class="tlwrap">' + rs.map(function (g) {
+        var spans = g.k === "pen" ? view.filter(function (c) { return c.src === "rv" && itemGroup(c) === g && c.until != null; }).map(function (c) {
+          var l0 = pos(penStart(c)), l1 = pos(c.until); if (l1 < 0 || l0 > 100) return "";
+          l0 = Math.max(0, l0); l1 = Math.min(100, l1); return '<span style="position:absolute;top:8px;height:6px;border-radius:3px;pointer-events:none;background:#ff8fab;opacity:.55;left:' + l0 + "%;width:" + Math.max(.6, l1 - l0) + '%"></span>'; }).join("") : "";
         return '<div class="tlrow"><span class="tlname">' + g.name + '</span><div class="tltrack">' + spans +
-          view.map(function (c, i) { return itemGroup(c) === g ? '<button class="tick' + (c === st.sel ? " on" : "") + '" style="left:' + Math.min(99.5, mark(c) * 100 / d) + "%;background:" + (g === RV_GOAL && /^Against/.test(c.tag) ? "#e5484d" : g.c) + '" data-i="' + i + '" aria-label="' + esc(itemLabel(c)) + " at " + hms(mark(c)) + '"></button>' : ""; }).join("") + "</div></div>";
-      }).join("") + '<div class="tlover"><div class="tlhead" id="rvHead"></div></div></div><p class="note" style="margin:6px 0 0" id="rvTime">Tap the timeline to jump. Tap a mark to select it.</p>';
+          view.map(function (c, i) { var l = pos(mark(c)); return itemGroup(c) === g && l >= 0 && l <= 100 ? '<button class="tick' + (c === st.sel ? " on" : "") + '" style="left:' + Math.min(99.5, l) + "%;background:" + (g === RV_GOAL && /^Against/.test(c.tag) ? "#e5484d" : g.c) + '" data-i="' + i + '" aria-label="' + esc(itemLabel(c)) + " at " + hms(mark(c)) + '"></button>' : ""; }).join("") + "</div></div>";
+      }).join("") + '<div class="tlover"><div class="tlhead" id="rvHead"></div></div></div><p class="note" style="margin:6px 0 0" id="rvTime">Tap the timeline to jump. Tap a mark to select it.</p>' +
+        (st.tz.z > 1 ? '<p class="note" style="margin:2px 0 0">Zoomed to ' + hms(Math.floor(W.s)) + " to " + hms(Math.floor(W.s + W.len)) + ". Scroll the mouse wheel over the timeline to zoom.</p>" : "");
     }
     function pickHtml(c) { return c.src === "rv" ? reviewPick(c) : playerPick(c); }
     function drawSel() {
@@ -1731,11 +1746,20 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       if (src === "rv") addEvent(newRv(tag));
       else addEvent({src: "hl", sec: Math.max(0, Math.floor(cur.get()) - (+$("rvLead").value)), end: Math.floor(cur.get()) + 2, tag: tag, players: [], assists: [], label: "", lists: st.auto ? [st.auto] : []});
     });
+    $("rvTl").addEventListener("change", function (e) { if (e.target.id === "tlRow") { st.tz.row = e.target.value; drawTl(); } });
+    $("rvTl").addEventListener("wheel", function (e) { if (!e.target.closest(".tltrack")) return; e.preventDefault(); var W = tlWin(), tr = e.target.closest(".tltrack").getBoundingClientRect(), t = W.s + (e.clientX - tr.left) / tr.width * W.len, z = Math.max(1, Math.min(40, st.tz.z * (e.deltaY < 0 ? 1.4 : 1 / 1.4))), len = W.d / z; st.tz.z = z; st.tz.s = Math.max(0, Math.min(W.d - len, t - (e.clientX - tr.left) / tr.width * len)); drawTl(); }, {passive: false});
     $("rvTl").addEventListener("click", function (e) {
+      var tb = e.target.closest("button[data-tl]");
+      if (tb) {
+        var k = tb.getAttribute("data-tl"), W0 = tlWin();
+        if (k === "in") tlZoom(2); else if (k === "out") tlZoom(.5); else if (k === "fit") { st.tz.z = 1; st.tz.s = 0; drawTl(); }
+        else { st.tz.s += (k === "left" ? -1 : 1) * W0.len / 2; drawTl(); }
+        return;
+      }
       var t = e.target.closest("button.tick");
       if (t) { st.sel = view[+t.getAttribute("data-i")]; if (cur) cur.seek(mark(st.sel) - 3); drawTl(); drawSel(); drawRink(); return; }
       var tr = e.target.closest(".tltrack"); if (!tr || !cur) return;
-      var r = tr.getBoundingClientRect(); cur.seek(Math.max(0, (e.clientX - r.left) / r.width * dur()));
+      var r = tr.getBoundingClientRect(), Wk = tlWin(); cur.seek(Math.max(0, Wk.s + (e.clientX - r.left) / r.width * Wk.len));
     });
     $("rvSel").addEventListener("change", function (e) { if (st.sel && e.target.id === "rvInfr") { st.sel.infr = e.target.value; persist(); drawList(); } });
     $("rvSel").addEventListener("input", function (e) {
@@ -1794,7 +1818,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     window.__rvT = setInterval(function () {
       var h = $("rvHead"); if (!h) { clearInterval(window.__rvT); window.__rvT = null; return; }
       if (!cur) return; var t = 0; try { t = cur.get() || 0; } catch (e) {}
-      h.style.left = Math.min(100, t * 100 / dur()) + "%"; var tm = $("rvTime"); if (tm) tm.textContent = hms(Math.floor(t)) + " of " + hms(Math.floor(dur())) + " · tap the timeline to jump, tap a mark to select it";
+      var Wn = tlWin(), hp = (t - Wn.s) * 100 / Wn.len; h.style.left = Math.max(0, Math.min(100, hp)) + "%"; h.style.display = hp < 0 || hp > 100 ? "none" : ""; var tm = $("rvTime"); if (tm) tm.textContent = hms(Math.floor(t)) + " of " + hms(Math.floor(dur())) + " · tap the timeline to jump, tap a mark to select it";
     }, 500);
     drawAll();
   }
@@ -1853,7 +1877,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       '<div class="fld"><label for="mpTeam">Team</label><select id="mpTeam"><option value="">Both teams</option><option value="H">Us</option><option value="A">Opponent</option></select></div>' +
       '<div class="fld"><label for="mpCoach">Marked by</label><select id="mpCoach"><option value="">Everyone</option>' + coachesWithShots().map(function (c) { return "<option>" + esc(c) + "</option>"; }).join("") + "</select></div></div>" +
       '<label class="note"><input type="checkbox" id="mpHeat" checked> Show heat</label>' +
-      '<div class="kpis" id="mpKpi"></div>' + fullRink() +
+      '<div class="kpis" id="mpKpi"></div>' + '<div class="seg" role="group" aria-label="Zoom the rink"><button id="mpZin">Zoom in</button><button id="mpZout">Zoom out</button><button id="mpZreset">Reset view</button></div>' + fullRink() +
       '<div class="leg"><span><i style="background:#a974ff;border-radius:50%"></i>Our goal</span><span><i style="background:#e5484d;border-radius:50%"></i>Their goal</span><span><i style="border:2px solid #1e5fd0;border-radius:50%"></i>Our shot</span><span><i style="border:2px dashed #e5484d;border-radius:50%"></i>Their shot</span></div>' +
       '<p class="note">We attack the net on the right. Older shots marked on one end only are placed on the correct end. Missed and blocked shots are small dots.</p>' +
       (ds.length ? "" : '<p class="note">No shots marked yet. Coaches can add shots in Coaches corner.</p>') + "</div>";
@@ -1862,6 +1886,36 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   function coachesWithShots() {
     var set = {}; shotDates().forEach(function (d) { allShots(d).forEach(function (s) { set[s.coach] = 1; }); });
     return Object.keys(set).sort();
+  }
+  // Pinch, wheel or button zoom and drag to pan for an SVG, by moving its viewBox.
+  function attachZoom(svg, W, H) {
+    var vb = {x: 0, y: 0, w: W, h: H}, ptrs = {}, last = null;
+    function apply() {
+      vb.w = Math.max(W / 14, Math.min(W, vb.w)); vb.h = vb.w * H / W;
+      vb.x = Math.max(0, Math.min(W - vb.w, vb.x)); vb.y = Math.max(0, Math.min(H - vb.h, vb.y));
+      svg.setAttribute("viewBox", vb.x + " " + vb.y + " " + vb.w + " " + vb.h); svg.style.touchAction = vb.w < W - .01 ? "none" : "pan-y";
+    }
+    function at(f, cx, cy) { var nw = Math.max(W / 14, Math.min(W, vb.w / f)), k = nw / vb.w; vb.x = cx - (cx - vb.x) * k; vb.y = cy - (cy - vb.y) * k; vb.w = nw; apply(); }
+    function pt(e) { var r = svg.getBoundingClientRect(); return {x: vb.x + (e.clientX - r.left) * vb.w / r.width, y: vb.y + (e.clientY - r.top) * vb.h / r.height}; }
+    svg.style.touchAction = "pan-y";
+    svg.addEventListener("wheel", function (e) { e.preventDefault(); var p = pt(e); at(e.deltaY < 0 ? 1.25 : 1 / 1.25, p.x, p.y); }, {passive: false});
+    svg.addEventListener("pointerdown", function (e) { ptrs[e.pointerId] = {x: e.clientX, y: e.clientY}; last = null; try { svg.setPointerCapture(e.pointerId); } catch (x) {} });
+    svg.addEventListener("pointermove", function (e) {
+      if (!ptrs[e.pointerId]) return;
+      var ids = Object.keys(ptrs), prev = ptrs[e.pointerId], r = svg.getBoundingClientRect();
+      if (ids.length >= 2) {
+        var a = ptrs[ids[0]], b2 = ptrs[ids[1]], d0 = Math.hypot(a.x - b2.x, a.y - b2.y);
+        ptrs[e.pointerId] = {x: e.clientX, y: e.clientY};
+        a = ptrs[ids[0]]; b2 = ptrs[ids[1]]; var d1 = Math.hypot(a.x - b2.x, a.y - b2.y);
+        if (d0 > 0 && d1 > 0) { var p = pt({clientX: (a.x + b2.x) / 2, clientY: (a.y + b2.y) / 2}); at(d1 / d0, p.x, p.y); }
+        return;
+      }
+      if (vb.w >= W - .01) { ptrs[e.pointerId] = {x: e.clientX, y: e.clientY}; return; }
+      vb.x -= (e.clientX - prev.x) * vb.w / r.width; vb.y -= (e.clientY - prev.y) * vb.h / r.height; ptrs[e.pointerId] = {x: e.clientX, y: e.clientY}; apply();
+    });
+    function up(e) { delete ptrs[e.pointerId]; }
+    svg.addEventListener("pointerup", up); svg.addEventListener("pointercancel", up);
+    return {zoom: function (f) { at(f, vb.x + vb.w / 2, vb.y + vb.h / 2); }, reset: function () { vb = {x: 0, y: 0, w: W, h: H}; apply(); }};
   }
   function bindShots(sub) {
     if (sub === "mark") return bindMark();
@@ -1901,6 +1955,8 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       $("mpKpi").innerHTML = k;
       $("cntR").textContent = t === "A" ? "" : "Us " + us.sog + " SOG, " + us.gl + " G"; $("cntL").textContent = t === "H" ? "" : "Them " + th.sog + " SOG, " + th.gl + " G";
     }
+    var zm = attachZoom($("rinkF"), 200, 85);
+    $("mpZin").addEventListener("click", function () { zm.zoom(1.6); }); $("mpZout").addEventListener("click", function () { zm.zoom(1 / 1.6); }); $("mpZreset").addEventListener("click", function () { zm.reset(); });
     ["mpGame", "mpPl", "mpRes", "mpTeam", "mpCoach", "mpHeat"].forEach(function (id) { $(id).addEventListener("change", draw); });
     draw();
   }
@@ -2048,7 +2104,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var h = D.sample ? '<div class="banner">This is sample data to show how the site looks. It is not real.</div>' : "";
     if (base === "shots" && parts[1] === "mark") { location.replace("#/coach"); return; }
     if (base === "coach" && needLock()) h += lockView();
-    else if (base === "coach") h += vReview(parts.filter(function (x) { return /^\d{4}-\d{2}-\d{2}$/.test(x); })[0]);
+    else if (base === "coach") h += parts[1] === "shots" ? vShots("mark") : parts[1] === "players" ? vCoachPlayers() : vReview(parts.filter(function (x) { return /^\d{4}-\d{2}-\d{2}$/.test(x); })[0]);
     else if (base === "clips") h += vClips(parts[1], "watch");
     else if (base === "shots") h += vShots();
     else if (!D.games.length) h += vEmpty();
@@ -2061,7 +2117,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     else h += vOverview();
     $("app").innerHTML = h;
     if (base === "coach" && needLock()) bindLock();
-    else if (base === "coach") bindReview();
+    else if (base === "coach") { if (parts[1] === "shots") bindShots("mark"); else if (parts[1] === "players") bindPlayersEditor(); else bindReview(); }
     if (base === "clips") bindClips(parts[1], "watch");
     if (base === "video") bindVideo();
     if (base === "player") bindPlayerClips(+parts[1]);
