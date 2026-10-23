@@ -650,8 +650,9 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     h += '<div class="card"><div class="score"><div class="t">' + esc(g.home) + '</div><div class="s">' + g.hs + '</div><div class="s mut">-</div><div class="s">' + g.as + '</div><div class="t">' + esc(g.away) + "</div></div>" +
       cmpRow(g.hShots, "Shots", g.aShots, g.hShots, g.aShots) +
       (g.fo ? '<div class="cmp"><b class="l">' + esc(g.fo) + '</b><span class="c">Faceoffs won</span><b></b></div>' : "") + "</div>";
+    if (g.adjusted) h += '<div class="card"><h3 style="margin-top:0">Adjusted from video review</h3><p class="note" style="margin-top:0">Anything marked in Coaches corner replaces what the scoreboard recorded. Worth a look:</p><ul style="margin:0;padding-left:20px">' + g.notes.map(function (t) { return "<li>" + esc(t) + "</li>"; }).join("") + "</ul></div>";
     if (g.goals.length) h += "<h2>Goals</h2><div class='card'>" + g.goals.map(function (x) {
-      return '<div class="ev ' + (x.home ? "goal" : "pen") + '"><span class="t" style="font-family:var(--display);font-weight:700;font-size:18px;min-width:90px">P' + esc(x.per) + " " + Math.floor(x.sec / 60) + ":" + ("0" + x.sec % 60).slice(-2) + '</span><span class="lb">' +
+      return '<div class="ev ' + (x.home ? "goal" : "pen") + '"><span class="t" style="font-family:var(--display);font-weight:700;font-size:18px;min-width:90px">' + (x.per === "" ? "Video " + hms(x.vsec) : "P" + esc(x.per) + " " + Math.floor(x.sec / 60) + ":" + ("0" + x.sec % 60).slice(-2)) + '</span><span class="lb">' +
         (x.home ? (x.scorer !== null ? esc(label(x.scorer)) + (x.assists.length ? ' <span class="mut">from ' + x.assists.map(function (n) { return esc(label(n)); }).join(", ") + "</span>" : ' <span class="mut">unassisted</span>') : esc(g.home)) : esc(g.away)) + "</span></div>";
     }).join("") + "</div>";
     h += "<h2>Skaters</h2><div class='card scroll'><table><thead><tr><th>Player</th><th>G</th><th>A</th><th>P</th><th>+/-</th><th>SOG</th><th>PIM</th></tr></thead><tbody>" +
@@ -1758,7 +1759,72 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
 
   // ---------- router ----------
   var tabs = [["", "Overview"], ["players", "Players"], ["games", "Games"], ["clips", "Highlights"], ["shots", "Shot map"], ["video", "Video"], ["coach", "Coaches corner"]];
+  // Video review beats the scoreboard, but only for what was actually marked. Starts from Streamn's numbers every time.
+  function applyReview(g) {
+    if (!g._o) g._o = JSON.parse(JSON.stringify({hs: g.hs, as: g.as, hShots: g.hShots, aShots: g.aShots, goals: g.goals, players: g.players, goalies: g.goalies, dnp: g.dnp}));
+    var o = JSON.parse(JSON.stringify(g._o));
+    g.hs = o.hs; g.as = o.as; g.hShots = o.hShots; g.aShots = o.aShots; g.goals = o.goals; g.players = o.players; g.goalies = o.goalies; g.dnp = o.dnp;
+    g.notes = []; g.adjusted = false;
+    var R = D.sample ? [] : allReview(g.date); if (!R.length) { g.result = g.hs > g.as ? "W" : g.hs < g.as ? "L" : "T"; return; }
+    var by = function (t) { return R.filter(function (c) { return c.tag === t; }).sort(function (a, b) { return a.sec - b.sec; }); };
+    var fG = by("For: Goal"), aG = by("Against: Goal"), fS = by("For: Shot on goal"), aS = by("Against: Shot on goal");
+    var scorerOf = function (c) { var a = c.assists || []; var l = c.players.filter(function (n) { return a.indexOf(n) < 0; }); return l.length ? l[0] : null; };
+    var tn = function (l) { return l.map(function (n) { return "#" + n; }).join(" ") || "nobody"; };
+    var note = function (t) { g.notes.push(t); g.adjusted = true; };
+    // goals
+    var keep = [];
+    [[true, fG, "Our goals"], [false, aG, "Their goals"]].forEach(function (d) {
+      var home = d[0], marks = d[1], old = g.goals.filter(function (x) { return x.home === home; });
+      if (!marks.length) { keep = keep.concat(old); return; }
+      var same = old.length === marks.length;
+      if (!same) note(d[2] + ": scoreboard had " + old.length + ", video review has " + marks.length + ".");
+      marks.forEach(function (c, i) {
+        var a = (c.assists || []).slice(), sc = home ? scorerOf(c) : null, was = same ? old[i] : null;
+        if (home && was && (was.scorer !== sc || was.assists.join() !== a.join())) note("Goal " + (i + 1) + ": scoreboard had " + tn([was.scorer].concat(was.assists).filter(function (n) { return n !== null; })) + ", video review has " + tn([sc].concat(a).filter(function (n) { return n !== null; })) + ".");
+        keep.push({per: was ? was.per : "", sec: was ? was.sec : 0, vsec: c.sec, home: home, scorer: sc, assists: a, rv: true});
+      });
+    });
+    var anyG = fG.length || aG.length;
+    if (anyG) {
+      g.goals = keep.every(function (x) { return x.per !== ""; }) ? keep.sort(function (a, b) { return (a.per < b.per ? -1 : a.per > b.per ? 1 : 0) || a.sec - b.sec; }) : keep.sort(function (a, b) { return (a.vsec == null ? 1e9 : a.vsec) - (b.vsec == null ? 1e9 : b.vsec); });
+      if (fG.length) g.hs = fG.length;
+      if (aG.length) g.as = aG.length;
+    }
+    if (fG.length) {
+      var cnt = {}, ast = {};
+      fG.forEach(function (c) { var sc = scorerOf(c); if (sc !== null) cnt[sc] = (cnt[sc] || 0) + 1; (c.assists || []).forEach(function (n) { ast[n] = (ast[n] || 0) + 1; }); });
+      g.players.forEach(function (p) { p.g = cnt[p.n] || 0; p.a = ast[p.n] || 0; p.p = p.g + p.a; });
+      Object.keys(cnt).concat(Object.keys(ast)).forEach(function (k) {
+        k = +k; if (g.players.some(function (p) { return p.n === k; })) return;
+        g.players.push({n: k, g: cnt[k] || 0, a: ast[k] || 0, p: (cnt[k] || 0) + (ast[k] || 0), pm: 0, pim: 0, sog: 0}); g.dnp = g.dnp.filter(function (n) { return n !== k; });
+      });
+    }
+    // shots on goal (goals count as shots on goal)
+    if (fS.length) {
+      var effF = fG.length ? fG : g._o.goals.filter(function (x) { return x.home; }).map(function (x) { return {tag: "For: Goal", players: x.scorer === null ? [] : [x.scorer], assists: []}; });
+      var all = fS.concat(effF), n0 = g.hShots, sg = {};
+      all.forEach(function (c) { var sc = c.tag === "For: Goal" ? scorerOf(c) : c.players[0]; if (sc !== null && sc !== undefined) sg[sc] = (sg[sc] || 0) + 1; });
+      g.hShots = all.length; g.players.forEach(function (p) { p.sog = sg[p.n] || 0; });
+      if (n0 !== g.hShots) note("Our shots on goal: scoreboard had " + n0 + ", video review has " + g.hShots + ".");
+    }
+    if (aS.length || aG.length) {
+      var effA = aG.length ? aG : g._o.goals.filter(function (x) { return !x.home; }).map(function () { return {tag: "Against: Goal", players: [], assists: []}; });
+      var ag = aS.concat(effA);
+      if (aS.length) {
+        var n1 = g.aShots; g.aShots = ag.length;
+        if (n1 !== g.aShots) note("Their shots on goal: scoreboard had " + n1 + ", video review has " + g.aShots + ".");
+      }
+      var sa = {}, ga = {}, one = g.goalies.length === 1 ? g.goalies[0].n : null;
+      ag.forEach(function (c) { var k = c.players.length ? c.players[0] : one; if (k === null) return; sa[k] = (sa[k] || 0) + 1; if (c.tag === "Against: Goal") ga[k] = (ga[k] || 0) + 1; });
+      g.goalies.forEach(function (x) { if (aS.length) x.sa = sa[x.n] || 0; if (aG.length) x.ga = ga[x.n] || 0; });
+    }
+    // penalties: the scoreboard only lists them as timestamps, so just compare counts
+    var pr = by("Penalty").length, ev = (D.events[g.date] || []).filter(function (e) { return /^Penalty/i.test(e.label); }).length;
+    if (pr && ev && pr !== ev) note("Our penalties: the scoreboard timeline has " + ev + ", video review has " + pr + ". Penalty minutes stay as the scoreboard has them.");
+    g.result = g.hs > g.as ? "W" : g.hs < g.as ? "L" : "T";
+  }
   function route() {
+    D.games.forEach(applyReview);
     if (window.__rvT) { clearInterval(window.__rvT); window.__rvT = null; }
     var parts = location.hash.replace(/^#\/?/, "").split("/");
     var base = parts[0] || "";
