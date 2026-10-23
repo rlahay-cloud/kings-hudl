@@ -55,12 +55,12 @@ Player names come from `roster.json`. Edit it to add or fix names. Goalies can g
 
 ## Coaches corner (game review)
 
-Coaches corner is one screen, Review, that holds everything for coaches:
+One screen, Review, holds everything for coaches.
 
-- **Video, timeline and rink.** Load the game video. Every mark shows on a timeline. Tap the timeline to jump, or tap a mark to select it and add players.
-- **Highlights.** Coach clips (Goal, Save, Chance and so on). They save under the coach's name and show in the Video tab.
-- **Game events.** Goal, Goal against, Penalty and Away Penalty. They save with no name.
-- **Review buttons.** Shots for and against, zone entries and exits, faceoffs (pick OZ, NZ or DZ, then Win or Loss) and power play or penalty kill.
-- **Shot locations.** Tap the rink, then a shot button. Markers stay on the rink and can be filtered by team and by goal or saved.
+- **Full rink.** Tap the rink to choose a spot and a zone (our zone, neutral, their zone). The chosen zone is tinted. Shot counters for us and them sit above the rink and at each net. Filters turn the markers on or off, by team and by goal or shot.
+- **What happened.** Shot (Goal, Shot on goal, Missed, Blocked) for us or them, Penalty on us or them, Zone entry, Zone exit, Faceoff (tap the rink for the zone, then Win or Loss) and Special teams. Goal is in one place only.
+- **Video and timeline.** Load the game video. Every mark shows on a timeline. Tap the timeline to jump, or tap a mark to select it and add players. A goal takes a scorer and up to two assists.
+- **Coach notes.** Good play, Breakout, Chance and Review save with the coach's name and show in the Video tab.
+- **No names on game facts.** Shots, goals, penalties and the rest of the review save as one shared file per game, `games/review_DATE_game.txt`. Goals and penalties also show in the Video tab and on player pages.
 
-Share to Kings HUDL sends all three kinds at once. Player pages show goals, assists and penalties by default, with buttons to switch on the rest.
+Share to Kings HUDL sends everything at once. Player pages show goals, assists and penalties by default, with buttons to switch on the rest. If two coaches review the same game, whoever shares last replaces the shared review file, so load the game first and add to what is there.

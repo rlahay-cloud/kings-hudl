@@ -7,7 +7,7 @@
 //   ALLOWED_ORIGIN text     https://rlahay-cloud.github.io
 
 const CLIP_LINE = /^\d+:\d{2}:\d{2}\|[^|\n]{1,30}\|[\da ]{0,60}\|[^|\n]{0,200}(\|\d{1,7})?$/;
-const REVIEW_LINE = /^\d+:\d{2}:\d{2}\|[^|\n]{1,40}\|[\da ]{0,60}\|(\d(\.\d{1,3})?)?,(\d(\.\d{1,3})?)?,\d$/;
+const REVIEW_LINE = /^\d+:\d{2}:\d{2}\|[^|\n]{1,40}\|[\da ]{0,60}\|(\d(\.\d{1,3})?)?,(\d(\.\d{1,3})?)?,\d(,f)?$/;
 const SHOT_LINE = /^P\d+\|[\d.]+\|[\d.]+\|(-|\d+)\|(G|S)\|(H|A)$/;
 const MAX_BYTES = 60000;
 
