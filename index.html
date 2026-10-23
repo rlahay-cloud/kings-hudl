@@ -158,7 +158,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
 (function () {
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
-  var D = {games: [], roster: {}, goalieNums: {}, home: "", videos: {}, events: {}, clips: {}, shots: {}, review: {}, cfg: {}, sample: false, error: ""};
+  var D = {games: [], roster: {}, goalieNums: {}, home: "", videos: {}, events: {}, clips: {}, shots: {}, review: {}, cfg: {}, pos: {}, sample: false, error: ""};
 
   // ---------- helpers ----------
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return {"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]; }); }
@@ -171,6 +171,20 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     return names[+m[2] - 1] + " " + (+m[3]);
   }
   function pname(n) { return D.roster[n] || ""; }
+  var PK = "kh-players-v1", POS_NAME = {C: "Centre", LW: "Left wing", RW: "Right wing", D: "Defence", G: "Goalie"};
+  function posGroup(p) { return p === "C" ? "C" : p === "LW" || p === "RW" ? "W" : p === "D" ? "D" : ""; }
+  function applyPlayers(rows) {
+    Object.keys(rows).forEach(function (k) {
+      var r = rows[k]; if (r.pos) D.pos[k] = r.pos; else delete D.pos[k];
+      if (r.name) D.roster[k] = r.name;
+      if (r.pos === "G") D.goalieNums[k] = true;
+    });
+  }
+  function parsePlayers(text) {
+    var out = {};
+    String(text || "").split(/\r?\n/).forEach(function (l) { var a = l.split("|"), n = parseInt(a[0], 10); if (!(n >= 0)) return; out[n] = {pos: /^(C|LW|RW|D|G)$/.test((a[1] || "").trim()) ? a[1].trim() : "", name: (a[2] || "").trim().slice(0, 40)}; });
+    return out;
+  }
   // Player photos live in photos/<number>.jpg (or .png, .webp). Without one, the number shows.
   window.__av = function (img) {
     var exts = ["jpg", "png", "webp"], i = +img.getAttribute("data-i") || 0;
@@ -316,7 +330,8 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       });
       return Promise.all(jobs.concat(videoJobs));
     });
-    return Promise.all([backupP, videosP, gamesP, cfgP]).then(function () {
+    var playersP = backupP.then(function () { return getText("games/players.txt"); }).then(function (t) { applyPlayers(parsePlayers(t)); }).catch(function () {}).then(function () { try { applyPlayers(JSON.parse(localStorage.getItem(PK) || "{}")); } catch (e) {} });
+    return Promise.all([backupP, videosP, gamesP, cfgP, playersP]).then(function () {
       D.games.sort(function (a, b) { return a.id < b.id ? -1 : 1; });
     });
   }
@@ -500,18 +515,19 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   }
   function vGames() { return "<h2>All games</h2>" + gameTable(D.games.slice().reverse()); }
 
-  var sortKey = "p", sortDir = -1;
+  var sortKey = "p", sortDir = -1, posFilter = "";
   function vPlayers() {
     var P = aggPlayers();
     var cols = [["gp", "GP"], ["g", "G"], ["a", "A"], ["p", "P"], ["ppg", "P/GP"], ["pm", "+/-"], ["sog", "SOG"], ["shp", "S%"], ["pim", "PIM"]];
+    if (posFilter) P = P.filter(function (p) { return posGroup(D.pos[p.n]) === posFilter; });
     P.sort(function (a, b) { var x = a[sortKey] === null ? -1 : a[sortKey], y = b[sortKey] === null ? -1 : b[sortKey]; return (y - x) * -sortDir || a.n - b.n; });
-    var h = "<h2>Skaters<small>tap a heading to sort</small></h2><div class='card scroll'><table><thead><tr><th>Player</th>" +
+    var h = "<h2>Skaters<small>tap a heading to sort</small></h2>" + (Object.keys(D.pos).length ? '<div class="seg" id="posChips" role="group" aria-label="Position">' + [["", "All"], ["C", "Centres"], ["W", "Wings"], ["D", "Defence"]].map(function (x) { return '<button data-pos="' + x[0] + '" aria-pressed="' + (posFilter === x[0]) + '">' + x[1] + "</button>"; }).join("") + "</div>" : "") + "<div class='card scroll'><table><thead><tr><th>Player</th><th>Pos</th>" +
       cols.map(function (c) { return '<th class="sort' + (c[0] === sortKey ? " on" : "") + '" data-k="' + c[0] + '">' + c[1] + "</th>"; }).join("") + "</tr></thead><tbody>" +
       P.map(function (p) {
-        return '<tr class="click" onclick="location.hash=\'#/player/' + p.n + '\'"><td>' + esc(label(p.n)) + "</td><td>" + p.gp + "</td><td>" + p.g + "</td><td>" + p.a + "</td><td><b>" + p.p + "</b></td><td>" + p.ppg.toFixed(2) + '</td><td class="' + pmCls(p.pm) + '">' + pmText(p.pm) + "</td><td>" + p.sog + "</td><td>" + (p.shp === null ? "-" : Math.round(p.shp * 100) + "%") + "</td><td>" + p.pim + "</td></tr>";
+        return '<tr class="click" onclick="location.hash=\'#/player/' + p.n + '\'"><td>' + esc(label(p.n)) + "</td><td>" + esc(D.pos[p.n] || "") + "</td><td>" + p.gp + "</td><td>" + p.g + "</td><td>" + p.a + "</td><td><b>" + p.p + "</b></td><td>" + p.ppg.toFixed(2) + '</td><td class="' + pmCls(p.pm) + '">' + pmText(p.pm) + "</td><td>" + p.sog + "</td><td>" + (p.shp === null ? "-" : Math.round(p.shp * 100) + "%") + "</td><td>" + p.pim + "</td></tr>";
       }).join("") + "</tbody></table></div>";
     h += "<h2>Player cards</h2><div class='pcards'>" + P.map(function (p) {
-      return '<a class="pcard" href="#/player/' + p.n + '"><div class="top">' + avatar(p.n) + '<div class="n">#' + p.n + '</div></div><div class="nm">' + esc(pname(p.n) || "Player") + '</div><div class="st"><span><b>' + p.g + "</b>G</span><span><b>" + p.a + "</b>A</span><span><b>" + p.p + "</b>P</span></div></a>";
+      return '<a class="pcard" href="#/player/' + p.n + '"><div class="top">' + avatar(p.n) + '<div class="n">#' + p.n + '</div></div><div class="nm">' + esc(pname(p.n) || "Player") + (D.pos[p.n] ? ' <span class="mut">' + esc(D.pos[p.n]) + "</span>" : "") + '</div><div class="st"><span><b>' + p.g + "</b>G</span><span><b>" + p.a + "</b>A</span><span><b>" + p.p + "</b>P</span></div></a>";
     }).join("") + "</div>";
     var G = aggGoalies();
     if (G.length) {
@@ -617,6 +633,16 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     });
     return T;
   }
+  function keyStatsHtml(n, p) {
+    var pos = D.pos[n], grp = posGroup(pos); if (!grp) return '<p class="note">Set this player\'s position in Coaches corner to see the stats that matter most for it.</p>';
+    var T = playerVideoStats(n), pct = function (a, b) { return b ? Math.round(a * 100 / b) + "%" : "-"; };
+    var en = RV_MOVES.reduce(function (s0, m) { return s0 + T.en[m]; }, 0), ex = RV_MOVES.reduce(function (s0, m) { return s0 + T.ex[m]; }, 0), fo = T.fow + T.fol;
+    var pm = '<span class="' + pmCls(p.pm) + '">' + pmText(p.pm) + "</span>", has = T.games.length > 0, v = function (x) { return has ? x : "-"; };
+    var k = grp === "C" ? [kpi(p.p, "Points"), kpi(p.g, "Goals"), kpi(p.a, "Assists"), kpi(v(pct(T.fow, fo)), "Faceoff win %"), kpi(v(T.fow + "-" + T.fol), "Faceoffs W-L"), kpi(p.sog, "Shots on goal"), kpi(v(pct(T.en.Carry + T.en.Pass, en)), "Controlled entries"), kpi(pm, "Plus / minus")]
+      : grp === "W" ? [kpi(p.g, "Goals"), kpi(p.sog, "Shots on goal"), kpi(p.shp === null ? "-" : Math.round(p.shp * 100) + "%", "Shooting %"), kpi(p.p, "Points"), kpi(v(T.ppg), "Power play goals"), kpi(v(T.att), "Shot attempts"), kpi(v(pct(T.en.Carry + T.en.Pass, en)), "Controlled entries"), kpi(pm, "Plus / minus")]
+      : [kpi(pm, "Plus / minus"), kpi(v(T.blocks), "Shots blocked for us"), kpi(v(pct(T.ex.Carry + T.ex.Pass, ex)), "Controlled exits"), kpi(p.a, "Assists"), kpi(p.p, "Points"), kpi(p.pim, "Penalty min"), kpi(v(T.ga), "Goals against on ice"), kpi(v(T.pen), "Penalties")];
+    return "<h2>Key stats<small>" + esc(POS_NAME[pos] || pos) + ", the numbers that matter most for the position</small></h2><div class='kpis'>" + k.join("") + "</div>";
+  }
   function playerVideoHtml(n) {
     var T = playerVideoStats(n); if (!T.games.length) return "<h2>From video review</h2><div class='card'><p class='note' style='margin:0'>No video review marks for this player yet. Shots, faceoffs, zone entries and exits show up here once they are marked in Coaches corner.</p></div>";
     var pct = function (a, b) { return b ? Math.round(a * 100 / b) + "%" : "-"; };
@@ -638,8 +664,9 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (!p) return '<a class="back" href="#/players">&larr; All players</a><div class="card empty">No games found for #' + n + ".</div>";
     var labels = p.log.map(function (l) { return fmtDate(l.game.date); });
     var cum = 0, cumPm = 0;
-    var h = '<a class="back" href="#/players">&larr; All players</a><div class="phead">' + avatar(n, "lg") + "<h2 style='margin:18px 0 10px'>" + esc(label(n)) + "<small>" + p.gp + " games played</small></h2></div>";
+    var h = '<a class="back" href="#/players">&larr; All players</a><div class="phead">' + avatar(n, "lg") + "<h2 style='margin:18px 0 10px'>" + esc(label(n)) + "<small>" + (D.pos[n] ? esc(POS_NAME[D.pos[n]] || D.pos[n]) + ", " : "") + p.gp + " games played</small></h2></div>";
     h += '<div class="kpis">' + kpi(p.g, "Goals") + kpi(p.a, "Assists") + kpi(p.p, "Points") + kpi('<span class="' + pmCls(p.pm) + '">' + pmText(p.pm) + "</span>", "Plus / minus") + kpi(p.sog, "Shots") + kpi(p.shp === null ? "-" : Math.round(p.shp * 100) + "%", "Shooting %") + kpi(p.pim, "Penalty min") + kpi(p.ppg.toFixed(2), "Points / game") + kpi(p.gp ? (p.g / p.gp).toFixed(2) : "-", "Goals / game") + kpi(p.gp ? (p.sog / p.gp).toFixed(1) : "-", "Shots / game") + "</div>";
+    h += keyStatsHtml(n, p);
     h += "<h2>Game by game</h2><div class='row g2'>" +
       "<div class='card'><h3>Points per game</h3>" + barChart(p.log.map(function (l) { return l.s.p; }), labels, {label: "Points per game"}) + "</div>" +
       "<div class='card'><h3>Shots per game</h3>" + barChart(p.log.map(function (l) { return l.s.sog; }), labels, {c: "var(--blue)", label: "Shots per game"}) + "</div></div>";
@@ -682,9 +709,8 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     h += '<div class="card"><div class="score"><div class="t">' + esc(g.home) + '</div><div class="s">' + g.hs + '</div><div class="s mut">-</div><div class="s">' + g.as + '</div><div class="t">' + esc(g.away) + "</div></div>" +
       cmpRow(g.hShots, "Shots", g.aShots, g.hShots, g.aShots) +
       (g.fo ? '<div class="cmp"><b class="l">' + esc(g.fo) + '</b><span class="c">Faceoffs won</span><b></b></div>' : "") + "</div>";
-    if (g.adjusted) h += '<div class="card"><h3 style="margin-top:0">Adjusted from video review</h3><p class="note" style="margin-top:0">Anything marked in Coaches corner replaces what the scoreboard recorded. Worth a look:</p><ul style="margin:0;padding-left:20px">' + g.notes.map(function (t) { return "<li>" + esc(t) + "</li>"; }).join("") + "</ul></div>";
     if (g.goals.length) h += "<h2>Goals</h2><div class='card'>" + g.goals.map(function (x) {
-      return '<div class="ev ' + (x.home ? "goal" : "pen") + '"><span class="t" style="font-family:var(--display);font-weight:700;font-size:18px;min-width:90px">' + (x.per === "" ? "Video " + hms(x.vsec) : "P" + esc(x.per) + " " + Math.floor(x.sec / 60) + ":" + ("0" + x.sec % 60).slice(-2)) + '</span><span class="lb">' + (x.sit ? '<span class="pill W">' + x.sit + "</span> " : "") +
+      return '<div class="ev ' + (x.home ? "goal" : "pen") + '"><span class="t" style="font-family:var(--display);font-weight:700;font-size:18px;min-width:90px">' + (x.nc ? "P" + esc(x.per) + " video " + hms(x.vsec) : "P" + esc(x.per) + " " + Math.floor(x.sec / 60) + ":" + ("0" + x.sec % 60).slice(-2)) + '</span><span class="lb">' + (x.sit ? '<span class="pill W">' + x.sit + "</span> " : "") +
         (x.home ? (x.scorer !== null ? esc(label(x.scorer)) + (x.assists.length ? ' <span class="mut">from ' + x.assists.map(function (n) { return esc(label(n)); }).join(", ") + "</span>" : ' <span class="mut">unassisted</span>') : esc(g.home)) : esc(g.away)) + "</span></div>";
     }).join("") + "</div>";
     h += "<h2>Skaters</h2><div class='card scroll'><table><thead><tr><th>Player</th><th>G</th><th>A</th><th>P</th><th>+/-</th><th>SOG</th><th>PIM</th></tr></thead><tbody>" +
@@ -1507,11 +1533,48 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       sect("Special teams", "#a974ff", btns("rv", ["Power play", "Penalty kill"])) +
       sect("Coach notes (saved with your name)", "#d2b4ff", btns("hl", HL_TAGS) + '<div class="fld" style="margin-top:8px"><label for="rvLead">Start each note this many seconds earlier</label><select id="rvLead"><option>0</option><option>5</option><option selected>8</option><option>10</option><option>15</option></select></div>') +
       "</div></div>";
-    h += '<h2>Review summary</h2><div id="rvSum"></div>' +
+    h += '<h2>Players<small>names and positions</small></h2><div class="card" id="plEd"></div>' +
+      '<h2>Review summary</h2><div id="rvSum"></div>' +
       '<h2>Events<small id="rvCount"></small></h2><div class="card" id="rvList"></div>' +
       '<div class="seg" style="margin-top:12px"><button class="btn" id="rvUndo">Undo last</button><button class="btn" id="rvClear">Delete all of mine for this game</button></div>' +
       '<div class="seg" style="margin-top:12px"><button class="btn" id="rvSend" style="width:100%">Share to Kings HUDL</button></div><p class="note" id="rvShare" aria-live="polite"></p>';
     return h;
+  }
+  function bindPlayersEditor() {
+    var box = $("plEd"); if (!box) return;
+    var extra = [];
+    function nums() { var m = {}; everyoneNums().forEach(function (n) { m[n] = 1; }); extra.forEach(function (n) { m[n] = 1; }); Object.keys(D.pos).forEach(function (k) { m[k] = 1; }); return Object.keys(m).map(Number).sort(function (a, b) { return a - b; }); }
+    function draw() {
+      box.innerHTML = '<p class="note" style="margin-top:0">Type a name and pick a position for each player. Goalies are G. Positions decide which stats are shown first on the player page.</p>' +
+        '<div class="scroll"><table><thead><tr><th>#</th><th>Name</th><th>Position</th></tr></thead><tbody>' + nums().map(function (n) {
+          return "<tr><td>#" + n + '</td><td><input type="text" data-n="' + n + '" data-f="name" maxlength="40" aria-label="Name for ' + n + '" value="' + esc(pname(n)) + '" style="width:100%"></td><td><select data-n="' + n + '" data-f="pos" aria-label="Position for ' + n + '"><option value="">-</option>' +
+            ["C", "LW", "RW", "D", "G"].map(function (p) { return "<option value=\"" + p + "\"" + (D.pos[n] === p ? " selected" : "") + ">" + p + "</option>"; }).join("") + "</select></td></tr>";
+        }).join("") + '</tbody></table></div><div class="seg"><input type="number" id="plAddN" min="0" max="999" placeholder="Add a number" style="max-width:140px"><button id="plAdd">Add player</button></div>' +
+        '<div class="seg" style="margin-top:8px"><button class="btn" id="plSave" style="width:100%">Save names and positions</button></div><p class="note" id="plNote" aria-live="polite"></p>';
+    }
+    draw();
+    box.addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      if (b.id === "plAdd") { var v = parseInt($("plAddN").value, 10); if (v >= 0) { extra.push(v); collect(); draw(); } return; }
+      if (b.id === "plSave") save();
+    });
+    function collect() {
+      var rows = {};
+      Array.prototype.forEach.call(box.querySelectorAll("[data-n]"), function (el) { var n = el.getAttribute("data-n"); rows[n] = rows[n] || {pos: "", name: ""}; if (el.getAttribute("data-f") === "pos") rows[n].pos = el.value; else rows[n].name = el.value.replace(/[|\r\n]+/g, " ").trim(); });
+      Object.keys(D.pos).forEach(function (k) { if (!rows[k]) rows[k] = {pos: D.pos[k], name: ""}; });
+      Object.keys(rows).forEach(function (k) { if (!rows[k].pos) delete D.pos[k]; });
+      applyPlayers(rows); lset(PK, rows); return rows;
+    }
+    function save() {
+      var rows = collect(), text = Object.keys(rows).filter(function (k) { return rows[k].pos || rows[k].name; }).map(function (k) { return k + "|" + rows[k].pos + "|" + rows[k].name; }).join("\n");
+      var note = $("plNote");
+      if (!(D.cfg && D.cfg.submitUrl)) { note.textContent = "Saved on this device only (no helper is set up)."; return; }
+      note.textContent = "Sending...";
+      fetch(workerUrl(), {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({kind: "players", passcode: coachCfg().pass, text: text})})
+        .then(function (r) { return r.json().catch(function () { return {ok: false, error: "Bad reply"}; }); })
+        .then(function (j) { note.textContent = j.ok ? "Saved for everyone. Names and positions show on the site in a minute." : "Not saved for everyone: " + (j.error || "unknown problem") + ". It is saved on this device."; })
+        .catch(function () { note.textContent = "No connection. Saved on this device only."; });
+    }
   }
   function bindReview() {
     if (window.__rvT) { clearInterval(window.__rvT); window.__rvT = null; }
@@ -1526,6 +1589,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     function buildView() { view = HL.concat(EV, RV); view.sort(function (a, b) { return mark(a) - mark(b); }); }
     $("rvDate").addEventListener("change", function () { location.hash = "#/coach/" + $("rvDate").value; });
     $("cName").addEventListener("input", function () { lset(CS, {name: $("cName").value, pass: coachCfg().pass}); });
+    bindPlayersEditor();
     $("rvAuto").addEventListener("input", function () { st.auto = cleanList($("rvAuto").value); });
     function dur() { var d = cur && cur.dur ? cur.dur() : 0; if (d > 0) return d; var mx = view.reduce(function (m, c) { return Math.max(m, mark(c)); }, 0); return Math.max(600, mx + 120); }
     function drawTl() {
@@ -1891,10 +1955,10 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   var tabs = [["", "Overview"], ["players", "Players"], ["games", "Games"], ["clips", "Highlights"], ["shots", "Shot map"], ["video", "Video"], ["coach", "Coaches corner"]];
   // Video review beats the scoreboard, but only for what was actually marked. Starts from Streamn's numbers every time.
   function applyReview(g) {
-    if (!g._o) g._o = JSON.parse(JSON.stringify({hs: g.hs, as: g.as, hShots: g.hShots, aShots: g.aShots, goals: g.goals, players: g.players, goalies: g.goalies, dnp: g.dnp}));
+    if (!g._o) g._o = JSON.parse(JSON.stringify({hs: g.hs, as: g.as, hShots: g.hShots, aShots: g.aShots, goals: g.goals, players: g.players, goalies: g.goalies, dnp: g.dnp, fo: g.fo}));
     var o = JSON.parse(JSON.stringify(g._o));
     g.hs = o.hs; g.as = o.as; g.hShots = o.hShots; g.aShots = o.aShots; g.goals = o.goals; g.players = o.players; g.goalies = o.goalies; g.dnp = o.dnp;
-    g.notes = []; g.adjusted = false;
+    g.fo = o.fo; g.notes = []; g.adjusted = false;
     var R = D.sample ? [] : allReview(g.date); if (!R.length) { g.result = g.hs > g.as ? "W" : g.hs < g.as ? "L" : "T"; return; }
     var by = function (t) { return R.filter(function (c) { return c.tag === t; }).sort(function (a, b) { return a.sec - b.sec; }); };
     var fG = by("For: Goal"), aG = by("Against: Goal"), fS = by("For: Shot on goal"), aS = by("Against: Shot on goal");
@@ -1911,12 +1975,12 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       marks.forEach(function (c, i) {
         var a = (c.assists || []).slice(), sc = home ? scorerOf(c) : null, was = same ? old[i] : null;
         if (home && was && (was.scorer !== sc || was.assists.join() !== a.join())) note("Goal " + (i + 1) + ": scoreboard had " + tn([was.scorer].concat(was.assists).filter(function (n) { return n !== null; })) + ", video review has " + tn([sc].concat(a).filter(function (n) { return n !== null; })) + ".");
-        keep.push({per: was ? was.per : "", sec: was ? was.sec : 0, vsec: c.sec, home: home, scorer: sc, assists: a, rv: true, sit: goalSit(R, c)});
+        keep.push({per: was ? was.per : String(PERIODS_LABEL[(c.p || 1) - 1] || c.p), nc: !was, sec: was ? was.sec : 0, vsec: c.sec, home: home, scorer: sc, assists: a, rv: true, sit: goalSit(R, c)});
       });
     });
     var anyG = fG.length || aG.length;
     if (anyG) {
-      g.goals = keep.every(function (x) { return x.per !== ""; }) ? keep.sort(function (a, b) { return (a.per < b.per ? -1 : a.per > b.per ? 1 : 0) || a.sec - b.sec; }) : keep.sort(function (a, b) { return (a.vsec == null ? 1e9 : a.vsec) - (b.vsec == null ? 1e9 : b.vsec); });
+      g.goals = keep.sort(function (a, b) { return (a.per < b.per ? -1 : a.per > b.per ? 1 : 0) || (a.nc || b.nc ? (a.vsec == null ? 1e9 : a.vsec) - (b.vsec == null ? 1e9 : b.vsec) : a.sec - b.sec); });
       if (fG.length) g.hs = fG.length;
       if (aG.length) g.as = aG.length;
     }
@@ -1929,6 +1993,9 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
         g.players.push({n: k, g: cnt[k] || 0, a: ast[k] || 0, p: (cnt[k] || 0) + (ast[k] || 0), pm: 0, pim: 0, sog: 0}); g.dnp = g.dnp.filter(function (n) { return n !== k; });
       });
     }
+    // faceoffs
+    var fos = R.filter(function (c) { return /^Faceoff:/.test(c.tag); });
+    if (fos.length) { var fw = fos.filter(function (c) { return /Win$/.test(c.tag); }).length; g.fo = fw + "/" + fos.length + " (" + Math.round(fw * 100 / fos.length) + "%)"; }
     // plus/minus from who was on the ice for each goal
     var iceOf = function (c, home) { var l = (c.ice || []).slice(); if (home) c.players.forEach(function (n) { if (l.indexOf(n) < 0) l.push(n); }); return l; };
     var gm = fG.concat(aG);
@@ -2001,6 +2068,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (base === "game") bindGameEvents();
     if (base === "shots") bindShots();
     var sb = $("sampleBtn"); if (sb) sb.addEventListener("click", function () { sampleData(); route(); });
+    Array.prototype.forEach.call(document.querySelectorAll("#posChips button"), function (bt) { bt.addEventListener("click", function () { posFilter = bt.getAttribute("data-pos"); route(); }); });
     Array.prototype.forEach.call(document.querySelectorAll("th.sort"), function (th) {
       th.addEventListener("click", function () { var k = th.getAttribute("data-k"); if (k === sortKey) sortDir = -sortDir; else { sortKey = k; sortDir = -1; } route(); });
     });

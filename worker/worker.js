@@ -41,6 +41,14 @@ function b64(text) {
 function check(body, env) {
   if (!body || typeof body !== "object") return {error: "Bad request"};
   if (!same(body.passcode, env.PASSCODE || "")) return {error: "Wrong passcode"};
+  if (body.kind === "players") {
+    const t = String(body.text || "");
+    if (t.length > 8000) return {error: "File is too big"};
+    const ls = t.split(/\r?\n/).filter(function (l) { return l.trim() !== ""; });
+    if (ls.length > 150) return {error: "Too many lines"};
+    for (const l of ls) if (!/^\d{1,3}\|(C|LW|RW|D|G)?\|[^|\n]{0,40}$/.test(l)) return {error: "A line was not in the right format"};
+    return {path: "games/players.txt", text: ls.join("\n") + "\n", coach: "players"};
+  }
   if (body.kind !== "clips" && body.kind !== "shots" && body.kind !== "video" && body.kind !== "review") return {error: "Unknown kind"};
   if (!/^\d{4}-\d{2}-\d{2}$/.test(body.date || "")) return {error: "Bad date"};
   if (body.kind === "video") {
@@ -92,7 +100,7 @@ export default {
     const r = check(body, env);
     if (r.error) return reply(env, r.error === "Wrong passcode" ? 401 : 400, {ok: false, error: r.error});
     try {
-      await saveToGitHub(env, r.path, r.text, (body.kind === "clips" ? "Highlights" : body.kind === "video" ? "Video link" : body.kind === "review" ? "Review" : "Shots") + " from " + r.coach + " for " + body.date);
+      await saveToGitHub(env, r.path, r.text, (body.kind === "players" ? "Names and positions" : body.kind === "clips" ? "Highlights" : body.kind === "video" ? "Video link" : body.kind === "review" ? "Review" : "Shots") + " from " + r.coach + " for " + body.date);
     } catch (e) {
       const why = String(e && e.message || e);
       let hint = "";
