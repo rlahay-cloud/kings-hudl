@@ -647,7 +647,8 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (!cfg.submitUrl) { shareSheet(name, text, noteEl); return; }
     if (!c.name.trim() || !c.pass.trim()) { noteEl.textContent = "Add your name and the coach passcode above first."; return; }
     noteEl.textContent = "Sending...";
-    fetch(cfg.submitUrl, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({passcode: c.pass, coach: c.name, date: date, kind: kind, text: text})})
+    var url = /^https?:\/\//.test(cfg.submitUrl) ? cfg.submitUrl : "https://" + cfg.submitUrl;
+    fetch(url, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({passcode: c.pass, coach: c.name, date: date, kind: kind, text: text})})
       .then(function (r) { return r.json().catch(function () { return {ok: false, error: "Bad reply"}; }); })
       .then(function (j) { noteEl.textContent = j.ok ? "Sent to Kings HUDL. Thank you!" : "Not sent: " + (j.error || "unknown problem") + "."; })
       .catch(function () { noteEl.textContent = "Not sent, no connection. Your marks are saved on this phone. Try again later."; });
