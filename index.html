@@ -198,6 +198,11 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       if (r.pos === "G") D.goalieNums[k] = true;
     });
   }
+  function freshPlayersText() {
+    var host = location.hostname, m = /^([^.]+)\.github\.io$/.exec(host), repo = location.pathname.split("/")[1];
+    var viaApi = m && repo ? fetch("https://api.github.com/repos/" + m[1] + "/" + repo + "/contents/games/players.txt", {headers: {"Accept": "application/vnd.github.raw+json"}}).then(function (r) { if (!r.ok) throw new Error("api " + r.status); return r.text(); }) : Promise.reject(new Error("not github"));
+    return viaApi.catch(function () { return getText("games/players.txt?t=" + Date.now()); });
+  }
   function parsePlayers(text) {
     var out = {};
     String(text || "").split(/\r?\n/).forEach(function (l) { var a = l.split("|"), n = parseInt(a[0], 10); if (!(n >= 0)) return; out[n] = {pos: /^(C|LW|RW|D|G)$/.test((a[1] || "").trim()) ? a[1].trim() : "", name: (a[2] || "").trim().slice(0, 40)}; });
@@ -357,7 +362,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       });
       return Promise.all(jobs.concat(videoJobs));
     });
-    var playersP = backupP.then(function () { return getText("games/players.txt"); }).then(function (t) { applyPlayers(parsePlayers(t)); }).catch(function () {}).then(function () { try { applyPlayers(JSON.parse(localStorage.getItem(PK) || "{}")); } catch (e) {} });
+    var playersP = backupP.then(function () { return getText("games/players.txt"); }).then(function (t) { applyPlayers(parsePlayers(t)); }).catch(function () {}).then(function () { try { if (localStorage.getItem(PK + "-pending") === "1") applyPlayers(JSON.parse(localStorage.getItem(PK) || "{}")); } catch (e) {} });
     return Promise.all([backupP, videosP, gamesP, cfgP, playersP]).then(function () {
       D.games.sort(function (a, b) { return a.id < b.id ? -1 : 1; });
     });
@@ -2129,7 +2134,12 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
         }).join("") + '</tbody></table></div><div class="seg"><input type="number" id="plAddN" min="0" max="999" placeholder="Add a number" style="max-width:140px"><button id="plAdd">Add player</button></div>' +
         '<div class="seg" style="margin-top:8px"><button class="btn" id="plSave" style="width:100%">Save names and positions</button></div><p class="note" id="plNote" aria-live="polite"></p>';
     }
-    draw();
+    var base = {};
+    function snap() { base = {}; Object.keys(D.pos).concat(Object.keys(D.roster)).forEach(function (k) { base[k] = (D.pos[k] || "") + "|" + (D.roster[k] || ""); }); }
+    snap(); draw();
+    var pend = false; try { pend = localStorage.getItem(PK + "-pending") === "1"; } catch (e) {}
+    if (pend) $("plNote").textContent = "This device has changes that are not saved for everyone yet. Press Save.";
+    else freshPlayersText().then(function (t) { var rows = parsePlayers(t); if (Object.keys(rows).length && !box.querySelector("input:focus")) { applyPlayers(rows); snap(); draw(); } }).catch(function () {});
     box.addEventListener("click", function (e) {
       var b = e.target.closest("button"); if (!b) return;
       if (b.id === "plAdd") { var v = parseInt($("plAddN").value, 10); if (v >= 0) { extra.push(v); collect(); draw(); } return; }
@@ -2140,17 +2150,29 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       Array.prototype.forEach.call(box.querySelectorAll("[data-n]"), function (el) { var n = el.getAttribute("data-n"); rows[n] = rows[n] || {pos: "", name: ""}; if (el.getAttribute("data-f") === "pos") rows[n].pos = el.value; else rows[n].name = el.value.replace(/[|\r\n]+/g, " ").trim(); });
       Object.keys(D.pos).forEach(function (k) { if (!rows[k]) rows[k] = {pos: D.pos[k], name: ""}; });
       Object.keys(rows).forEach(function (k) { if (!rows[k].pos) delete D.pos[k]; });
-      applyPlayers(rows); lset(PK, rows); return rows;
+      applyPlayers(rows); lset(PK, rows); try { localStorage.setItem(PK + "-pending", "1"); } catch (e) {} return rows;
     }
     function save() {
-      var rows = collect(), text = Object.keys(rows).filter(function (k) { return rows[k].pos || rows[k].name; }).map(function (k) { return k + "|" + rows[k].pos + "|" + rows[k].name; }).join("\n");
-      var note = $("plNote");
+      var mine = collect(), note = $("plNote");
       if (!(D.cfg && D.cfg.submitUrl)) { note.textContent = "Saved on this device only (no helper is set up)."; return; }
       note.textContent = "Sending...";
-      fetch(workerUrl(), {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({kind: "players", passcode: coachCfg().pass, text: text})})
-        .then(function (r) { return r.json().catch(function () { return {ok: false, error: "Bad reply"}; }); })
-        .then(function (j) { note.textContent = j.ok ? "Saved for everyone. Names and positions show on the site in a minute." : "Not saved for everyone: " + (j.error || "unknown problem") + ". It is saved on this device."; })
-        .catch(function () { note.textContent = "No connection. Saved on this device only."; });
+      // Merge with the newest shared list first, so another device's changes are not wiped out.
+      // Rows I did not touch keep the shared version, rows I changed use mine.
+      freshPlayersText().catch(function () { return ""; }).then(function (t) {
+        var theirs = parsePlayers(t), rows = {}, keys = {};
+        Object.keys(mine).concat(Object.keys(theirs)).forEach(function (k) { keys[k] = 1; });
+        Object.keys(keys).forEach(function (k) {
+          var m = mine[k] || {pos: "", name: ""}, changed = (m.pos || "") + "|" + (m.name || "") !== (base[k] === undefined ? "|" : base[k]);
+          rows[k] = changed || !theirs[k] ? m : theirs[k];
+        });
+        var text = Object.keys(rows).filter(function (k) { return rows[k].pos || rows[k].name; }).map(function (k) { return k + "|" + rows[k].pos + "|" + rows[k].name; }).join("\n");
+        return fetch(workerUrl(), {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({kind: "players", passcode: coachCfg().pass, text: text})})
+          .then(function (r) { return r.json().catch(function () { return {ok: false, error: "Bad reply"}; }); })
+          .then(function (j) {
+            if (j.ok) { try { localStorage.removeItem(PK + "-pending"); } catch (e) {} applyPlayers(rows); snap(); draw(); $("plNote").textContent = "Saved for everyone. Every device will show it within a minute or two."; }
+            else note.textContent = "Not saved for everyone: " + (j.error || "unknown problem") + ". It is kept on this device. Press Save again to retry.";
+          });
+      }).catch(function () { note.textContent = "No connection. Kept on this device. Press Save again to retry."; });
     }
   }
   function bindReview() {
