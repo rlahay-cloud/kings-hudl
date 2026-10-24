@@ -711,7 +711,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var cum = 0, cumPm = 0;
     var h = '<a class="back" href="#/players">&larr; All players</a><div class="phead">' + avatar(n, "lg") + "<h2 style='margin:18px 0 10px'>" + esc(label(n)) + "<small>" + (D.pos[n] ? esc(POS_NAME[D.pos[n]] || D.pos[n]) + ", " : "") + p.gp + " games played</small></h2></div>";
     h += '<div class="kpis">' + kpi(p.g, "Goals") + kpi(p.a, "Assists") + kpi(p.p, "Points") + kpi('<span class="' + pmCls(p.pm) + '">' + pmText(p.pm) + "</span>", "Plus / minus") + kpi(p.sog, "Shots") + kpi(p.shp === null ? "-" : Math.round(p.shp * 100) + "%", "Shooting %") + kpi(p.pim, "Penalty min") + kpi(p.ppg.toFixed(2), "Points / game") + kpi(p.gp ? (p.g / p.gp).toFixed(2) : "-", "Goals / game") + kpi(p.gp ? (p.sog / p.gp).toFixed(1) : "-", "Shots / game") + "</div>";
-    h += keyStatsHtml(n, p) + playerIceHtml(n);
+    h += playerIceHtml(n);
     h += "<h2>Game by game</h2><div class='row g2'>" +
       "<div class='card'><h3>Points per game</h3>" + barChart(p.log.map(function (l) { return l.s.p; }), labels, {label: "Points per game"}) + "</div>" +
       "<div class='card'><h3>Shots per game</h3>" + barChart(p.log.map(function (l) { return l.s.sog; }), labels, {c: "var(--blue)", label: "Shots per game"}) + "</div></div>";
@@ -733,7 +733,6 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (wl.length && wl.length < p.gp) ins.push("Averages " + (sum(wl, function (l) { return l.s.p; }) / wl.length).toFixed(2) + " points per game in wins and " + (sum(p.log.filter(function (l) { return l.game.result !== "W"; }), function (l) { return l.s.p; }) / (p.gp - wl.length)).toFixed(2) + " in other games.");
     var best = p.log.slice().sort(function (a, b) { return b.s.p - a.s.p || b.s.sog - a.s.sog; })[0];
     if (best && best.s.p > 0) ins.push("Best game: " + fmtDate(best.game.date) + " vs " + esc(best.game.away) + " with " + best.s.g + "G " + best.s.a + "A.");
-    h += playerVideoHtml(n);
     h += "<h2>Notes</h2><div class='card'>" + ins.map(function (s) { return '<div class="insight">' + s + "</div>"; }).join("") + "</div>";
     return h + playerClips(n);
   }
