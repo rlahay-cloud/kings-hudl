@@ -78,3 +78,7 @@ One screen, Review, holds everything for coaches.
 - **No names on game facts.** Shots, goals, penalties and the rest of the review save as one shared file per game, `games/review_DATE_game.txt`. Goals and penalties also show in the Video tab and on player pages.
 
 Share to Kings HUDL sends everything at once. Player pages show goals, assists and penalties by default, with buttons to switch on the rest. If two coaches review the same game, whoever shares last replaces the shared review file, so load the game first and add to what is there.
+
+## Upcoming games
+
+The Overview page shows the next two games from `schedule.txt` in the main folder. Each line is `date|start time|opponent|H or A|arena`. Add a line for each new game. Games drop off the page by themselves two hours after they start.

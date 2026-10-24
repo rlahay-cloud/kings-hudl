@@ -1,0 +1,4 @@
+# Upcoming games for the Overview page. One per line: date|start time (24 hour)|opponent|H for home or A for away|arena
+# Source: https://heominoraa.ca/groups/1044/schedule/  Delete or add lines any time. Past games disappear by themselves.
+2026-10-25|12:30|Seaway Valley Rapids|H|Cardinal
+2026-10-27|19:30|Kanata Blazers|H|Spencerville

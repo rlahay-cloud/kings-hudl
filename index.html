@@ -327,6 +327,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       b.goalies.forEach(function (g) { D.goalieNums[g.n] = true; fresh[g.n] = g.name || old[g.n] || ""; });
       D.roster = fresh;
     }).catch(function () {});
+    var schedP = getText("schedule.txt").then(function (t) { D.schedule = t.split(/\r?\n/).map(function (l) { return l.split("|"); }).filter(function (a) { return /^\d{4}-\d{2}-\d{2}$/.test((a[0] || "").trim()) && /^\d{1,2}:\d{2}$/.test((a[1] || "").trim()); }).map(function (a) { return {date: a[0].trim(), time: a[1].trim(), opp: (a[2] || "").trim(), home: (a[3] || "H").trim().toUpperCase() !== "A", venue: (a[4] || "").trim()}; }); }).catch(function () { D.schedule = []; });
     var cfgP = getText("config.json").then(JSON.parse).then(function (c) { D.cfg = c || {}; }).catch(function () { D.cfg = {}; });
     var videosP = getText("videos.txt").then(function (t) {
       t.split(/\r?\n/).forEach(function (l) { var m = /^(\d{4}-\d{2}-\d{2})\s+(\S+)/.exec(l.trim()); if (m) D.videos[m[1]] = m[2]; });
@@ -373,7 +374,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       return Promise.all(jobs.concat(videoJobs));
     });
     var playersP = backupP.then(function () { return getText("games/players.txt"); }).then(function (t) { applyPlayers(parsePlayers(t)); }).catch(function () {}).then(function () { try { if (localStorage.getItem(PK + "-pending") === "2") applyPlayers(JSON.parse(localStorage.getItem(PK) || "{}")); } catch (e) {} });
-    return Promise.all([backupP, videosP, gamesP, cfgP, playersP]).then(function () {
+    return Promise.all([backupP, videosP, gamesP, cfgP, playersP, schedP]).then(function () {
       D.games.sort(function (a, b) { return a.id < b.id ? -1 : 1; });
     });
   }
@@ -525,10 +526,19 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     return out.map(function (s) { return '<div class="insight">' + s + "</div>"; }).join("");
   }
 
+  function nextGamesHtml() {
+    var now = Date.now(), up = (D.schedule || []).map(function (g) { var p = g.date.split("-"), t = g.time.split(":"); g.at = new Date(+p[0], +p[1] - 1, +p[2], +t[0], +t[1]).getTime(); return g; }).filter(function (g) { return g.at + 2 * 3600000 > now; }).sort(function (a, b) { return a.at - b.at; }).slice(0, 2);
+    if (!up.length) return "";
+    var days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    return "<h2>Next game" + (up.length > 1 ? "s" : "") + "</h2><div class='row g2'>" + up.map(function (g, i) {
+      var d = new Date(g.at), h12 = d.getHours() % 12 || 12, mm = ("0" + d.getMinutes()).slice(-2), ap = d.getHours() < 12 ? "AM" : "PM";
+      return "<div class='card'><h3 style='margin:0 0 4px'>" + (i === 0 ? "Up next" : "After that") + "</h3><div style='font-family:var(--display);font-weight:700;font-size:22px'>" + days[d.getDay()] + " " + fmtDate(g.date) + ", " + h12 + ":" + mm + " " + ap + "</div><div style='margin-top:4px'>" + (g.home ? "vs " : "at ") + "<b>" + esc(g.opp) + "</b></div>" + (g.venue ? "<div class='note' style='margin:4px 0 0'>" + esc(g.venue) + (g.home ? ", home" : ", away") + "</div>" : "") + "</div>";
+    }).join("") + "</div>";
+  }
   function vOverview() {
     var t = team(), P = aggPlayers(), G = aggGoalies();
     var labels = D.games.map(function (g) { return fmtDate(g.date); });
-    var h = '<div class="kpis">' +
+    var h = nextGamesHtml() + '<div class="kpis">' +
       kpi(t.w + "-" + t.l + "-" + t.t, "Record") + kpi(t.gf, "Goals for") + kpi(t.ga, "Goals against") +
       kpi(t.sf, "Shots for") + kpi(t.sa, "Shots against") + kpi(pct(t.sf, t.sf + t.sa), "Shot share") + "</div>";
     h += "<h2>What stands out</h2><div class='card'>" + insights(P, G, t) + "</div>";
