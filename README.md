@@ -1,6 +1,6 @@
 # Kings HUDL
 
-A season stats website for the team, called Kings HUDL. Open it on a phone or computer to see the record, leaders, player cards, game box scores, goalies and video moments.
+A season stats website for the team, called Kings HUDL. Open it on a phone or computer to see the record, leaders, player tables, game box scores, goalies and video moments.
 
 ## Coaches
 
@@ -24,7 +24,7 @@ Goals and penalties then become links that jump to that moment in the YouTube vi
 
 ## Player photos
 
-Put one photo per player in the **photos** folder, named by jersey number: `4.jpg`, `10.jpg` (`.png` and `.webp` also work). They show on player cards and player pages. Anyone with the site link can see them, so get permission first.
+Put one photo per player in the **photos** folder, named by jersey number: `4.jpg`, `10.jpg` (`.png` and `.webp` also work). They show on player pages. Anyone with the site link can see them, so get permission first.
 
 ## Highlights
 

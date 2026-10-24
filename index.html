@@ -577,16 +577,10 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       P.map(function (p) {
         return '<tr class="click" onclick="location.hash=\'#/player/' + p.n + '\'"><td>' + esc(label(p.n)) + "</td><td>" + esc(D.pos[p.n] || "") + "</td><td>" + p.gp + "</td><td>" + p.g + "</td><td>" + p.a + "</td><td><b>" + p.p + "</b></td><td>" + p.ppg.toFixed(2) + '</td><td class="' + pmCls(p.pm) + '">' + pmText(p.pm) + "</td><td>" + p.sog + "</td><td>" + (p.shp === null ? "-" : Math.round(p.shp * 100) + "%") + "</td><td>" + p.pim + "</td>" + (hasIce ? (ICE[p.n] ? "<td>" + ICE[p.n].shifts + "</td><td>" + mss(ICE[p.n].toi / ICE[p.n].games) + "</td>" : "<td>-</td><td>-</td>") : "") + (EX[p.n] || []).map(function (x) { return "<td>" + x[1] + "</td>"; }).join("") + "</tr>";
       }).join("") + "</tbody></table></div>";
-    h += "<h2>Player cards</h2><div class='pcards'>" + P.map(function (p) {
-      return '<a class="pcard" href="#/player/' + p.n + '"><div class="top">' + avatar(p.n) + '<div class="n">#' + p.n + '</div></div><div class="nm">' + esc(pname(p.n) || "Player") + (D.pos[p.n] ? ' <span class="mut">' + esc(D.pos[p.n]) + "</span>" : "") + '</div><div class="st"><span><b>' + p.g + "</b>G</span><span><b>" + p.a + "</b>A</span><span><b>" + p.p + "</b>P</span>" + (ICE[p.n] ? "<span><b>" + mss(ICE[p.n].toi / ICE[p.n].games) + "</b>TOI/GP</span><span><b>" + (ICE[p.n].shifts / ICE[p.n].games).toFixed(1) + "</b>Shifts/GP</span>" : "") + (EX[p.n] || []).map(function (x) { return "<span><b>" + x[1] + "</b>" + esc(x[0]) + "</span>"; }).join("") + "</div></a>";
-    }).join("") + "</div>";
     var G = aggGoalies();
     if (G.length) {
       h += "<h2>Goalies</h2><div class='card scroll'><table><thead><tr><th>Goalie</th><th>GP</th><th>SA</th><th>GA</th><th>SV%</th><th>GAA</th></tr></thead><tbody>" +
         G.map(function (x) { return '<tr class="click" onclick="location.hash=\'#/player/' + x.n + '\'"><td>' + esc(label(x.n)) + "</td><td>" + x.gp + "</td><td>" + x.sa + "</td><td>" + x.ga + "</td><td><b>" + svText(x.sv) + "</b></td><td>" + (x.gaa === null ? "-" : x.gaa.toFixed(2)) + "</td></tr>"; }).join("") + "</tbody></table></div>";
-      h += "<div class='pcards' style='margin-top:12px'>" + G.map(function (x) {
-        return '<a class="pcard" href="#/player/' + x.n + '"><div class="top">' + avatar(x.n) + '<div class="n">#' + x.n + '</div></div><div class="nm">' + esc(pname(x.n) || "Goalie") + '</div><div class="st"><span><b>' + svText(x.sv) + "</b>SV%</span><span><b>" + x.ga + "</b>GA</span><span><b>" + x.gp + "</b>GP</span></div></a>";
-      }).join("") + "</div>";
     }
     return h;
   }
