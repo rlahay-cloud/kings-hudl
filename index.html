@@ -933,8 +933,8 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   }
   function shiftClick(e) {
     var b = e.target.closest && e.target.closest("button[data-shift]"); if (!b || !$("vpCard")) return;
-    var p = b.getAttribute("data-shift").split("|"), a = Math.floor(+p[1]), gm = D.games.filter(function (g) { return g.date === p[0]; })[0];
-    playItem({date: p[0], game: fmtDate(p[0]) + (gm ? " vs " + gm.away : ""), sec: a, start: Math.max(0, a - 4), end: a + 2, mark: a, tag: "Shift", players: [], lists: []});
+    var p = b.getAttribute("data-shift").split("|"), a = Math.floor(+p[1]), z = Math.ceil(+p[2] || +p[1]), gm = D.games.filter(function (g) { return g.date === p[0]; })[0];
+    playItem({date: p[0], game: fmtDate(p[0]) + (gm ? " vs " + gm.away : ""), sec: a, start: Math.max(0, a - 4), end: z + 2, mark: a, tag: "Shift", players: [], lists: []});
   }
   document.addEventListener("click", shiftClick);
   function plClick(e) {
@@ -1676,7 +1676,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     h += games.slice().reverse().map(function (x) {
       return "<details class='card' style='margin-top:12px'><summary style='cursor:pointer'>Every shift, " + fmtDate(x.date) + " (" + x.r.count + ")</summary><div style='margin-top:8px'>" + x.r.shifts.map(function (s, i) {
         var hasV = !!ytId(D.videos[x.date] || lget(VK)[x.date] || "");
-        return "<div class='ev'><span class='t' style='font-family:var(--display);font-weight:700;min-width:70px'>#" + (i + 1) + "</span><span class='lb'>" + mss(s.len) + " " + (hasV ? '<button class="tm" data-shift="' + x.date + "|" + s.a + '" style="background:none;border:0;color:var(--accent);padding:0;font-weight:700">watch at ' + hms(Math.floor(s.a)) + "</button>" : "<span class='mut'>at video " + hms(Math.floor(s.a)) + "</span>") + "</span></div>";
+        return "<div class='ev'><span class='t' style='font-family:var(--display);font-weight:700;min-width:70px'>#" + (i + 1) + "</span><span class='lb'>" + mss(s.len) + " " + (hasV ? '<button class="tm" data-shift="' + x.date + "|" + s.a + "|" + s.b + '" style="background:none;border:0;color:var(--accent);padding:0;font-weight:700">watch at ' + hms(Math.floor(s.a)) + "</button>" : "<span class='mut'>at video " + hms(Math.floor(s.a)) + "</span>") + "</span></div>";
       }).join("") + "</div></details>";
     }).join("");
     return h;
