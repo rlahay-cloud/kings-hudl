@@ -65,6 +65,23 @@ tbody tr.click { cursor: pointer; } tbody tr.click:hover { background: var(--pan
 .shfp.drag { opacity: .3; } .shfghost { position: fixed; z-index: 60; pointer-events: none; width: 74px; opacity: .92; box-shadow: 0 6px 18px rgba(0,0,0,.4); }
 .shfbench > .note { grid-column: 1 / -1; }
 .shfhint { color: var(--muted); font-size: 12px; margin: 0 0 8px; }
+.shfv.fs { position: fixed !important; inset: 0; z-index: 200; background: #000; padding: 0; margin: 0; border-radius: 0; }
+.shfv.fs .ytbox { position: absolute; inset: 0; max-height: none; width: 100%; height: 100%; aspect-ratio: auto; border-radius: 0; }
+.shfv.fs .ytbox iframe { border-radius: 0 !important; }
+.shfv.fs .shfstat { font-size: 13px; position: absolute; top: calc(6px + env(safe-area-inset-top)); left: 8px; right: 8px; z-index: 3; background: rgba(0,0,0,.6); color: #fff; padding: 4px 10px; border-radius: 10px; margin: 0; }
+.shfv.fs > .seg { position: absolute; bottom: calc(6px + env(safe-area-inset-bottom)); left: 8px; right: 8px; z-index: 3; background: rgba(0,0,0,.6); padding: 6px; border-radius: 12px; gap: 6px; }
+.shfv.fs > .seg button, .shfv.fs > .seg select { min-height: 38px; padding: 4px 10px; font-size: 14px; }
+.shfv.fs #shfWhistle { flex: 1 1 auto !important; min-height: 44px !important; }
+.shfv.fs #shfLast, .shfv.fs #shfFs, .shfv.fs #shfSpeed { display: none; }
+.fsonly { display: none; } .shfv.fs .fsonly { display: inline-flex; }
+#shfOverlay { display: none; }
+.shfv.fs #shfOverlay { display: block; position: absolute; top: calc(46px + env(safe-area-inset-top)); right: 8px; bottom: calc(58px + env(safe-area-inset-bottom)); width: min(320px, 48vw); overflow: auto; z-index: 3; background: rgba(10,14,28,.6); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); border-radius: 14px; padding: 6px; }
+.shfv.fs.nolines #shfOverlay { display: none; }
+.shfv.fs #shfOverlay .shfh { font-size: 11px; margin: 2px 0; color: #c9d1e6; }
+.shfv.fs #shfOverlay .shfrow { gap: 3px; margin-bottom: 3px; grid-template-columns: 24px repeat(3, minmax(0, 1fr)); } .shfv.fs #shfOverlay .shfrow.d { grid-template-columns: 24px repeat(2, minmax(0, 1fr)); }
+.shfv.fs #shfOverlay .shfslot { min-height: 33px; border-width: 1px; } .shfv.fs #shfOverlay .shfp { min-height: 31px; border-width: 1px; border-radius: 9px; padding: 1px; } .shfv.fs #shfOverlay .shfp b { font-size: 17px; } .shfv.fs #shfOverlay .shfp span { display: none; }
+.shfv.fs #shfOverlay .shfbench { min-height: 44px; padding: 4px; gap: 4px; grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)); border-width: 1px; } .shfv.fs #shfOverlay .shfbench .note { display: none; }
+.shfv.fs #shfOverlay .shfrl { font-size: 10px; color: #c9d1e6; }
 .shfgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 8px; }
 .shfp { min-height: 64px; border-radius: 12px; border: 2px solid var(--line); background: var(--panel2); color: var(--fg); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4px; }
 .shfp b { font-family: var(--display); font-size: 26px; line-height: 1; }
@@ -1759,9 +1776,9 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     h += '<div class="card" style="margin-top:12px"><div class="fld"><label for="shfDate">Game</label>' + dateSelect("shfDate", dates, date) + "</div>";
     if (!ytId(url)) return h + '<p class="note">This game has no video link yet. Add the YouTube link in <b>Game analysis</b> first, then come back.</p></div>';
     h += '<p class="note" style="margin-bottom:0">Tap <b>Start tracking</b> when play starts and <b>Stop tracking</b> at every stoppage. Time only counts while tracking is on and the video is playing. Tap a number to put that player on the ice, and tap it again when he comes off. You can change who is on while tracking is stopped.</p></div>';
-    h += '<div class="rv"><div class="rvl"><div class="rvvideo shfv"><div class="ytbox" id="shfYt"></div>' +
+    h += '<div class="rv"><div class="rvl"><div class="rvvideo shfv"><div class="ytbox" id="shfYt"></div><div id="shfOverlay"></div>' +
       '<div class="shfstat"><span id="shfTime" class="note" style="margin:0">Loading the video.</span><b id="shfState">PLAY</b><span id="shfCount" class="note" style="margin:0"></span></div>' +
-      '<div class="seg" role="group" aria-label="Video controls"><button class="btn" id="shfWhistle" style="flex:1 1 100%;min-height:52px">Start tracking</button><button id="shfPlay">Play / Pause</button><button id="shfBack">&larr; 5s</button><button id="shfFwd">5s &rarr;</button><button id="shfLast">Go to last tracked</button>' +
+      '<div class="seg" role="group" aria-label="Video controls"><button class="btn" id="shfWhistle" style="flex:1 1 100%;min-height:52px">Start tracking</button><button id="shfPlay">Play / Pause</button><button id="shfBack">&larr; 5s</button><button id="shfFwd">5s &rarr;</button><button id="shfLast">Go to last tracked</button><button id="shfFs">Full screen with lines</button><button id="shfLinesBtn" class="fsonly">Lines</button><button id="shfExit" class="fsonly">Exit</button>' +
       '<select id="shfSpeed" aria-label="Speed"><option value="0.5">Half speed</option><option value="1" selected>Normal speed</option><option value="1.5">1.5x</option><option value="2">2x</option></select></div></div></div><div class="rvr">';
     h += '<div class="card" style="margin-top:12px"><h3 style="margin-top:0">Who is on the ice<small id="shfOnList"></small></h3><p class="shfhint">Tap a number to put him on or off the ice. Press and hold, then drag a number to move it to a line spot. Drag it to the bench to take it off the lines.</p><div id="shfGrid" class="shfl"></div>' +
       '<div class="seg" style="margin-top:10px"><button id="shfAllOff">Everyone off</button><button id="shfPeriod">End of period</button><button id="shfUndo">Undo last tap</button></div>' +
@@ -1853,7 +1870,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       if (!drag.started) {
         if (drag.touch && !drag.armed && dist > 10) { dragEnd(); return; }
         if (!drag.armed || dist < 8) return;
-        drag.started = true; drag.ghost = drag.el.cloneNode(true); drag.ghost.className += " shfghost"; document.body.appendChild(drag.ghost); drag.el.classList.add("drag");
+        drag.started = true; drag.ghost = drag.el.cloneNode(true); drag.ghost.className += " shfghost"; (document.fullscreenElement || document.body).appendChild(drag.ghost); drag.el.classList.add("drag");
       }
       drag.ghost.style.left = (e.clientX - 37) + "px"; drag.ghost.style.top = (e.clientY - 32) + "px";
       var t = document.elementFromPoint(e.clientX, e.clientY), sl = t && t.closest ? t.closest("[data-slot]") : null, o = gridEl.querySelector(".over");
@@ -1899,6 +1916,25 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       var b = e.target.closest("button[data-n]"); if (!b || !ready || suppress) return;
       var n = +b.getAttribute("data-n"); add(onNow().on[n] ? "off" : "on", n);
     });
+    // Full screen: the video fills the screen and the lines sit on top of it. The same grid is moved into the overlay, so tapping and dragging work as before.
+    var fsHome = null, fsNext = null;
+    function fsSet(on) {
+      var v = document.querySelector(".shfv"); if (!v) return;
+      if (on && !v.classList.contains("fs")) {
+        fsHome = gridEl.parentNode; fsNext = gridEl.nextSibling; $("shfOverlay").appendChild(gridEl);
+        v.classList.add("fs"); document.body.style.overflow = "hidden";
+        try { if (v.requestFullscreen) v.requestFullscreen(); else if (v.webkitRequestFullscreen) v.webkitRequestFullscreen(); } catch (e) {}
+      } else if (!on && v.classList.contains("fs")) {
+        v.classList.remove("fs", "nolines"); document.body.style.overflow = "";
+        if (fsHome) fsHome.insertBefore(gridEl, fsNext);
+        try { if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen(); } catch (e) {}
+      }
+      sig = ""; grid();
+    }
+    $("shfFs").addEventListener("click", function () { fsSet(true); });
+    $("shfExit").addEventListener("click", function () { fsSet(false); });
+    $("shfLinesBtn").addEventListener("click", function () { document.querySelector(".shfv").classList.toggle("nolines"); });
+    document.addEventListener("fullscreenchange", function () { if (!document.fullscreenElement && document.querySelector(".shfv.fs")) fsSet(false); });
     $("shfWhistle").addEventListener("click", function () { if (!ready) return; var wasStopped = onNow().stopped; add(wasStopped ? "go" : "stop"); if (wasStopped) { try { pl.playVideo(); } catch (e) {} } });
     $("shfAllOff").addEventListener("click", function () { if (!ready) return; var s = onNow(), t = Math.round(now() * 10) / 10; var gp = Date.now(); Object.keys(s.on).forEach(function (n) { ev.push({t: t, k: "off", n: +n, grp: gp}); }); persist(); refresh(); });
     $("shfPeriod").addEventListener("click", function () { if (!ready) return; var s = onNow(), t = Math.round(now() * 10) / 10, gp = Date.now(); Object.keys(s.on).forEach(function (n) { ev.push({t: t, k: "off", n: +n, grp: gp}); }); if (!s.stopped) ev.push({t: t, k: "stop", n: null, grp: gp}); persist(); refresh(); });
@@ -1960,7 +1996,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     syncNote();
     var tick = 0;
     var tm = setInterval(function () {
-      if (!$("shfYt")) { clearInterval(tm); return; }
+      if (!$("shfYt")) { clearInterval(tm); document.body.style.overflow = ""; try { if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen(); } catch (e) {} return; }
       var s = onNow(), g = JSON.stringify([Object.keys(s.on).sort(), s.stopped, ready, ev.length]);
       $("shfTime").textContent = ready ? hms(Math.floor(now())) : "Loading the video.";
       tick++; if (tick % 8 === 0 && Object.keys(s.on).length) results();
