@@ -59,6 +59,12 @@ tbody tr.click { cursor: pointer; } tbody tr.click:hover { background: var(--pan
 .shfp { min-height: 64px; border-radius: 12px; border: 2px solid var(--line); background: var(--panel2); color: var(--fg); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4px; }
 .shfp b { font-family: var(--display); font-size: 26px; line-height: 1; }
 .shfp span { font-size: 11px; color: var(--muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.isowrap { display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr); } @media (min-width: 900px) { .isowrap.two, .isowrap { grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); } }
+.isosvg { width: 100%; height: auto; display: block; }
+.isosvg text.isoN { font-family: var(--display); font-weight: 700; font-size: 17px; fill: #0b1220; paint-order: stroke; stroke: #fff; stroke-width: 3px; }
+.isosvg text.isoZ { font-size: 11px; font-weight: 600; fill: #0b1220; paint-order: stroke; stroke: #fff; stroke-width: 2.5px; }
+.isoleg { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; font-size: 12px; color: var(--muted); margin-top: 6px; }
+.isoleg .ramp { width: 90px; height: 10px; border-radius: 5px; background: linear-gradient(90deg, rgb(90,169,255), rgb(169,116,255) 50%, rgb(255,92,138)); }
 .shfh { grid-column: 1 / -1; font-family: var(--display); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-size: 14px; margin-top: 4px; }
 .shfp.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .shfp.on span { color: var(--accent-ink); }
@@ -931,6 +937,10 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     PL.push(it);
     return '<button class="tm" style="background:none;border:0;color:var(--accent);font-family:var(--display);font-weight:700;font-size:18px;min-width:70px;text-align:left;padding:0" data-pl="' + (PL.length - 1) + '">' + hms(it.sec) + "</button>";
   }
+  document.addEventListener("click", function (e) {
+    var r = e.target.closest && e.target.closest("tr[data-iceg]"); if (!r || e.target.closest("a") || e.target.closest("button")) return;
+    var d = r.nextElementSibling; if (d && d.hasAttribute("data-icegd")) { d.hidden = !d.hidden; r.firstChild.innerHTML = r.firstChild.innerHTML.replace(/^(&#9656;|&#9662;|▸|▾)/, d.hidden ? "&#9656;" : "&#9662;"); }
+  });
   function shiftClick(e) {
     var b = e.target.closest && e.target.closest("button[data-shift]"); if (!b || !$("vpCard")) return;
     var p = b.getAttribute("data-shift").split("|"), a = Math.floor(+p[1]), z = Math.ceil(+p[2] || +p[1]), gm = D.games.filter(function (g) { return g.date === p[0]; })[0];
@@ -1669,16 +1679,13 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (!games.length) return "";
     var cnt = games.reduce(function (s0, x) { return s0 + x.r.count; }, 0), toi = games.reduce(function (s0, x) { return s0 + x.r.toi; }, 0), mx = Math.max.apply(null, games.map(function (x) { return x.r.max; }));
     var h = playCard() + "<h2>Ice time<small>" + games.length + (games.length === 1 ? " game" : " games") + ", stoppages not counted</small></h2><div class='kpis'>" + kpi(mss(toi / games.length), "Ice time per game") + kpi((cnt / games.length).toFixed(1), "Shifts per game") + kpi(mss(toi / cnt), "Average shift") + kpi(mss(mx), "Longest shift") + "</div>";
-    h += "<div class='card scroll' style='margin-top:12px'><table><thead><tr><th>Game</th><th>Shifts</th><th>Ice time</th><th>Avg</th><th>Longest</th></tr></thead><tbody>" + games.slice().reverse().map(function (x) {
-      var gm = D.games.filter(function (q) { return q.date === x.date; })[0];
-      return "<tr" + (gm ? " class=\"click\" onclick=\"location.hash='#/game/" + gm.id + "'\"" : "") + "><td>" + fmtDate(x.date) + (gm ? " vs " + esc(gm.away) : "") + "</td><td>" + x.r.count + "</td><td><b>" + mss(x.r.toi) + "</b></td><td>" + mss(x.r.avg) + "</td><td>" + mss(x.r.max) + "</td></tr>";
+    h += "<div class='card scroll' style='margin-top:12px'><table><thead><tr><th>Game (tap for every shift)</th><th>Shifts</th><th>Ice time</th><th>Avg</th><th>Longest</th></tr></thead><tbody>" + games.slice().reverse().map(function (x) {
+      var gm = D.games.filter(function (q) { return q.date === x.date; })[0], hasV = !!ytId(D.videos[x.date] || lget(VK)[x.date] || "");
+      return "<tr class='click' data-iceg='" + x.date + "'><td>&#9656; " + fmtDate(x.date) + (gm ? " vs " + esc(gm.away) : "") + (gm ? " <a href='#/game/" + gm.id + "' class='mut' style='font-size:12px'>game page</a>" : "") + "</td><td>" + x.r.count + "</td><td><b>" + mss(x.r.toi) + "</b></td><td>" + mss(x.r.avg) + "</td><td>" + mss(x.r.max) + "</td></tr>" +
+        "<tr hidden data-icegd='" + x.date + "'><td colspan='5'>" + x.r.shifts.map(function (s, i) {
+          return "<div class='ev'><span class='t' style='font-family:var(--display);font-weight:700;min-width:70px'>#" + (i + 1) + "</span><span class='lb'>" + mss(s.len) + " " + (hasV ? '<button class="tm" data-shift="' + x.date + "|" + s.a + "|" + s.b + '" style="background:none;border:0;color:var(--accent);padding:0;font-weight:700">watch at ' + hms(Math.floor(s.a)) + "</button>" : "<span class='mut'>at video " + hms(Math.floor(s.a)) + "</span>") + "</span></div>";
+        }).join("") + "</td></tr>";
     }).join("") + "</tbody></table></div>";
-    h += games.slice().reverse().map(function (x) {
-      return "<details class='card' style='margin-top:12px'><summary style='cursor:pointer'>Every shift, " + fmtDate(x.date) + " (" + x.r.count + ")</summary><div style='margin-top:8px'>" + x.r.shifts.map(function (s, i) {
-        var hasV = !!ytId(D.videos[x.date] || lget(VK)[x.date] || "");
-        return "<div class='ev'><span class='t' style='font-family:var(--display);font-weight:700;min-width:70px'>#" + (i + 1) + "</span><span class='lb'>" + mss(s.len) + " " + (hasV ? '<button class="tm" data-shift="' + x.date + "|" + s.a + "|" + s.b + '" style="background:none;border:0;color:var(--accent);padding:0;font-weight:700">watch at ' + hms(Math.floor(s.a)) + "</button>" : "<span class='mut'>at video " + hms(Math.floor(s.a)) + "</span>") + "</span></div>";
-      }).join("") + "</div></details>";
-    }).join("");
     return h;
   }
   function vShifts(dateParam) {
@@ -2498,6 +2505,42 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     return dy < 0 ? 1 : 2;
   }
   function shotDist(s0) { var ax = s0.t === "A" ? 200 - s0.x * 200 : s0.x * 200, dy = s0.y * 85 - 42.5; return Math.sqrt((189 - ax) * (189 - ax) + dy * dy); }
+  // Isometric 3D chart: each zone is a block on the rink floor. Height is shots, colour is shooting %.
+  function isoRamp(p) {
+    var st = [[0, [90, 169, 255]], [.2, [169, 116, 255]], [.4, [255, 92, 138]]], q = Math.max(0, Math.min(.4, p)), k = 0;
+    while (k < st.length - 2 && q > st[k + 1][0]) k++;
+    var a = st[k], b = st[k + 1], f = (q - a[0]) / (b[0] - a[0]);
+    return [0, 1, 2].map(function (i) { return Math.round(a[1][i] + (b[1][i] - a[1][i]) * f); });
+  }
+  function rgb(c, m) { return "rgb(" + c.map(function (v) { return Math.max(0, Math.min(255, Math.round(v * m))); }).join(",") + ")"; }
+  function isoSvg(Z, who, maxN) {
+    var K = 3.2, MH = 96, ox = 250, oy = 150;
+    function P(x, y, z) { var u = x - 100, v = y; return [ox + (u - v) * .866 * K, oy + (u + v) * .5 * K - z]; }
+    function poly(pts, fill, extra) { return '<polygon points="' + pts.map(function (p) { return p[0].toFixed(1) + "," + p[1].toFixed(1); }).join(" ") + '" fill="' + fill + '" ' + (extra || "") + "/>"; }
+    var floor = poly([P(100, 0, 0), P(200, 0, 0), P(200, 85, 0), P(100, 85, 0)], "#e6eef8", 'stroke="#46556e" stroke-width="1"');
+    var lines = '<polyline points="' + [P(125, 0, 0), P(125, 85, 0)].map(function (p) { return p.join(","); }).join(" ") + '" stroke="#2b6cd9" stroke-width="2" opacity=".7" fill="none"/>' +
+      '<polyline points="' + [P(189, 0, 0), P(189, 85, 0)].map(function (p) { return p.join(","); }).join(" ") + '" stroke="#d33" stroke-width="1.2" opacity=".7" fill="none"/>' +
+      poly([P(187.5, 39.5, 0), P(190.5, 39.5, 0), P(190.5, 45.5, 0), P(187.5, 45.5, 0)], "#fff", 'stroke="#46556e" stroke-width="1"');
+    var zones = [
+      {i: 0, x0: 170, x1: 183, y0: 36, y1: 49}, {i: 1, x0: 160, x1: 178, y0: 14, y1: 27}, {i: 2, x0: 160, x1: 178, y0: 58, y1: 71},
+      {i: 3, x0: 192, x1: 198, y0: 30, y1: 55}, {i: 4, x0: 130, x1: 146, y0: 28, y1: 57}, {i: 5, x0: 104, x1: 120, y0: 28, y1: 57}
+    ].sort(function (a, b) { return (a.x0 + a.y0) - (b.x0 + b.y0); });
+    var bars = "", labs = "";
+    zones.forEach(function (z) {
+      var d = Z[z.i], h = maxN ? Math.round(d.n / maxN * MH) : 0, p = d.sog ? d.g / d.sog : 0, c = isoRamp(p), x0 = z.x0, x1 = z.x1, y0 = z.y0, y1 = z.y1;
+      if (d.n === 0) { bars += poly([P(x0, y0, 0), P(x1, y0, 0), P(x1, y1, 0), P(x0, y1, 0)], "rgba(120,130,150,.25)"); }
+      else {
+        bars += poly([P(x0, y1, 0), P(x1, y1, 0), P(x1, y1, h), P(x0, y1, h)], rgb(c, .62), 'stroke="rgba(0,0,0,.25)" stroke-width=".6"');
+        bars += poly([P(x1, y0, 0), P(x1, y1, 0), P(x1, y1, h), P(x1, y0, h)], rgb(c, .82), 'stroke="rgba(0,0,0,.25)" stroke-width=".6"');
+        bars += poly([P(x0, y0, h), P(x1, y0, h), P(x1, y1, h), P(x0, y1, h)], rgb(c, 1.1), 'stroke="rgba(0,0,0,.25)" stroke-width=".6"');
+      }
+      var tp = P((x0 + x1) / 2, (y0 + y1) / 2, h);
+      var fp = P(x1, y1, 0), nm = esc(SHOT_ZONES[z.i][0].replace(" and corners", "").replace("Upper circle", "Upper").replace("Lower circle", "Lower"));
+      labs += '<text x="' + tp[0].toFixed(1) + '" y="' + (tp[1] - 7).toFixed(1) + '" text-anchor="middle" class="isoN">' + d.n + '</text>' +
+        '<text x="' + fp[0].toFixed(1) + '" y="' + (fp[1] + 15).toFixed(1) + '" text-anchor="middle" class="isoZ">' + nm + (d.n ? " " + (d.sog ? Math.round(d.g * 100 / d.sog) + "%" : "-") : "") + "</text>";
+    });
+    return '<svg viewBox="0 0 530 470" class="isosvg" role="img" aria-label="' + who + ' shots by zone as 3D blocks, taller means more shots">' + floor + lines + bars + labs + "</svg>";
+  }
   function zonesHtml(list, team) {
     if (!list.length) return "<h2>Shot zones</h2><p class='note'>No shots match these filters.</p>";
     var sides = team === "H" ? ["H"] : team === "A" ? ["A"] : ["H", "A"].filter(function (s) { return list.some(function (x) { return x.t === s; }); }), name = {H: "Us", A: "Them"};
@@ -2511,7 +2554,10 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     sides.forEach(function (s) {
       k += kpi(Z[s][0].n, name[s] + ": slot shots") + kpi(pct(Z[s][0].n, tot[s]), name[s] + ": from the slot") + kpi(avg(dist[s]), name[s] + ": average distance");
     });
-    var h = "<h2>Shot zones<small>shots, shots on goal and goals by area</small></h2><div class='kpis'>" + k + "</div>" +
+    var maxN = Math.max.apply(null, sides.map(function (s) { return Math.max.apply(null, Z[s].map(function (z) { return z.n; })); }));
+    var iso = "<div class='card' style='margin-top:12px'><div class='isowrap'>" + sides.map(function (s) { return "<div><h3 style='margin:0 0 4px;text-align:center'>" + name[s] + " shooting at the net on the right</h3>" + isoSvg(Z[s], name[s], maxN) + "</div>"; }).join("") + "</div>" +
+      "<div class='isoleg'><span>Taller block = more shots</span><span class='ramp'></span><span>Colour: shooting % (blue low, purple, pink 40% or more)</span></div></div>";
+    var h = "<h2>Shot zones<small>shots, shots on goal and goals by area</small></h2><div class='kpis'>" + k + "</div>" + iso +
       "<div class='card scroll' style='margin-top:12px'><table><thead><tr><th>Zone</th>" + sides.map(function (s) { return "<th>" + name[s] + " shots</th><th>" + name[s] + " SOG</th><th>" + name[s] + " goals</th><th>" + name[s] + " shooting %</th>"; }).join("") + "</tr></thead><tbody>" +
       SHOT_ZONES.map(function (zn, i) {
         return "<tr><td title='" + esc(zn[1]) + "'><b>" + zn[0] + "</b></td>" + sides.map(function (s) { var z = Z[s][i]; return "<td>" + z.n + "</td><td>" + z.sog + "</td><td>" + z.g + "</td><td>" + pct(z.g, z.sog) + "</td>"; }).join("") + "</tr>";
