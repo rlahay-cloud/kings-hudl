@@ -2519,24 +2519,28 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   function zoneRink(Z, who, maxN) {
     var NX = 189, NY = 42.5, R = Math.PI / 180, c40 = Math.cos(40 * R) * 25, s40 = Math.sin(40 * R) * 25;
     function fillFor(i) { var n = Z[i].n; return "rgba(150,110,255," + (n ? (0.10 + 0.42 * n / maxN).toFixed(2) : 0.03) + ")"; }
-    var dash = 'stroke="#6b7fa6" stroke-width=".35" stroke-dasharray="1.2 .9"';
+    var dash = 'stroke="#7a6f9a" stroke-width=".35" stroke-dasharray="1.2 .9"';
     var longR = '<rect x="100" y="0" width="89" height="85" fill="' + fillFor(5) + '"/>';
     var mid = '<path d="M' + NX + ' ' + (NY - 25) + ' L' + NX + ' ' + (NY - 50) + ' A50 50 0 0 0 ' + NX + ' ' + (NY + 50) + ' L' + NX + ' ' + (NY + 25) + ' A25 25 0 0 1 ' + NX + ' ' + (NY - 25) + 'Z" fill="' + fillFor(4) + '" ' + dash + "/>";
     var up = '<path d="M' + NX + " " + NY + " L" + (NX - c40).toFixed(2) + " " + (NY - s40).toFixed(2) + " A25 25 0 0 1 " + NX + " " + (NY - 25) + 'Z" fill="' + fillFor(1) + '" ' + dash + "/>";
     var lo = '<path d="M' + NX + " " + NY + " L" + (NX - c40).toFixed(2) + " " + (NY + s40).toFixed(2) + " A25 25 0 0 0 " + NX + " " + (NY + 25) + 'Z" fill="' + fillFor(2) + '" ' + dash + "/>";
     var slot = '<path d="M' + NX + " " + NY + " L" + (NX - c40).toFixed(2) + " " + (NY - s40).toFixed(2) + " A25 25 0 0 0 " + (NX - c40).toFixed(2) + " " + (NY + s40).toFixed(2) + 'Z" fill="' + fillFor(0) + '" ' + dash + "/>";
     var behind = '<rect x="' + NX + '" y="0" width="11" height="85" fill="' + fillFor(3) + '"/>';
+    var RED = "#c8211f", BLU = "#2f6bc4";
     var fo = function (cy) {
-      return '<circle cx="169" cy="' + cy + '" r="15" fill="none" stroke="#d33" stroke-width=".45"/><circle cx="169" cy="' + cy + '" r="1.1" fill="#d33"/>' +
-        [-1, 1].map(function (sx) { return [-1, 1].map(function (sy) { return '<line x1="' + (169 + sx * 1.2) + '" y1="' + (cy + sy * 15) + '" x2="' + (169 + sx * 1.2) + '" y2="' + (cy + sy * 17.6) + '" stroke="#d33" stroke-width=".45"/>'; }).join(""); }).join("");
+      var h = [-1, 1].map(function (sx) { return [-.95, .95].map(function (oy) { return '<line x1="' + (169 + sx * 1.7) + '" y1="' + (cy + oy) + '" x2="' + (169 + sx * 4.6) + '" y2="' + (cy + oy) + '" stroke="' + RED + '" stroke-width=".4"/>'; }).join("") + '<line x1="' + (169 + sx * 1.7) + '" y1="' + (cy - 1.9) + '" x2="' + (169 + sx * 1.7) + '" y2="' + (cy + 1.9) + '" stroke="' + RED + '" stroke-width=".4"/>'; }).join("");
+      var tk = [-1, 1].map(function (sx) { return [-1, 1].map(function (sy) { return '<line x1="' + (169 + sx * 1.9) + '" y1="' + (cy + sy * 15) + '" x2="' + (169 + sx * 1.9) + '" y2="' + (cy + sy * 17.8) + '" stroke="' + RED + '" stroke-width=".5"/>'; }).join(""); }).join("");
+      return '<circle cx="169" cy="' + cy + '" r="15" fill="none" stroke="' + RED + '" stroke-width=".55"/><circle cx="169" cy="' + cy + '" r="1.2" fill="' + RED + '"/>' + h + tk;
     };
-    var marks = '<g opacity=".8">' + fo(20.5) + fo(64.5) +
-      '<line x1="' + NX + '" y1="0" x2="' + NX + '" y2="85" stroke="#d33" stroke-width=".5"/>' +
-      '<path d="M' + NX + " " + (NY - 14) + " L200 " + (NY - 11) + " M" + NX + " " + (NY + 14) + " L200 " + (NY + 11) + '" stroke="#d33" stroke-width=".4" fill="none"/>' +
-      '<circle cx="130" cy="20.5" r="1.1" fill="#d33"/><circle cx="130" cy="64.5" r="1.1" fill="#d33"/>' +
-      '<line x1="125" y1="0" x2="125" y2="85" stroke="#2b6cd9" stroke-width="1.6"/><line x1="100" y1="0" x2="100" y2="85" stroke="#d33" stroke-width="1"/></g>' +
-      '<path d="M' + NX + ' ' + (NY - 6) + 'A6 6 0 0 0 ' + NX + ' ' + (NY + 6) + 'Z" fill="rgba(120,170,230,.55)" stroke="#d33" stroke-width=".45"/>' +
-      '<rect x="' + NX + '" y="' + (NY - 3) + '" width="3.6" height="6" rx=".6" fill="rgba(255,255,255,.9)" stroke="#46556e" stroke-width=".5"/>';
+    var marks = '<g>' + fo(20.5) + fo(64.5) +
+      '<line x1="' + NX + '" y1="0" x2="' + NX + '" y2="85" stroke="' + RED + '" stroke-width=".55"/>' +
+      '<path d="M' + NX + " " + (NY - 14) + " L200 " + (NY - 11) + " M" + NX + " " + (NY + 14) + " L200 " + (NY + 11) + '" stroke="' + RED + '" stroke-width=".45" fill="none"/>' +
+      '<circle cx="130" cy="20.5" r="1.2" fill="' + RED + '"/><circle cx="130" cy="64.5" r="1.2" fill="' + RED + '"/>' +
+      '<circle cx="100" cy="' + NY + '" r="15" fill="none" stroke="' + BLU + '" stroke-width=".55"/>' +
+      '<line x1="125" y1="0" x2="125" y2="85" stroke="' + BLU + '" stroke-width="1.7"/>' +
+      '<line x1="100" y1="0" x2="100" y2="85" stroke="' + RED + '" stroke-width="1.7"/><line x1="100" y1="0" x2="100" y2="85" stroke="#fffef6" stroke-width=".5" stroke-dasharray="1.1 1.7"/></g>' +
+      '<path d="M' + NX + ' ' + (NY - 6) + 'A6 6 0 0 0 ' + NX + ' ' + (NY + 6) + 'Z" fill="rgba(170,205,240,.6)" stroke="' + RED + '" stroke-width=".5"/>' +
+      '<path d="M' + NX + " " + (NY - 3.2) + " h3.4 q.8 0 .8 .8 v4.8 q0 .8 -.8 .8 h-3.4Z" + '" fill="#f1f3f6" stroke="#6b6f78" stroke-width=".45"/>';
     var spots = [[NX - 15, NY - 1], [NX - 17 * Math.cos(65 * R) - 0.5, NY - 17 * Math.sin(65 * R)], [NX - 17 * Math.cos(65 * R) - 0.5, NY + 17 * Math.sin(65 * R)], [194.5, NY], [NX - 38, NY], [118, NY]];
     var short = ["Slot", "Left circle", "Right circle", "Behind net", "Point and mid", "Long range"];
     var shadows = "", circles = "", pills = "";
@@ -2550,8 +2554,8 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       pills += '<rect x="' + rx.toFixed(1) + '" y="' + (ty - 2.7).toFixed(1) + '" width="' + w.toFixed(1) + '" height="3.7" rx="1.85" fill="rgba(255,255,255,.9)" stroke="rgba(70,85,110,.35)" stroke-width=".2"/>' +
         '<text x="' + x.toFixed(1) + '" y="' + ty.toFixed(1) + '" text-anchor="middle" class="zrL">' + t + "</text>";
     });
-    return '<svg viewBox="100 0 100 85" class="zrk" role="img" aria-label="' + who + ' shots by zone on the rink, bigger circles mean more shots"><defs><clipPath id="zrc"><rect x="0" y="0" width="200" height="85" rx="26"/></clipPath><linearGradient id="zri" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6fbff"/><stop offset="1" stop-color="#e3eef9"/></linearGradient></defs>' +
-      '<rect x="0" y="0" width="200" height="85" rx="26" fill="url(#zri)"/><g clip-path="url(#zrc)">' + longR + mid + behind + up + lo + slot + marks + '</g><rect x="0.6" y="0.6" width="198.8" height="83.8" rx="25.5" fill="none" stroke="#33415f" stroke-width="1.4"/>' + shadows + circles + pills + "</svg>";
+    return '<svg viewBox="100 0 100 85" class="zrk" role="img" aria-label="' + who + ' shots by zone on the rink, bigger circles mean more shots"><defs><clipPath id="zrc"><rect x="0" y="0" width="200" height="85" rx="26"/></clipPath><linearGradient id="zri" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffef8"/><stop offset="1" stop-color="#fbf9ee"/></linearGradient></defs>' +
+      '<rect x="0" y="0" width="200" height="85" rx="26" fill="url(#zri)"/><g clip-path="url(#zrc)">' + longR + mid + behind + up + lo + slot + marks + '</g><rect x="0.6" y="0.6" width="198.8" height="83.8" rx="25.5" fill="none" stroke="#6e625a" stroke-width="1.5"/>' + shadows + circles + pills + "</svg>";
   }
   function zonesHtml(list, team) {
     if (!list.length) return "<h2>Shot zones</h2><p class='note'>No shots match these filters.</p>";
