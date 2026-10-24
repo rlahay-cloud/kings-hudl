@@ -362,7 +362,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       });
       return Promise.all(jobs.concat(videoJobs));
     });
-    var playersP = backupP.then(function () { return getText("games/players.txt"); }).then(function (t) { applyPlayers(parsePlayers(t)); }).catch(function () {}).then(function () { try { if (localStorage.getItem(PK + "-pending") === "1") applyPlayers(JSON.parse(localStorage.getItem(PK) || "{}")); } catch (e) {} });
+    var playersP = backupP.then(function () { return getText("games/players.txt"); }).then(function (t) { applyPlayers(parsePlayers(t)); }).catch(function () {}).then(function () { try { if (localStorage.getItem(PK + "-pending") === "2") applyPlayers(JSON.parse(localStorage.getItem(PK) || "{}")); } catch (e) {} });
     return Promise.all([backupP, videosP, gamesP, cfgP, playersP]).then(function () {
       D.games.sort(function (a, b) { return a.id < b.id ? -1 : 1; });
     });
@@ -2137,7 +2137,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var base = {};
     function snap() { base = {}; Object.keys(D.pos).concat(Object.keys(D.roster)).forEach(function (k) { base[k] = (D.pos[k] || "") + "|" + (D.roster[k] || ""); }); }
     snap(); draw();
-    var pend = false; try { pend = localStorage.getItem(PK + "-pending") === "1"; } catch (e) {}
+    var pend = false; try { pend = localStorage.getItem(PK + "-pending") === "2"; } catch (e) {}
     if (pend) $("plNote").textContent = "This device has changes that are not saved for everyone yet. Press Save.";
     else freshPlayersText().then(function (t) { var rows = parsePlayers(t); if (Object.keys(rows).length && !box.querySelector("input:focus")) { applyPlayers(rows); snap(); draw(); } }).catch(function () {});
     box.addEventListener("click", function (e) {
@@ -2150,7 +2150,11 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       Array.prototype.forEach.call(box.querySelectorAll("[data-n]"), function (el) { var n = el.getAttribute("data-n"); rows[n] = rows[n] || {pos: "", name: ""}; if (el.getAttribute("data-f") === "pos") rows[n].pos = el.value; else rows[n].name = el.value.replace(/[|\r\n]+/g, " ").trim(); });
       Object.keys(D.pos).forEach(function (k) { if (!rows[k]) rows[k] = {pos: D.pos[k], name: ""}; });
       Object.keys(rows).forEach(function (k) { if (!rows[k].pos) delete D.pos[k]; });
-      applyPlayers(rows); lset(PK, rows); try { localStorage.setItem(PK + "-pending", "1"); } catch (e) {} return rows;
+      applyPlayers(rows);
+      // keep on this device only the rows that were really changed, so untouched rows can never hide the shared list
+      var diff = {}; Object.keys(rows).forEach(function (k) { if ((rows[k].pos || "") + "|" + (rows[k].name || "") !== (base[k] === undefined ? "|" : base[k])) diff[k] = rows[k]; });
+      if (Object.keys(diff).length) { lset(PK, diff); try { localStorage.setItem(PK + "-pending", "2"); } catch (e) {} }
+      return rows;
     }
     function save() {
       var mine = collect(), note = $("plNote");
