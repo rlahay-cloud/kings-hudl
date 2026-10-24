@@ -60,9 +60,10 @@ tbody tr.click { cursor: pointer; } tbody tr.click:hover { background: var(--pan
 .shfp b { font-family: var(--display); font-size: 26px; line-height: 1; }
 .shfp span { font-size: 11px; color: var(--muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .isowrap { display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr); } @media (min-width: 900px) { .isowrap.two, .isowrap { grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); } }
-.zrk { width: 100%; height: auto; display: block; border-radius: 14px; background: #dfeaf5; }
+.zrk { width: 100%; height: auto; display: block; border-radius: 14px; background: transparent; }
 .zrk text.zrN { font-family: var(--display); font-weight: 700; font-size: 3.6px; fill: #fff; paint-order: stroke; stroke: rgba(0,0,0,.45); stroke-width: .5px; }
-.zrk text.zrL { font-size: 2.7px; font-weight: 700; fill: #1b2a44; paint-order: stroke; stroke: rgba(255,255,255,.9); stroke-width: .9px; }
+.zrk text.zrL { font-size: 2.5px; font-weight: 700; fill: #1b2a44; }
+.zrk text.zrV { paint-order: stroke; stroke: rgba(255,255,255,.9); stroke-width: .8px; }
 .isoleg { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; font-size: 12px; color: var(--muted); margin-top: 6px; }
 .isoleg .ramp { width: 90px; height: 10px; border-radius: 5px; background: linear-gradient(90deg, rgb(90,169,255), rgb(169,116,255) 50%, rgb(255,92,138)); }
 .shfh { grid-column: 1 / -1; font-family: var(--display); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-size: 14px; margin-top: 4px; }
@@ -2517,31 +2518,40 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   // Flat rink with the real zone shapes (slot wedge, side wedges, rings around the net). Circles grow with shots and change colour with shooting %.
   function zoneRink(Z, who, maxN) {
     var NX = 189, NY = 42.5, R = Math.PI / 180, c40 = Math.cos(40 * R) * 25, s40 = Math.sin(40 * R) * 25;
-    var hm = Math.max.apply(null, Z.map(function (z) { return z.n; })) || 1;
-    function fillFor(i) { var n = Z[i].n; return "rgba(169,116,255," + (n ? (0.1 + 0.5 * n / maxN).toFixed(2) : 0.04) + ")"; }
-    var sh = 'stroke="#ffffff" stroke-width=".7"';
+    function fillFor(i) { var n = Z[i].n; return "rgba(150,110,255," + (n ? (0.10 + 0.42 * n / maxN).toFixed(2) : 0.03) + ")"; }
+    var dash = 'stroke="#6b7fa6" stroke-width=".35" stroke-dasharray="1.2 .9"';
     var longR = '<rect x="100" y="0" width="89" height="85" fill="' + fillFor(5) + '"/>';
-    var mid = '<path d="M' + NX + ' ' + (NY - 25) + ' L' + NX + ' ' + (NY - 50) + ' A50 50 0 0 0 ' + NX + ' ' + (NY + 50) + ' L' + NX + ' ' + (NY + 25) + ' A25 25 0 0 1 ' + NX + ' ' + (NY - 25) + 'Z" fill="' + fillFor(4) + '" ' + sh + "/>";
-    var up = '<path d="M' + NX + " " + NY + " L" + (NX - c40).toFixed(2) + " " + (NY - s40).toFixed(2) + " A25 25 0 0 1 " + NX + " " + (NY - 25) + 'Z" fill="' + fillFor(1) + '" ' + sh + "/>";
-    var lo = '<path d="M' + NX + " " + NY + " L" + (NX - c40).toFixed(2) + " " + (NY + s40).toFixed(2) + " A25 25 0 0 0 " + NX + " " + (NY + 25) + 'Z" fill="' + fillFor(2) + '" ' + sh + "/>";
-    var slot = '<path d="M' + NX + " " + NY + " L" + (NX - c40).toFixed(2) + " " + (NY - s40).toFixed(2) + " A25 25 0 0 0 " + (NX - c40).toFixed(2) + " " + (NY + s40).toFixed(2) + 'Z" fill="' + fillFor(0) + '" ' + sh + "/>";
+    var mid = '<path d="M' + NX + ' ' + (NY - 25) + ' L' + NX + ' ' + (NY - 50) + ' A50 50 0 0 0 ' + NX + ' ' + (NY + 50) + ' L' + NX + ' ' + (NY + 25) + ' A25 25 0 0 1 ' + NX + ' ' + (NY - 25) + 'Z" fill="' + fillFor(4) + '" ' + dash + "/>";
+    var up = '<path d="M' + NX + " " + NY + " L" + (NX - c40).toFixed(2) + " " + (NY - s40).toFixed(2) + " A25 25 0 0 1 " + NX + " " + (NY - 25) + 'Z" fill="' + fillFor(1) + '" ' + dash + "/>";
+    var lo = '<path d="M' + NX + " " + NY + " L" + (NX - c40).toFixed(2) + " " + (NY + s40).toFixed(2) + " A25 25 0 0 0 " + NX + " " + (NY + 25) + 'Z" fill="' + fillFor(2) + '" ' + dash + "/>";
+    var slot = '<path d="M' + NX + " " + NY + " L" + (NX - c40).toFixed(2) + " " + (NY - s40).toFixed(2) + " A25 25 0 0 0 " + (NX - c40).toFixed(2) + " " + (NY + s40).toFixed(2) + 'Z" fill="' + fillFor(0) + '" ' + dash + "/>";
     var behind = '<rect x="' + NX + '" y="0" width="11" height="85" fill="' + fillFor(3) + '"/>';
-    var marks = '<g fill="none" stroke="#d33" stroke-width=".35" opacity=".75"><line x1="' + NX + '" y1="0" x2="' + NX + '" y2="85"/><circle cx="169" cy="20.5" r="15"/><circle cx="169" cy="64.5" r="15"/></g>' +
-      '<line x1="125" y1="0" x2="125" y2="85" stroke="#2b6cd9" stroke-width="1.2" opacity=".6"/>' +
-      '<path d="M189 36.5A6 6 0 0 0 189 48.5Z" fill="#bcd4ee" stroke="#d33" stroke-width=".35"/><rect x="189.3" y="39.5" width="3.4" height="6" fill="#fff" stroke="#46556e" stroke-width=".5"/>';
-    // names sit in the corners of each zone, circles at its middle
-    var spots = [[NX - 15, NY - 1, 0, 0], [NX - 17 * Math.cos(65 * R) - 0.5, NY - 17 * Math.sin(65 * R), 0, 0], [NX - 17 * Math.cos(65 * R) - 0.5, NY + 17 * Math.sin(65 * R), 0, 0], [194.5, NY, 0, 0], [NX - 38, NY, 0, 0], [118, NY, 0, 0]];
-    var short = ["Slot", "Left circle", "Right circle", "Behind net", "Point / mid", "Long range"];
-    var circles = Z.map(function (z, i) {
+    var fo = function (cy) {
+      return '<circle cx="169" cy="' + cy + '" r="15" fill="none" stroke="#d33" stroke-width=".45"/><circle cx="169" cy="' + cy + '" r="1.1" fill="#d33"/>' +
+        [-1, 1].map(function (sx) { return [-1, 1].map(function (sy) { return '<line x1="' + (169 + sx * 1.2) + '" y1="' + (cy + sy * 15) + '" x2="' + (169 + sx * 1.2) + '" y2="' + (cy + sy * 17.6) + '" stroke="#d33" stroke-width=".45"/>'; }).join(""); }).join("");
+    };
+    var marks = '<g opacity=".8">' + fo(20.5) + fo(64.5) +
+      '<line x1="' + NX + '" y1="0" x2="' + NX + '" y2="85" stroke="#d33" stroke-width=".5"/>' +
+      '<path d="M' + NX + " " + (NY - 14) + " L200 " + (NY - 11) + " M" + NX + " " + (NY + 14) + " L200 " + (NY + 11) + '" stroke="#d33" stroke-width=".4" fill="none"/>' +
+      '<circle cx="130" cy="20.5" r="1.1" fill="#d33"/><circle cx="130" cy="64.5" r="1.1" fill="#d33"/>' +
+      '<line x1="125" y1="0" x2="125" y2="85" stroke="#2b6cd9" stroke-width="1.6"/><line x1="100" y1="0" x2="100" y2="85" stroke="#d33" stroke-width="1"/></g>' +
+      '<path d="M' + NX + ' ' + (NY - 6) + 'A6 6 0 0 0 ' + NX + ' ' + (NY + 6) + 'Z" fill="rgba(120,170,230,.55)" stroke="#d33" stroke-width=".45"/>' +
+      '<rect x="' + NX + '" y="' + (NY - 3) + '" width="3.6" height="6" rx=".6" fill="rgba(255,255,255,.9)" stroke="#46556e" stroke-width=".5"/>';
+    var spots = [[NX - 15, NY - 1], [NX - 17 * Math.cos(65 * R) - 0.5, NY - 17 * Math.sin(65 * R)], [NX - 17 * Math.cos(65 * R) - 0.5, NY + 17 * Math.sin(65 * R)], [194.5, NY], [NX - 38, NY], [118, NY]];
+    var short = ["Slot", "Left circle", "Right circle", "Behind net", "Point and mid", "Long range"];
+    var shadows = "", circles = "", pills = "";
+    Z.forEach(function (z, i) {
       var r = z.n ? 2.2 + 5.6 * Math.sqrt(z.n / maxN) : 1.4, c = isoRamp(z.sog ? z.g / z.sog : 0), x = spots[i][0], y = spots[i][1];
-      var g = '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="' + r.toFixed(1) + '" fill="' + (z.n ? rgb(c, 1) : "rgba(120,130,150,.5)") + '" stroke="#fff" stroke-width=".7"/>';
-      if (z.n) g += '<text x="' + x.toFixed(1) + '" y="' + (y + 1.5).toFixed(1) + '" text-anchor="middle" class="zrN">' + z.n + "</text>";
-      g += '<text x="' + (i === 3 ? 199 : x).toFixed(1) + '" y="' + (y + r + 3.4 + (i === 3 ? 6 : 0)).toFixed(1) + '" text-anchor="' + (i === 3 ? "end" : "middle") + '" class="zrL">' + short[i] + (z.n ? " " + (z.sog ? Math.round(z.g * 100 / z.sog) + "%" : "-") : "") + "</text>";
-      return g;
-    }).join("");
-    var labels = "";
-    return '<svg viewBox="100 0 100 85" class="zrk" role="img" aria-label="' + who + ' shots by zone on the rink, bigger circles mean more shots"><defs><clipPath id="zrc"><rect x="0" y="0" width="200" height="85" rx="26"/></clipPath></defs>' +
-      '<rect x="0" y="0" width="200" height="85" rx="26" fill="#f4f8fc" stroke="#46556e" stroke-width="1"/><g clip-path="url(#zrc)">' + longR + mid + behind + up + lo + slot + marks + "</g>" + labels + circles + "</svg>";
+      shadows += '<circle cx="' + x.toFixed(1) + '" cy="' + (y + .7).toFixed(1) + '" r="' + r.toFixed(1) + '" fill="rgba(20,30,60,.25)"/>';
+      circles += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="' + r.toFixed(1) + '" fill="' + (z.n ? rgb(c, 1) : "rgba(120,130,150,.45)") + '" stroke="#fff" stroke-width=".8"/>';
+      if (z.n) circles += '<text x="' + x.toFixed(1) + '" y="' + (y + 1.5).toFixed(1) + '" text-anchor="middle" class="zrN">' + z.n + "</text>";
+      var t = short[i] + (z.n ? " " + (z.sog ? Math.round(z.g * 100 / z.sog) + "%" : "-") : ""), w = t.length * 1.42 + 2.4, ty = y + r + 4.8, rx = x - w / 2;
+      if (i === 3) { pills += '<text transform="translate(197.2 ' + (NY + 24) + ') rotate(-90)" text-anchor="middle" class="zrL zrV">' + t + "</text>"; return; }
+      pills += '<rect x="' + rx.toFixed(1) + '" y="' + (ty - 2.7).toFixed(1) + '" width="' + w.toFixed(1) + '" height="3.7" rx="1.85" fill="rgba(255,255,255,.9)" stroke="rgba(70,85,110,.35)" stroke-width=".2"/>' +
+        '<text x="' + x.toFixed(1) + '" y="' + ty.toFixed(1) + '" text-anchor="middle" class="zrL">' + t + "</text>";
+    });
+    return '<svg viewBox="100 0 100 85" class="zrk" role="img" aria-label="' + who + ' shots by zone on the rink, bigger circles mean more shots"><defs><clipPath id="zrc"><rect x="0" y="0" width="200" height="85" rx="26"/></clipPath><linearGradient id="zri" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6fbff"/><stop offset="1" stop-color="#e3eef9"/></linearGradient></defs>' +
+      '<rect x="0" y="0" width="200" height="85" rx="26" fill="url(#zri)"/><g clip-path="url(#zrc)">' + longR + mid + behind + up + lo + slot + marks + '</g><rect x="0.6" y="0.6" width="198.8" height="83.8" rx="25.5" fill="none" stroke="#33415f" stroke-width="1.4"/>' + shadows + circles + pills + "</svg>";
   }
   function zonesHtml(list, team) {
     if (!list.length) return "<h2>Shot zones</h2><p class='note'>No shots match these filters.</p>";
