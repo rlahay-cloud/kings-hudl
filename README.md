@@ -4,7 +4,7 @@ A season stats website for the team, called Kings HUDL. Open it on a phone or co
 
 ## Coaches
 
-Coaches open **Coaches corner**, type their name and the coach passcode once, load the game video, and tap the buttons (Goal, Save, Chance, Good play, Breakout, Blocked shot, Review). Share to Kings HUDL sends their file into the games folder, one file per coach. The Video tab shows everyone's clips together and can filter by game, coach, type, player and playlist. Setup for the sending helper is in `worker/SETUP.md`.
+Coaches open **Coach’s Corner**, type their name and the coach passcode once, load the game video, and tap the buttons (Goal, Save, Chance, Good play, Breakout, Blocked shot, Review). Share to Kings HUDL sends their file into the games folder, one file per coach. The Video tab shows everyone's clips together and can filter by game, coach, type, player and playlist. Setup for the sending helper is in `worker/SETUP.md`.
 
 ## After each game
 
@@ -28,11 +28,11 @@ Put one photo per player in the **photos** folder, named by jersey number: `4.jp
 
 ## Highlights
 
-Open **Coaches corner**, pick the game, load the YouTube link (or open a video file from the device), and tap **Highlight** whenever something happens. Label it, tag it and add player numbers afterwards. Then Save file and upload it to the games folder as `clips_2026-10-24.txt`. The site does not store video.
+Open **Coach’s Corner**, pick the game, load the YouTube link (or open a video file from the device), and tap **Highlight** whenever something happens. Label it, tag it and add player numbers afterwards. Then Save file and upload it to the games folder as `clips_2026-10-24.txt`. The site does not store video.
 
 ## Shot map
 
-Open **Coaches corner**, then **Mark shots**. Tap where the shot was taken, pick the player, then tap Goal or Saved. Mark every shot as if attacking the net on the right. Save the file and upload it as `shots_2026-10-24.txt`. The Shot map tab then shows dots and heat by game, player and result. Under the map, a Shot zones table splits the rink into slot, left circle, right circle, behind the net, point and mid range, and long range, with shots, shots on goal, goals and shooting % for each team, plus slot shots and average shot distance. A rink picture shows each zone in its real shape: the slot is a wedge in front of the net (within 25 ft, 40 degrees either side of straight on), then the left circle and right circle (seen from the shooter, facing the net), a point and mid range ring (25 to 50 ft), behind the net, and long range. Circles over each zone grow with the number of shots and change colour with shooting % (blue low, pink 40% or more). A Situation filter shows even strength, power play or penalty kill shots (only shots marked in Game analysis have a time, and a penalty needs an end time marked to count as power play).
+Open **Coach’s Corner**, then **Mark shots**. Tap where the shot was taken, pick the player, then tap Goal or Saved. Mark every shot as if attacking the net on the right. Save the file and upload it as `shots_2026-10-24.txt`. The Shot map tab then shows dots and heat by game, player and result. Under the map, a Shot zones table splits the rink into slot, left circle, right circle, behind the net, point and mid range, and long range, with shots, shots on goal, goals and shooting % for each team, plus slot shots and average shot distance. A rink picture shows each zone in its real shape: the slot is a wedge in front of the net (within 25 ft, 40 degrees either side of straight on), then the left circle and right circle (seen from the shooter, facing the net), a point and mid range ring (25 to 50 ft), behind the net, and long range. Circles over each zone grow with the number of shots and change colour with shooting % (blue low, pink 40% or more). A Situation filter shows even strength, power play or penalty kill shots (only shots marked in Game analysis have a time, and a penalty needs an end time marked to count as power play).
 
 ## Video tab
 
@@ -53,9 +53,9 @@ Player names come from `roster.json`. Edit it to add or fix names. Goalies can g
 - Two games on the same date share one video link and one timestamps file.
 - Add `?sample` to the site address to preview it with made up data.
 
-## Coaches corner
+## Coach’s Corner
 
-Coaches corner opens on **Clips**: a list of every clip that already exists, with filters for game, type, playlist and "only clips with drawings". Tap a clip and it opens in the clip editor.
+Coach’s Corner opens on **Clips**: a list of every clip that already exists, with filters for game, type, playlist and "only clips with drawings". Tap a clip and it opens in the clip editor.
 
 In the editor the coach pauses the video, taps **Draw on this frame**, and uses the pen, arrow, line, circle or text tools in six colours to explain the play. Each drawing keeps its own hold time (2 to 12 seconds). **Save drawings for everyone** sends them to the games folder as `draw_DATE_STARTSECOND.txt`. When anyone plays that clip in the Video tab, the video pauses at the drawing, shows it for the hold time, then carries on. Drawings belong to a clip by game date and start second, so changing a clip's start time detaches them.
 
@@ -63,11 +63,11 @@ The other sections hold the marking tools: **Game analysis** (review, below), **
 
 ## Shifts (ice time)
 
-Open **Coaches corner**, then **Shifts**, pick the game and play the video. Tap **Start tracking** when play starts and **Stop tracking** at every stoppage. Time only counts while tracking is on, measured on the video timeline, so line changes during a stoppage cost nothing. Tap a player's number when he steps on the ice and tap it again when he comes off. Players can be toggled at any time, including while tracking is stopped. **Everyone off** and **End of period** (clears the ice and stops tracking) clear the ice in one tap, and **Undo last tap** takes back the last tap. The shifts table builds as you tap, and a player still on the ice shows a running shift. Tap a player in the table to see each shift, and delete a shift (tap Delete twice) to remove it and its stat. When you reopen a game, the video starts at the last tracked time and the ice and tracking state are restored, and **Go to last tracked** jumps back there at any time. Deleting only changes the shared file once you tap Save for everyone. On a player page, each game in the Ice time table opens a dropdown of its shifts, and every shift has a watch link that plays the video from 4 seconds before the shift started until 2 seconds after the shift ended, so the whole shift plays. Each coach's shifts save to their own file (`shifts_DATE_name.txt`, or `shifts_DATE.txt` when no name is set), so coaches never overwrite each other. The Shifts tab, game page and player pages combine everyone's taps, show which coach tapped what, and only let you delete your own. The Shifts tab checks for other coaches' saves every 30 seconds, and the Refresh other coaches button checks right away. A save takes about a minute to appear because the site has to republish.
+Open **Coach’s Corner**, then **Shifts**, pick the game and play the video. Tap **Start tracking** when play starts and **Stop tracking** at every stoppage. Time only counts while tracking is on, measured on the video timeline, so line changes during a stoppage cost nothing. Tap a player's number when he steps on the ice and tap it again when he comes off. Players can be toggled at any time, including while tracking is stopped. **Everyone off** and **End of period** (clears the ice and stops tracking) clear the ice in one tap, and **Undo last tap** takes back the last tap. The shifts table builds as you tap, and a player still on the ice shows a running shift. Tap a player in the table to see each shift, and delete a shift (tap Delete twice) to remove it and its stat. When you reopen a game, the video starts at the last tracked time and the ice and tracking state are restored, and **Go to last tracked** jumps back there at any time. Deleting only changes the shared file once you tap Save for everyone. On a player page, each game in the Ice time table opens a dropdown of its shifts, and every shift has a watch link that plays the video from 4 seconds before the shift started until 2 seconds after the shift ended, so the whole shift plays. Each coach's shifts save to their own file (`shifts_DATE_name.txt`, or `shifts_DATE.txt` when no name is set), so coaches never overwrite each other. The Shifts tab, game page and player pages combine everyone's taps, show which coach tapped what, and only let you delete your own. The Shifts tab checks for other coaches' saves every 30 seconds, and the Refresh other coaches button checks right away. A save takes about a minute to appear because the site has to republish.
 
 Save for everyone writes `shifts_DATE.txt` into the games folder (one line per tap: video second, on, off, stop or go). The game page then shows an Ice time table (shifts, total ice time, average, longest and shortest shift) and each player page shows ice time per game, shifts per game, average shift and longest shift.
 
-## Coaches corner (game review)
+## Coach’s Corner (game review)
 
 One screen, Review, holds everything for coaches.
 

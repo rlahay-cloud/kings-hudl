@@ -728,7 +728,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     return T;
   }
   function keyStatsHtml(n, p) {
-    var pos = D.pos[n], grp = posGroup(pos); if (!grp) return '<p class="note">Set this player\'s position in Coaches corner to see the stats that matter most for it.</p>';
+    var pos = D.pos[n], grp = posGroup(pos); if (!grp) return '<p class="note">Set this player\'s position in Coach’s Corner to see the stats that matter most for it.</p>';
     var T = playerVideoStats(n), pct = function (a, b) { return b ? Math.round(a * 100 / b) + "%" : "-"; };
     var en = RV_MOVES.reduce(function (s0, m) { return s0 + T.en[m]; }, 0), ex = RV_MOVES.reduce(function (s0, m) { return s0 + T.ex[m]; }, 0), fo = T.fow + T.fol;
     var pm = '<span class="' + pmCls(p.pm) + '">' + pmText(p.pm) + "</span>", has = T.games.length > 0, v = function (x) { return has ? x : "-"; };
@@ -738,10 +738,10 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     return "<h2>Key stats<small>" + esc(POS_NAME[pos] || pos) + ", the numbers that matter most for the position</small></h2><div class='kpis'>" + k.join("") + "</div>";
   }
   function playerVideoHtml(n) {
-    var T = playerVideoStats(n); if (!T.games.length) return "<h2>From video review</h2><div class='card'><p class='note' style='margin:0'>No video review marks for this player yet. Shots, faceoffs, zone entries and exits show up here once they are marked in Coaches corner.</p></div>";
+    var T = playerVideoStats(n); if (!T.games.length) return "<h2>From video review</h2><div class='card'><p class='note' style='margin:0'>No video review marks for this player yet. Shots, faceoffs, zone entries and exits show up here once they are marked in Coach’s Corner.</p></div>";
     var pct = function (a, b) { return b ? Math.round(a * 100 / b) + "%" : "-"; };
     var en = RV_MOVES.reduce(function (s0, m) { return s0 + T.en[m]; }, 0), ex = RV_MOVES.reduce(function (s0, m) { return s0 + T.ex[m]; }, 0), fo = T.fow + T.fol;
-    var h = "<h2>From video review<small>marked in Coaches corner, " + T.games.length + (T.games.length === 1 ? " game" : " games") + "</small></h2><div class='kpis'>" +
+    var h = "<h2>From video review<small>marked in Coach’s Corner, " + T.games.length + (T.games.length === 1 ? " game" : " games") + "</small></h2><div class='kpis'>" +
       kpi(T.sog, "Shots on goal") + kpi(T.blk, "Shots blocked") +
       kpi(T.fow + "-" + T.fol, "Faceoffs W-L") + kpi(pct(T.fow, fo), "Faceoff win %") + kpi(en, "Zone entries") + kpi(pct(T.en.Carry + T.en.Pass, en), "Controlled entries") + kpi(ex, "Zone exits") + kpi(pct(T.ex.Carry + T.ex.Pass, ex), "Controlled exits") +
       kpi(T.pen, "Penalties") + kpi(T.ppg, "Power play goals") + kpi(T.shg, "Short handed goals") + kpi(T.gf, "Goals for on ice") + kpi(T.ga, "Goals against on ice") + "</div>";
@@ -851,8 +851,8 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     vp.player = null; vp.id = null; PL = [];
     var h = "<h2>Highlights<small><a href='#/video/" + g.date + "'>filter and watch</a></small></h2>";
     h += playCard() + "<div class='card'>";
-    if (!url) h += '<p class="note">Add this game\'s YouTube link in videos.txt or in Coaches corner to make these times clickable.</p>';
-    if (!rows.length) h += '<p class="note">No highlights yet. Our goals show up here by themselves once they are marked in Coaches corner.</p>';
+    if (!url) h += '<p class="note">Add this game\'s YouTube link in videos.txt or in Coach’s Corner to make these times clickable.</p>';
+    if (!rows.length) h += '<p class="note">No highlights yet. Our goals show up here by themselves once they are marked in Coach’s Corner.</p>';
     h += rows.map(function (r) {
       var tl = timeBtn({date: g.date, game: gl, sec: r.sec, start: r.start, end: r.end, tag: r.tag}, !!ytId(url));
       return '<div class="ev ' + (r.goal ? "goal" : r.pen ? "pen" : "") + '">' + tl + '<span class="lb"><b>' + esc(r.tag) + "</b>" + r.html + "</span></div>";
@@ -938,7 +938,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   function vVideo() {
     var items = allVideoItems();
     var h = "<h2>Video</h2>";
-    if (!items.length) return h + '<div class="card empty"><p>No clips yet.</p><p class="note">Highlights marked by coaches in Coaches corner show up here.</p></div>';
+    if (!items.length) return h + '<div class="card empty"><p>No clips yet.</p><p class="note">Highlights marked by coaches in Coach’s Corner show up here.</p></div>';
     var games = Object.keys(items.reduce(function (m, c) { m[c.date] = 1; return m; }, {})).sort().reverse();
     var seenT = {}; items.forEach(function (c) { seenT[c.disp || c.tag] = 1; });
     var tags = VID_TAGS.filter(function (t) { return seenT[t]; }).concat(Object.keys(seenT).filter(function (t) { return VID_TAGS.indexOf(t) < 0; }).sort());
@@ -979,7 +979,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var url = D.videos[it.date] || lget(VK)[it.date] || "", id = ytId(url);
     var first = $("vpCard").hidden; $("vpCard").hidden = false;
     var now = it.game + ", " + hms(it.sec) + " " + (it.disp || it.tag);
-    if (!id) { $("vpBox").innerHTML = ""; $("vpBox").style.display = "none"; $("vpNow").textContent = now + ". No video link for this game yet. Add it to videos.txt or in Coaches corner."; return; }
+    if (!id) { $("vpBox").innerHTML = ""; $("vpBox").style.display = "none"; $("vpNow").textContent = now + ". No video link for this game yet. Add it to videos.txt or in Coach’s Corner."; return; }
     $("vpBox").style.display = "";
     ytPlay($("vpBox"), id, it.start != null ? it.start : it.sec, clipEnd(it)); teleAttach($("vpBox"), it);
     $("vpNow").innerHTML = esc(now) + ' &middot; <a href="' + esc(ytLink(url, it.start != null ? it.start : it.sec)) + '" target="_blank" rel="noopener">Open in YouTube</a>';
@@ -1221,7 +1221,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   function needLock() { var c = coachCfg(); return !!(D.cfg && D.cfg.submitUrl) && !(c.pass && lget(UK).pass === c.pass); }
   function workerUrl() { var u = D.cfg.submitUrl; return /^https?:\/\//.test(u) ? u : "https://" + u; }
   function lockView() {
-    return '<h2>Coaches corner</h2><div class="card"><h3>Coach passcode</h3><p class="note" style="margin-top:0">Enter the passcode to mark highlights, game events and shots. Everyone else can watch and browse.</p>' +
+    return '<h2>Coach’s Corner</h2><div class="card"><h3>Coach passcode</h3><p class="note" style="margin-top:0">Enter the passcode to mark highlights, game events and shots. Everyone else can watch and browse.</p>' +
       '<div class="fld"><label for="lkPass">Passcode</label><input type="password" id="lkPass" autocomplete="off" value="' + esc(coachCfg().pass) + '"></div>' +
       '<div class="seg"><button class="btn" id="lkGo">Unlock</button></div><p class="note" id="lkNote" aria-live="polite"></p></div>';
   }
@@ -1242,13 +1242,13 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   }
   function coachSubTabs(active) {
     function b(h, label, key) { return '<button onclick="location.hash=\'' + h + '\'" aria-pressed="' + (active === key) + '">' + label + "</button>"; }
-    return '<div class="seg" role="group" aria-label="Coaches corner sections">' + b("#/coach", "Clips", "clips") + b("#/coach/analysis", "Game analysis", "review") + b("#/coach/shots", "Shot marker", "shots") + b("#/coach/players", "Players", "players") + b("#/coach/shifts", "Shifts", "shifts") + "</div>";
+    return '<div class="seg" role="group" aria-label="Coach’s Corner sections">' + b("#/coach", "Clips", "clips") + b("#/coach/analysis", "Game analysis", "review") + b("#/coach/shots", "Shot marker", "shots") + b("#/coach/players", "Players", "players") + b("#/coach/shifts", "Shifts", "shifts") + "</div>";
   }
   function vClips(dateParam, mode) {
     var dates = dateChoices(), date = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : (D.games.length ? D.games[D.games.length - 1].date : dates[0]);
     if (dates.indexOf(date) < 0) dates.unshift(date);
     var vk = lget(VK), url = D.videos[date] || vk[date] || "", ev = mode === "events", mark = mode === "mark" || ev;
-    var h = mark ? "<h2>Coaches corner</h2>" + coachSubTabs(ev ? "events" : "clips") + coachCard(ev) : "<h2>Highlights</h2>";
+    var h = mark ? "<h2>Coach’s Corner</h2>" + coachSubTabs(ev ? "events" : "clips") + coachCard(ev) : "<h2>Highlights</h2>";
     h += '<div class="card"' + (mark ? ' style="margin-top:12px"' : "") + '><div class="fld"><label for="clDate">Game</label>' + dateSelect("clDate", dates, date) + "</div>" +
       (mark ? '<div class="fld"><label for="clUrl">YouTube link for this game</label><input type="url" id="clUrl" placeholder="https://youtu.be/..." value="' + esc(url) + '"></div>' +
         '<div class="seg"><button id="clLoad">Load video</button></div>' : '<input type="hidden" id="clUrl" value="' + esc(url) + '">') +
@@ -1504,10 +1504,10 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var d = e.data; if (typeof d === "string") { try { d = JSON.parse(d); } catch (x) { return; } }
     if (d && d.event === "infoDelivery" && d.info && typeof d.info.currentTime === "number") tele.tick(d.info.currentTime);
   });
-  // ---------- Coaches corner: pick a clip, then draw on it ----------
+  // ---------- Coach’s Corner: pick a clip, then draw on it ----------
   function vCoachClips() {
     var items = allVideoItems();
-    var h = "<h2>Coaches corner</h2>" + coachSubTabs("clips");
+    var h = "<h2>Coach’s Corner</h2>" + coachSubTabs("clips");
     if (!items.length) return h + '<div class="card empty" style="margin-top:12px"><p>No clips yet.</p><p class="note">Mark the game in <b>Game analysis</b> and the clips show up here to draw on.</p></div>';
     var games = Object.keys(items.reduce(function (m, c) { m[c.date] = 1; return m; }, {})).sort().reverse();
     var seenT = {}; items.forEach(function (c) { seenT[c.disp || c.tag] = 1; });
@@ -1755,7 +1755,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var dates = dateChoices(), date = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : (D.games.length ? D.games[D.games.length - 1].date : dates[0]);
     if (dates.indexOf(date) < 0) dates.unshift(date);
     var url = D.videos[date] || lget(VK)[date] || "";
-    var h = "<h2>Coaches corner</h2>" + coachSubTabs("shifts");
+    var h = "<h2>Coach’s Corner</h2>" + coachSubTabs("shifts");
     h += '<div class="card" style="margin-top:12px"><div class="fld"><label for="shfDate">Game</label>' + dateSelect("shfDate", dates, date) + "</div>";
     if (!ytId(url)) return h + '<p class="note">This game has no video link yet. Add the YouTube link in <b>Game analysis</b> first, then come back.</p></div>';
     h += '<p class="note" style="margin-bottom:0">Tap <b>Start tracking</b> when play starts and <b>Stop tracking</b> at every stoppage. Time only counts while tracking is on and the video is playing. Tap a number to put that player on the ice, and tap it again when he comes off. You can change who is on while tracking is stopped.</p></div>';
@@ -1979,7 +1979,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     });
   }
 
-  // ---------- game review (coaches corner) ----------
+  // ---------- game review (Coach’s Corner) ----------
   var RK = "kh-review-v1";
   var RV_SHOTS = ["Goal", "Shot on goal", "Blocked shot"], RV_MOVES = ["Carry", "Dump", "Pass", "Turnover"];
   var RVG = [
@@ -2206,7 +2206,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var url = D.videos[date] || lget(VK)[date] || "";
     var btns = function (src, tags, extra) { return '<div class="rvbtns">' + tags.map(function (t) { return '<button class="rvb" ' + (extra || "") + ' data-src="' + src + '" data-tag="' + t + '" disabled>' + t + "</button>"; }).join("") + "</div>"; };
     var sect = function (name, c, body, id) { return '<div class="card rvgrp" ' + (id ? 'id="' + id + '" ' : "") + 'style="--c:' + c + '"><h3>' + name + "</h3>" + body + "</div>"; };
-    var h = "<h2>Coaches corner</h2>" + coachSubTabs("review");
+    var h = "<h2>Coach’s Corner</h2>" + coachSubTabs("review");
     h += '<div class="card" style="margin-top:12px"><div class="filters"><div class="fld"><label for="rvDate">Game</label>' + dateSelect("rvDate", dates, date) + "</div>" +
       '<div class="fld"><label for="clUrl">YouTube link for this game</label><input type="url" id="clUrl" placeholder="https://youtu.be/..." value="' + esc(url) + '"></div>' +
       '<div class="fld"><label for="cName">Your name (optional, used on coach notes)</label><input type="text" id="cName" autocomplete="name" placeholder="Blank = Team" value="' + esc(coachCfg().name) + '"></div>' +
@@ -2236,7 +2236,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       '<div class="seg" style="margin-top:12px"><button class="btn" id="rvSend" style="width:100%">Share to Kings HUDL</button></div><p class="note" id="rvShare" aria-live="polite"></p>';
     return h;
   }
-  function vCoachPlayers() { return "<h2>Coaches corner</h2>" + coachSubTabs("players") + '<div class="card" style="margin-top:12px" id="plEd"></div>'; }
+  function vCoachPlayers() { return "<h2>Coach’s Corner</h2>" + coachSubTabs("players") + '<div class="card" style="margin-top:12px" id="plEd"></div>'; }
   function bindPlayersEditor() {
     var box = $("plEd"); if (!box) return;
     var extra = [];
@@ -2574,7 +2574,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (sub === "mark") {
       var dates = dateChoices(), date = D.games.length ? D.games[D.games.length - 1].date : dates[0];
       if (dates.indexOf(todayStr()) >= 0 && !D.games.some(function (g) { return g.date === todayStr(); })) date = todayStr();
-      return "<h2>Coaches corner</h2>" + coachSubTabs("shots") + coachCard() +
+      return "<h2>Coach’s Corner</h2>" + coachSubTabs("shots") + coachCard() +
         '<div class="card" style="margin-top:12px"><div class="fld"><label for="shDate">Game</label>' + dateSelect("shDate", dates, date) + "</div>" +
         '<div class="fld"><label>Whose shot</label><div class="seg" id="shTeam"><button data-v="H" aria-pressed="true">Us</button><button data-v="A" aria-pressed="false">Opponent</button></div></div>' +
         '<div class="fld"><label>Period</label><div class="seg" id="shPer">' + [1, 2, 3, 4].map(function (p, i) { return '<button data-v="' + p + '" aria-pressed="' + (i === 0) + '">' + PERIODS_LABEL[i] + "</button>"; }).join("") + "</div></div>" +
@@ -2598,7 +2598,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       '<div class="leg"><span><i style="background:#a974ff;border-radius:50%"></i>Our goal</span><span><i style="background:#e5484d;border-radius:50%"></i>Their goal</span><span><i style="border:2px solid #1e5fd0;border-radius:50%"></i>Our shot</span><span><i style="border:2px dashed #e5484d;border-radius:50%"></i>Their shot</span></div>' +
       '<div id="mpZones"></div>' +
       '<p class="note">We attack the net on the right. Older shots marked on one end only are placed on the correct end. Blocked shots are small dots. Missed shots are not shown.</p>' +
-      (ds.length ? "" : '<p class="note">No shots marked yet. Coaches can add shots in Coaches corner.</p>') + "</div>";
+      (ds.length ? "" : '<p class="note">No shots marked yet. Coaches can add shots in Coach’s Corner.</p>') + "</div>";
   }
   var PERIODS_LABEL = ["1", "2", "3", "OT"];
   function coachesWithShots() {
@@ -2823,7 +2823,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   }
 
   // ---------- router ----------
-  var tabs = [["", "Overview"], ["players", "Players"], ["games", "Games"], ["shots", "Shot map"], ["video", "Video"], ["coach", "Coaches corner"]];
+  var tabs = [["", "Overview"], ["players", "Players"], ["games", "Games"], ["shots", "Shot map"], ["video", "Video"], ["coach", "Coach’s Corner"]];
   // Video review beats the scoreboard, but only for what was actually marked. Starts from Streamn's numbers every time.
   function applyReview(g) {
     if (!g._o) g._o = JSON.parse(JSON.stringify({hs: g.hs, as: g.as, hShots: g.hShots, aShots: g.aShots, goals: g.goals, players: g.players, goalies: g.goalies, dnp: g.dnp, fo: g.fo}));
