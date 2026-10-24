@@ -532,8 +532,37 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     return "<h2>Next game" + (up.length > 1 ? "s" : "") + "</h2><div class='row g2'>" + up.map(function (g, i) {
       var d = new Date(g.at), h12 = d.getHours() % 12 || 12, mm = ("0" + d.getMinutes()).slice(-2), ap = d.getHours() < 12 ? "AM" : "PM";
-      return "<div class='card'><h3 style='margin:0 0 4px'>" + (i === 0 ? "Up next" : "After that") + "</h3><div style='font-family:var(--display);font-weight:700;font-size:22px'>" + days[d.getDay()] + " " + fmtDate(g.date) + ", " + h12 + ":" + mm + " " + ap + "</div><div style='margin-top:4px'>" + (g.home ? "vs " : "at ") + "<b>" + esc(g.opp) + "</b></div>" + (g.venue ? "<div class='note' style='margin:4px 0 0'>" + esc(g.venue) + (g.home ? ", home" : ", away") + "</div>" : "") + "</div>";
+      return "<a class='card' href='#/next/" + g.date + "' style='display:block;color:inherit;text-decoration:none'><h3 style='margin:0 0 4px'>" + (i === 0 ? "Up next" : "After that") + "</h3><div style='font-family:var(--display);font-weight:700;font-size:22px'>" + days[d.getDay()] + " " + fmtDate(g.date) + ", " + h12 + ":" + mm + " " + ap + "</div><div style='margin-top:4px'>" + (g.home ? "vs " : "at ") + "<b>" + esc(g.opp) + "</b></div>" + (g.venue ? "<div class='note' style='margin:4px 0 0'>" + esc(g.venue) + (g.home ? ", home" : ", away") + "</div>" : "") + "<div class='note' style='margin:6px 0 0;color:var(--accent)'>Tap to see past games against them &rarr;</div></a>";
     }).join("") + "</div>";
+  }
+  function sameTeam(a, b) {
+    var n = function (x) { return String(x || "").toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim(); }, x = n(a), y = n(b);
+    if (!x || !y) return false;
+    if (x === y || y.indexOf(x) >= 0 || x.indexOf(y) >= 0) return true;
+    var lx = x.split(" ").pop(), ly = y.split(" ").pop(); return lx.length > 3 && lx === ly;
+  }
+  function vMatchup(date) {
+    var sc = (D.schedule || []).filter(function (g) { return g.date === date; })[0];
+    if (!sc) return '<a class="back" href="#/">&larr; Overview</a><div class="card empty">That game is not on the schedule.</div>';
+    var meets = D.games.filter(function (g) { return sameTeam(g.away, sc.opp); }).sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+    var pt = sc.time.split(":"), hh = +pt[0], tm = (hh % 12 || 12) + ":" + pt[1] + (hh < 12 ? " AM" : " PM");
+    var h = '<a class="back" href="#/">&larr; Overview</a><h2>' + (sc.home ? "vs " : "at ") + esc(sc.opp) + "<small>" + fmtDate(date) + ", " + tm + (sc.venue ? ", " + esc(sc.venue) : "") + "</small></h2>";
+    if (!meets.length) return h + '<div class="card empty"><p>No games against them yet this season.</p><p class="note">Past games show here once they are in the site.</p></div>';
+    var w = 0, l = 0, t = 0, gf = 0, ga = 0, sf = 0, sa = 0;
+    meets.forEach(function (g) { if (g.result === "W") w++; else if (g.result === "L") l++; else t++; gf += g.hs; ga += g.as; sf += g.hShots; sa += g.aShots; });
+    h += '<div class="kpis">' + kpi(w + "-" + l + "-" + t, "Record against them") + kpi(gf, "Goals for") + kpi(ga, "Goals against") + kpi(sf, "Shots for") + kpi(sa, "Shots against") + "</div>";
+    h += "<h2>Past games against them<small>tap Review to open a game</small></h2>";
+    h += meets.map(function (g) {
+      var url = D.videos[g.date] || lget(VK)[g.date] || "", hasVid = !!ytId(url) || allClips(g.date).length > 0 || allReview(g.date).length > 0;
+      return '<div class="card" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><div><b>' + fmtDate(g.date) + " vs " + esc(g.away) + '</b><div class="note" style="margin:2px 0 0">' + esc(g.home) + " " + g.hs + ", " + esc(g.away) + " " + g.as + (g.period && g.period !== "Final" ? " (" + esc(g.period) + ")" : "") + '</div></div><span class="pill ' + g.result + '">' + g.result + '</span></div>' +
+        '<div class="seg" style="margin-top:10px"><a class="btn" href="#/game/' + g.id + '" style="text-decoration:none">Review game</a>' + (hasVid ? '<a class="btn" href="#/video/' + g.date + '" style="text-decoration:none">Watch clips</a>' : "") + "</div></div>";
+    }).join("");
+    var rows = aggPlayers().map(function (p) {
+      var g0 = 0, a0 = 0, gp = 0; p.log.forEach(function (lg) { if (meets.some(function (m) { return m.id === lg.game.id; })) { g0 += lg.s.g; a0 += lg.s.a; gp++; } });
+      return {n: p.n, g: g0, a: a0, p: g0 + a0, gp: gp};
+    }).filter(function (r) { return r.p > 0; }).sort(function (a, b) { return b.p - a.p || b.g - a.g || a.n - b.n; }).slice(0, 5);
+    if (rows.length) h += "<h2>Top scorers against them</h2><div class='card scroll'><table><thead><tr><th>Player</th><th>G</th><th>A</th><th>P</th></tr></thead><tbody>" + rows.map(function (r) { return '<tr class="click" onclick="location.hash=\'#/player/' + r.n + '\'"><td>' + esc(label(r.n)) + "</td><td>" + r.g + "</td><td>" + r.a + "</td><td><b>" + r.p + "</b></td></tr>"; }).join("") + "</tbody></table></div>";
+    return h;
   }
   function vOverview() {
     var t = team(), P = aggPlayers(), G = aggGoalies();
@@ -2880,7 +2909,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (window.__rvT) { clearInterval(window.__rvT); window.__rvT = null; }
     var parts = location.hash.replace(/^#\/?/, "").split("/");
     var base = parts[0] || "";
-    var cur = base === "player" ? "players" : base === "game" ? "games" : base;
+    var cur = base === "player" ? "players" : base === "game" ? "games" : base === "next" ? "" : base;
     $("nav").innerHTML = tabs.map(function (t) { return '<a href="#/' + t[0] + '"' + (t[0] === cur ? ' aria-current="page"' : "") + ">" + t[1] + "</a>"; }).join("");
     var t = team();
     $("team").textContent = "Kings HUDL";
@@ -2893,6 +2922,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (base === "coach" && needLock()) h += lockView();
     else if (base === "coach") h += parts[1] === "shots" ? vShots("mark") : parts[1] === "players" ? vCoachPlayers() : parts[1] === "shifts" ? vShifts(parts[2]) : parts[1] === "clip" ? vClipEditor(parts[2], +parts[3], +parts[4]) : (parts[1] === "analysis" || /^\d{4}-\d{2}-\d{2}$/.test(parts[1] || "")) ? vReview(parts.filter(function (x) { return /^\d{4}-\d{2}-\d{2}$/.test(x); })[0]) : vCoachClips();
     else if (base === "shots") h += vShots();
+    else if (base === "next") h += vMatchup(parts[1]);
     else if (!D.games.length) h += vEmpty();
     else if (base === "players") h += vPlayers();
     else if (base === "player") h += vPlayer(+parts[1]);
