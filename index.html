@@ -606,7 +606,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var extras = cats.filter(function (c) { return defs.indexOf(c) < 0; });
     var on = {}; defs.forEach(function (c) { on[c] = true; });
     var count = function (c) { return items.filter(function (i) { return i.cat === c; }).length; };
-    box.innerHTML = "<h2>Highlights<small id='pcCount'></small></h2>" + playCard() +
+    box.innerHTML = "<h2>Highlights<small id='pcCount'></small></h2>" + ($("vpCard") ? "" : playCard()) +
       '<div class="seg" id="pcChips" style="margin-bottom:12px" role="group" aria-label="What to show"></div><div class="card" id="pcList"></div>';
     function chips() {
       var allOn = extras.length && extras.every(function (c) { return on[c]; });
@@ -931,6 +931,12 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     PL.push(it);
     return '<button class="tm" style="background:none;border:0;color:var(--accent);font-family:var(--display);font-weight:700;font-size:18px;min-width:70px;text-align:left;padding:0" data-pl="' + (PL.length - 1) + '">' + hms(it.sec) + "</button>";
   }
+  function shiftClick(e) {
+    var b = e.target.closest && e.target.closest("button[data-shift]"); if (!b || !$("vpCard")) return;
+    var p = b.getAttribute("data-shift").split("|"), a = Math.floor(+p[1]), gm = D.games.filter(function (g) { return g.date === p[0]; })[0];
+    playItem({date: p[0], game: fmtDate(p[0]) + (gm ? " vs " + gm.away : ""), sec: a, start: Math.max(0, a - 4), end: a + 2, mark: a, tag: "Shift", players: [], lists: []});
+  }
+  document.addEventListener("click", shiftClick);
   function plClick(e) {
     var b = e.target.closest && e.target.closest("button[data-pl]"); if (!b || !$("vpCard")) return;
     playItem(PL[+b.getAttribute("data-pl")]);
@@ -1662,14 +1668,15 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     iceDates().forEach(function (d) { var r = computeShifts(getShifts(d)).rows.filter(function (x) { return x.n === n; })[0]; if (r) games.push({date: d, r: r}); });
     if (!games.length) return "";
     var cnt = games.reduce(function (s0, x) { return s0 + x.r.count; }, 0), toi = games.reduce(function (s0, x) { return s0 + x.r.toi; }, 0), mx = Math.max.apply(null, games.map(function (x) { return x.r.max; }));
-    var h = "<h2>Ice time<small>" + games.length + (games.length === 1 ? " game" : " games") + ", stoppages not counted</small></h2><div class='kpis'>" + kpi(mss(toi / games.length), "Ice time per game") + kpi((cnt / games.length).toFixed(1), "Shifts per game") + kpi(mss(toi / cnt), "Average shift") + kpi(mss(mx), "Longest shift") + "</div>";
+    var h = playCard() + "<h2>Ice time<small>" + games.length + (games.length === 1 ? " game" : " games") + ", stoppages not counted</small></h2><div class='kpis'>" + kpi(mss(toi / games.length), "Ice time per game") + kpi((cnt / games.length).toFixed(1), "Shifts per game") + kpi(mss(toi / cnt), "Average shift") + kpi(mss(mx), "Longest shift") + "</div>";
     h += "<div class='card scroll' style='margin-top:12px'><table><thead><tr><th>Game</th><th>Shifts</th><th>Ice time</th><th>Avg</th><th>Longest</th></tr></thead><tbody>" + games.slice().reverse().map(function (x) {
       var gm = D.games.filter(function (q) { return q.date === x.date; })[0];
       return "<tr" + (gm ? " class=\"click\" onclick=\"location.hash='#/game/" + gm.id + "'\"" : "") + "><td>" + fmtDate(x.date) + (gm ? " vs " + esc(gm.away) : "") + "</td><td>" + x.r.count + "</td><td><b>" + mss(x.r.toi) + "</b></td><td>" + mss(x.r.avg) + "</td><td>" + mss(x.r.max) + "</td></tr>";
     }).join("") + "</tbody></table></div>";
     h += games.slice().reverse().map(function (x) {
       return "<details class='card' style='margin-top:12px'><summary style='cursor:pointer'>Every shift, " + fmtDate(x.date) + " (" + x.r.count + ")</summary><div style='margin-top:8px'>" + x.r.shifts.map(function (s, i) {
-        return "<div class='ev'><span class='t' style='font-family:var(--display);font-weight:700;min-width:70px'>#" + (i + 1) + "</span><span class='lb'>" + mss(s.len) + " <span class='mut'>at video " + hms(Math.floor(s.a)) + "</span></span></div>";
+        var hasV = !!ytId(D.videos[x.date] || lget(VK)[x.date] || "");
+        return "<div class='ev'><span class='t' style='font-family:var(--display);font-weight:700;min-width:70px'>#" + (i + 1) + "</span><span class='lb'>" + mss(s.len) + " " + (hasV ? '<button class="tm" data-shift="' + x.date + "|" + s.a + '" style="background:none;border:0;color:var(--accent);padding:0;font-weight:700">watch at ' + hms(Math.floor(s.a)) + "</button>" : "<span class='mut'>at video " + hms(Math.floor(s.a)) + "</span>") + "</span></div>";
       }).join("") + "</div></details>";
     }).join("");
     return h;
