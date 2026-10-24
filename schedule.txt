@@ -2,3 +2,15 @@
 # Source: https://heominoraa.ca/groups/1044/schedule/  Delete or add lines any time. Past games disappear by themselves.
 2026-10-25|12:30|Seaway Valley Rapids|H|Cardinal
 2026-10-27|19:30|Kanata Blazers|H|Spencerville
+2026-11-01|13:30|Cumberland Jr. Grads|H|Cardinal
+2026-11-04|20:00|Gloucester Rangers|A|RSP (Potvin)
+2026-11-07|14:00|Ottawa Sting|A|Sandy Hill Arena
+2026-11-08|12:30|Nepean Raiders|H|Cardinal
+2026-11-10|19:30|Gloucester Rangers|H|Spencerville
+2026-11-22|12:30|Ottawa Valley Silver Seven White|H|Cardinal
+2026-11-24|19:30|Ottawa Sting|H|Spencerville
+2026-11-27|20:00|St. Lawrence Steel|H|Cardinal
+2026-11-28|12:00|Ottawa Valley Silver Seven Black|A|Almonte DCC
+2026-12-02|19:00|Nepean Raiders|A|Bell Centennial
+2026-12-13|12:30|Eastern Ontario Cobras|H|Cardinal
+2026-12-20|11:00|Ottawa Valley Silver Seven White|A|Perth
