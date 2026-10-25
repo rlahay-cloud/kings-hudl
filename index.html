@@ -203,7 +203,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
 (function () {
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
-  var D = {games: [], roster: {}, goalieNums: {}, home: "", videos: {}, events: {}, clips: {}, shots: {}, review: {}, cfg: {}, pos: {}, draws: {}, shifts: {}, sample: false, error: ""};
+  var D = {games: [], roster: {}, goalieNums: {}, home: "", videos: {}, events: {}, clips: {}, shots: {}, review: {}, cfg: {}, pos: {}, draws: {}, shifts: {}, sync: {}, sample: false, error: ""};
 
   // ---------- helpers ----------
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return {"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]; }); }
@@ -357,6 +357,10 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       names.filter(function (n) { return /^video_\d{4}-\d{2}-\d{2}\.txt$/.test(n); }).forEach(function (n) {
         var d = /(\d{4}-\d{2}-\d{2})/.exec(n)[1];
         videoJobs.push(getText("games/" + n).then(function (t) { var u = (t.split(/\r?\n/)[0] || "").trim(); if (u) D.videos[d] = u; }).catch(function () {}));
+      });
+      names.filter(function (n) { return /^sync_\d{4}-\d{2}-\d{2}\.txt$/.test(n); }).forEach(function (n) {
+        var d = /(\d{4}-\d{2}-\d{2})/.exec(n)[1];
+        videoJobs.push(getText("games/" + n).then(function (t) { D.sync[d] = parseSync(t); }).catch(function () {}));
       });
       names.filter(function (n) { return /^review_\d{4}-\d{2}-\d{2}(_[a-z0-9-]+)?\.txt$/.test(n); }).forEach(function (n) {
         var m = /(\d{4}-\d{2}-\d{2})(?:_([a-z0-9-]+))?\.txt$/.exec(n), d = m[1], slug = m[2] || "coach";
@@ -788,7 +792,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
         var row = '<tr class="click" data-pgame="' + l.game.date + '"><td>&#9656; ' + fmtDate(l.game.date) + " vs " + esc(l.game.away) + (gi.length ? ' <span class="mut" style="font-size:12px">' + gi.length + (gi.length === 1 ? " clip" : " clips") + "</span>" : "") + '</td><td><span class="pill ' + l.game.result + '">' + l.game.result + "</span></td><td>" + l.s.g + "</td><td>" + l.s.a + "</td><td>" + l.s.p + '</td><td class="' + pmCls(l.s.pm) + '">' + pmText(l.s.pm) + "</td><td>" + l.s.sog + "</td><td>" + l.s.pim + "</td></tr>";
         var det = gi.length ? gi.map(function (x, i) {
           var role = x.cat === "Assists" ? "Assist" : x.tag.replace(/^For: /, "Shot: "), t = hms(x.sec);
-          return '<div class="ev ' + (x.cat === "Goals" ? "goal" : "") + '">' + (vid ? '<button class="tm" style="background:none;border:0;color:var(--accent);font-family:var(--display);font-weight:700;font-size:18px;min-width:70px;text-align:left;padding:0" data-gp="' + n + "|" + l.game.date + "|" + i + '">' + t + "</button>" : '<span class="t" style="font-family:var(--display);font-weight:700;font-size:18px;min-width:70px">' + t + "</span>") + '<span class="lb"><b>' + esc(role) + "</b> " + esc(x.label || "") + coachSpan(x) + "</span></div>";
+          return '<div class="ev ' + (x.cat === "Goals" ? "goal" : "") + '">' + (vid ? '<button class="tm" style="background:none;border:0;color:var(--accent);font-family:var(--display);font-weight:700;font-size:18px;min-width:70px;text-align:left;padding:0" data-gp="' + n + "|" + l.game.date + "|" + i + '">' + t + pSmall(l.game.date, x.sec) + "</button>" : '<span class="t" style="font-family:var(--display);font-weight:700;font-size:18px;min-width:70px">' + t + "</span>") + '<span class="lb"><b>' + esc(role) + "</b> " + esc(x.label || "") + coachSpan(x) + "</span></div>";
         }).join("") + (vid ? "" : '<p class="note">No video link for this game yet.</p>') : '<p class="note" style="margin:0">No highlights marked for this player in this game.</p>';
         return row + "<tr hidden data-pgamed='" + l.game.date + "'><td colspan='8'>" + det + "<p style='margin:8px 0 0'><a href='#/game/" + l.game.id + "'>Open the game page &rarr;</a></p></td></tr>";
       }).join("") + "</tbody></table></div>";
@@ -973,6 +977,38 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       '<div class="card" id="vfList" style="margin-top:12px"></div>';
     return h;
   }
+  // ---------- Game setup: period starts and extra camera angles ----------
+  // Every saved time stays in main-video seconds. This sheet only translates: period starts, and how far each extra camera is from the main video.
+  var SYK = "kh-sync-v1", camSel = {}, lastPlayed = null;
+  function emptySync() { return {p: {}, e: {}, L: [10, 10, 12], a: []}; }
+  function parseSync(text) {
+    var o = emptySync();
+    String(text || "").split(/\r?\n/).forEach(function (l) {
+      var a = l.trim().split("|"), k = a[0];
+      if ((k === "P" || k === "E") && /^[1-5]$/.test(a[1] || "") && !isNaN(parseFloat(a[2]))) o[k.toLowerCase()][+a[1]] = parseFloat(a[2]);
+      else if (k === "L") { var v = (a[1] || "").split(",").map(Number).filter(function (x) { return x > 0 && x < 100; }); if (v.length) o.L = v; }
+      else if (k === "A" && a[1] && ytId(a[2]) && !isNaN(parseFloat(a[3]))) o.a.push({name: a[1], url: a[2], off: parseFloat(a[3])});
+    });
+    return o;
+  }
+  function fmtSync(o) {
+    var out = [];
+    [1, 2, 3, 4, 5].forEach(function (k) { if (o.p[k] !== undefined) out.push("P|" + k + "|" + (+o.p[k]).toFixed(1)); if (o.e[k] !== undefined) out.push("E|" + k + "|" + (+o.e[k]).toFixed(1)); });
+    if (o.L && o.L.length) out.push("L|" + o.L.join(","));
+    o.a.forEach(function (x) { out.push("A|" + String(x.name).replace(/[|\r\n]+/g, " ").slice(0, 30) + "|" + x.url + "|" + (+x.off).toFixed(1)); });
+    return out.join("\n") + "\n";
+  }
+  function syncOf(date) { var l = lget(SYK)[date]; if (l && l.pending && l.v) return l.v; return (D.sync && D.sync[date]) || null; }
+  // "P2 4:12" is real time since the period started (stoppages included). Between periods it says Intermission.
+  function pTime(date, sec) {
+    var sy = syncOf(date); if (!sy || sec === undefined || sec === null) return "";
+    var best = 0; [1, 2, 3, 4, 5].forEach(function (k) { if (sy.p[k] !== undefined && sy.p[k] <= sec + 0.5) best = k; });
+    if (!best) return Object.keys(sy.p).length ? "Pre-game" : "";
+    if (sy.e[best] !== undefined && sec > sy.e[best] + 0.5) return "Intermission";
+    return (best === 4 ? "OT" : "P" + best) + " " + mss(sec - sy.p[best]);
+  }
+  function tLabel(date, sec) { var t = pTime(date, sec); return hms(Math.floor(sec)) + (t ? "  " + t : ""); }
+  function pSmall(date, sec) { var t = pTime(date, sec); return t ? '<small style="display:block;font-size:11px;color:var(--muted);font-family:var(--body,inherit);font-weight:600">' + esc(t) + "</small>" : ""; }
   var vp = {id: null, player: null};
   // Inline player used by the Video tab, player pages and game pages. Needs #vpCard, #vpBox and #vpNow on the page.
   function clipEnd(it) { return it.end && it.end > it.sec ? it.end : it.sec + 10; }
@@ -993,21 +1029,31 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     } else ytMake(box, id, sec, end, true);
   }
   function playItem(it) {
-    var url = D.videos[it.date] || lget(VK)[it.date] || "", id = ytId(url);
+    lastPlayed = it;
+    var url = D.videos[it.date] || lget(VK)[it.date] || "", sy = syncOf(it.date), cams = sy ? sy.a : [], ci = camSel[it.date] >= 0 && camSel[it.date] < cams.length ? camSel[it.date] : -1, off = 0;
+    if (ci >= 0) { url = cams[ci].url; off = cams[ci].off; }
+    var id = ytId(url);
     var first = $("vpCard").hidden; $("vpCard").hidden = false;
-    var now = it.game + ", " + hms(it.sec) + " " + (it.disp || it.tag);
+    var pt = pTime(it.date, it.sec), now = it.game + ", " + hms(it.sec) + (pt ? " (" + pt + ")" : "") + " " + (it.disp || it.tag) + (ci >= 0 ? " (" + cams[ci].name + ")" : "");
+    var cb = $("vpCam"); if (!cb) { cb = document.createElement("div"); cb.id = "vpCam"; cb.className = "seg"; cb.style.marginTop = "8px"; $("vpNow").parentNode.appendChild(cb); }
+    cb.innerHTML = cams.length ? '<button data-cam="-1" aria-pressed="' + (ci < 0) + '">Main camera</button>' + cams.map(function (c, i) { return '<button data-cam="' + i + '" aria-pressed="' + (ci === i) + '">' + esc(c.name) + "</button>"; }).join("") : "";
     if (!id) { $("vpBox").innerHTML = ""; $("vpBox").style.display = "none"; $("vpNow").textContent = now + ". No video link for this game yet. Add it to videos.txt or in Coach’s Corner."; return; }
     $("vpBox").style.display = "";
-    ytPlay($("vpBox"), id, it.start != null ? it.start : it.sec, clipEnd(it)); teleAttach($("vpBox"), it);
-    $("vpNow").innerHTML = esc(now) + ' &middot; <a href="' + esc(ytLink(url, it.start != null ? it.start : it.sec)) + '" target="_blank" rel="noopener">Open in YouTube</a>';
+    var st = Math.max(0, Math.floor((it.start != null ? it.start : it.sec) + off)), en = Math.max(st + 2, Math.ceil(clipEnd(it) + off));
+    ytPlay($("vpBox"), id, st, en); if (ci < 0) teleAttach($("vpBox"), it);
+    $("vpNow").innerHTML = esc(now) + ' &middot; <a href="' + esc(ytLink(url, st)) + '" target="_blank" rel="noopener">Open in YouTube</a>';
     if (first) $("vpCard").scrollIntoView({block: "nearest"});
   }
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest && e.target.closest("button[data-cam]"); if (!b || !lastPlayed) return;
+    camSel[lastPlayed.date] = +b.getAttribute("data-cam"); playItem(lastPlayed);
+  });
   var PL = [];
   function playCard() { return '<div class="card" id="vpCard" hidden style="position:sticky;top:96px;z-index:4;margin-bottom:12px"><div class="ytbox" id="vpBox"></div><p class="note" id="vpNow" style="margin:8px 0 0"></p></div>'; }
   function timeBtn(it, hasVideo) {
-    if (!hasVideo) return '<span class="t" style="font-family:var(--display);font-weight:700;font-size:18px;min-width:70px">' + hms(it.sec) + "</span>";
+    if (!hasVideo) return '<span class="t" style="font-family:var(--display);font-weight:700;font-size:18px;min-width:70px">' + hms(it.sec) + pSmall(it.date, it.sec) + "</span>";
     PL.push(it);
-    return '<button class="tm" style="background:none;border:0;color:var(--accent);font-family:var(--display);font-weight:700;font-size:18px;min-width:70px;text-align:left;padding:0" data-pl="' + (PL.length - 1) + '">' + hms(it.sec) + "</button>";
+    return '<button class="tm" style="background:none;border:0;color:var(--accent);font-family:var(--display);font-weight:700;font-size:18px;min-width:70px;text-align:left;padding:0" data-pl="' + (PL.length - 1) + '">' + hms(it.sec) + pSmall(it.date, it.sec) + "</button>";
   }
   document.addEventListener("click", function (e) {
     var r = e.target.closest && e.target.closest("tr[data-iceg]"); if (!r || e.target.closest("a") || e.target.closest("button")) return;
@@ -1259,7 +1305,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   }
   function coachSubTabs(active) {
     function b(h, label, key) { return '<button onclick="location.hash=\'' + h + '\'" aria-pressed="' + (active === key) + '">' + label + "</button>"; }
-    return '<div class="seg" role="group" aria-label="Coach’s Corner sections">' + b("#/coach", "Clips", "clips") + b("#/coach/analysis", "Game analysis", "review") + b("#/coach/shots", "Shot marker", "shots") + b("#/coach/players", "Players", "players") + b("#/coach/shifts", "Shifts", "shifts") + "</div>";
+    return '<div class="seg" role="group" aria-label="Coach’s Corner sections">' + b("#/coach", "Clips", "clips") + b("#/coach/analysis", "Game analysis", "review") + b("#/coach/shots", "Shot marker", "shots") + b("#/coach/players", "Players", "players") + b("#/coach/shifts", "Shifts", "shifts") + b("#/coach/setup", "Game setup", "setup") + "</div>";
   }
   function vClips(dateParam, mode) {
     var dates = dateChoices(), date = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : (D.games.length ? D.games[D.games.length - 1].date : dates[0]);
@@ -1907,7 +1953,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       var s = onNow();
       $("shfState").textContent = s.stopped ? "NOT TRACKING" : "TRACKING"; $("shfState").className = s.stopped ? "stop" : "go";
       $("shfWhistle").textContent = s.stopped ? "Start tracking" : "Stop tracking";
-      $("shfTime").textContent = ready ? hms(Math.floor(now())) : "Loading the video.";
+      $("shfTime").textContent = ready ? tLabel(date, now()) : "Loading the video.";
       $("shfLast").textContent = ev.length ? "Last tracked " + hms(Math.floor(lastTracked())) : "Go to last tracked";
       $("shfLast").disabled = !ev.length;
     }
@@ -1998,7 +2044,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var tm = setInterval(function () {
       if (!$("shfYt")) { clearInterval(tm); document.body.style.overflow = ""; try { if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen(); } catch (e) {} return; }
       var s = onNow(), g = JSON.stringify([Object.keys(s.on).sort(), s.stopped, ready, ev.length]);
-      $("shfTime").textContent = ready ? hms(Math.floor(now())) : "Loading the video.";
+      $("shfTime").textContent = ready ? tLabel(date, now()) : "Loading the video.";
       tick++; if (tick % 8 === 0 && Object.keys(s.on).length) results();
       if (g !== sig) { sig = g; status(); grid(); }
     }, 250);
@@ -2012,6 +2058,113 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     loadApi(function () {
       $("shfYt").innerHTML = '<div id="shfP"></div>';
       pl = new window.YT.Player("shfP", {videoId: id, width: "100%", height: "100%", playerVars: {playsinline: 1, rel: 0, start: Math.floor(lastTracked())}, events: {onReady: function () { ready = true; sig = ""; try { if (lastTracked() > 0) pl.seekTo(lastTracked(), true); } catch (e) {} refresh(); }}});
+    });
+  }
+
+  // ---------- Game setup page ----------
+  function vSetup(dateParam) {
+    var dates = dateChoices(), date = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : (D.games.length ? D.games[D.games.length - 1].date : dates[0]);
+    if (dates.indexOf(date) < 0) dates.unshift(date);
+    var url = D.videos[date] || lget(VK)[date] || "";
+    var h = "<h2>Coach’s Corner</h2>" + coachSubTabs("setup");
+    h += '<div class="card" style="margin-top:12px"><div class="fld"><label for="stDate">Game</label>' + dateSelect("stDate", dates, date) + "</div>";
+    if (!ytId(url)) return h + '<p class="note">This game has no video link yet. Add the YouTube link in <b>Game analysis</b> first, then come back.</p></div>';
+    h += '<p class="note" style="margin-bottom:0">Play the main video. At each puck drop tap <b>Starts now</b> for that period, and <b>Ends now</b> at the horn. Times then show as period time, like P2 4:12, next to the video time. Nothing already saved changes. Extra camera angles are added further down.</p></div>';
+    h += '<div class="card" style="margin-top:12px"><div class="ytbox" id="stYt"></div><div class="shfstat"><span id="stTime" class="note" style="margin:0">Loading the video.</span><b id="stPer"></b></div>' +
+      '<div class="seg" role="group" aria-label="Main video controls"><button id="stPlay">Play / Pause</button><button data-stj="-5">&larr; 5s</button><button data-stj="-1">&larr; 1s</button><button data-stj="1">1s &rarr;</button><button data-stj="5">5s &rarr;</button></div></div>';
+    h += '<div class="card" style="margin-top:12px"><h3 style="margin-top:0">Periods</h3><div class="fld"><label for="stLen">Minutes in each period</label><input type="text" id="stLen" style="max-width:160px" placeholder="10,10,12"></div><div id="stPeriods"></div></div>';
+    h += '<div class="card" style="margin-top:12px"><h3 style="margin-top:0">Extra camera angles</h3><div id="stAngles"></div>' +
+      '<div class="filters" style="margin-top:8px"><div class="fld"><label for="stAName">Name</label><input type="text" id="stAName" maxlength="30" placeholder="Like Bench or Net"></div><div class="fld"><label for="stALink">YouTube link</label><input type="text" id="stALink" placeholder="https://youtube.com/..."></div></div><div class="seg"><button id="stAAdd">Add angle</button></div><p class="note" id="stANote" aria-live="polite"></p></div>';
+    h += '<div class="card" id="stSyncBox" style="margin-top:12px" hidden><h3 style="margin-top:0" id="stSyncHead">Match the angle</h3><p class="note" style="margin-top:0">Pause the <b>main video above</b> on a clear moment, like a puck drop. Then find the same moment here and pause. Tap Match.</p><div class="ytbox" id="stYt2"></div><div class="shfstat"><span id="stTime2" class="note" style="margin:0"></span></div>' +
+      '<div class="seg"><button id="stPlay2">Play / Pause</button><button data-stj2="-5">&larr; 5s</button><button data-stj2="-1">&larr; 1s</button><button data-stj2="1">1s &rarr;</button><button data-stj2="5">5s &rarr;</button></div><div class="seg" style="margin-top:8px"><button class="btn" id="stMatch" style="width:100%">Both show the same moment: Match</button></div></div>';
+    h += '<div class="seg" style="margin-top:12px"><button class="btn" id="stSave" style="width:100%">Save for everyone</button></div><p class="note" id="stSaved" aria-live="polite">Everything is kept on this device as you go.</p>';
+    return h;
+  }
+  function ytApi(cb) {
+    if (window.YT && window.YT.Player) return cb();
+    var prev = window.onYouTubeIframeAPIReady; window.onYouTubeIframeAPIReady = function () { if (prev) prev(); cb(); };
+    if (!document.getElementById("yt-api")) { var sc = document.createElement("script"); sc.id = "yt-api"; sc.src = "https://www.youtube.com/iframe_api"; document.head.appendChild(sc); }
+  }
+  function bindSetup() {
+    if (!$("stYt")) { if ($("stDate")) $("stDate").addEventListener("change", function () { location.hash = "#/coach/setup/" + $("stDate").value; }); return; }
+    var date = $("stDate").value, id = ytId(D.videos[date] || lget(VK)[date] || ""), pl = null, ready = false, pl2 = null, ready2 = false, matchIdx = -1;
+    $("stDate").addEventListener("change", function () { location.hash = "#/coach/setup/" + $("stDate").value; });
+    var cur = JSON.parse(JSON.stringify(syncOf(date) || emptySync()));
+    function now() { try { return ready ? pl.getCurrentTime() || 0 : 0; } catch (e) { return 0; } }
+    function now2() { try { return ready2 ? pl2.getCurrentTime() || 0 : 0; } catch (e) { return 0; } }
+    function keep() { var l = lget(SYK); l[date] = {v: cur, pending: true}; lset(SYK, l); }
+    $("stLen").value = cur.L.join(",");
+    $("stLen").addEventListener("input", function () { var v = $("stLen").value.split(",").map(function (x) { return parseInt(x, 10); }).filter(function (x) { return x > 0 && x < 100; }).slice(0, 5); if (v.length) { cur.L = v; keep(); drawPeriods(); } });
+    function drawPeriods() {
+      var names = ["Period 1", "Period 2", "Period 3", "Overtime (if played)"];
+      $("stPeriods").innerHTML = [1, 2, 3, 4].map(function (k) {
+        var st = cur.p[k], en = cur.e[k], len = cur.L[k - 1] ? " <span class='mut'>" + cur.L[k - 1] + " min</span>" : "";
+        return '<div class="ev" style="flex-wrap:wrap;gap:6px;align-items:center"><b style="min-width:150px">' + names[k - 1] + len + '</b>' +
+          '<button data-ps="' + k + '">Starts now</button>' + (st !== undefined ? '<button class="tm" data-pgo="' + st + '" style="background:none;border:0;color:var(--accent);font-weight:700">' + hms(Math.floor(st)) + '</button>' : '<span class="mut">not set</span>') +
+          '<button data-pe="' + k + '">Ends now</button>' + (en !== undefined ? '<button class="tm" data-pgo="' + en + '" style="background:none;border:0;color:var(--accent);font-weight:700">' + hms(Math.floor(en)) + '</button>' : '<span class="mut">not set</span>') +
+          ((st !== undefined || en !== undefined) ? '<button data-pc="' + k + '">Clear</button>' : "") + "</div>";
+      }).join("");
+    }
+    function drawAngles() {
+      $("stAngles").innerHTML = cur.a.length ? cur.a.map(function (c, i) {
+        return '<div class="ev" style="flex-wrap:wrap;gap:6px;align-items:center"><b style="min-width:110px">' + esc(c.name) + '</b><span class="mut">' + (c.off === 0 ? "not matched yet" : (c.off > 0 ? "+" : "") + c.off.toFixed(1) + " s from main") + '</span><button data-asy="' + i + '">Match</button><button data-adel="' + i + '">Remove</button></div>';
+      }).join("") : '<p class="note" style="margin:0">No extra angles yet. Add one with its YouTube link below.</p>';
+    }
+    drawPeriods(); drawAngles();
+    function status() {
+      var t = now(), pt = pTime(date, t);
+      $("stTime").textContent = ready ? hms(Math.floor(t)) : "Loading the video."; $("stPer").textContent = pt;
+      if (ready2) $("stTime2").textContent = "Angle time " + hms(Math.floor(now2())) + "   Main time " + hms(Math.floor(t));
+    }
+    var tmr = setInterval(function () { if (!$("stYt")) { clearInterval(tmr); return; } status(); }, 300);
+    var root = $("app");
+    if (window.__stH) root.removeEventListener("click", window.__stH);
+    window.__stH = function (e) {
+      var b = e.target.closest("button"); if (!b || !$("stYt")) return;
+      var g = function (a) { return b.getAttribute(a); };
+      if (g("data-stj") !== null && ready) pl.seekTo(Math.max(0, now() + +g("data-stj")), true);
+      else if (g("data-stj2") !== null && ready2) pl2.seekTo(Math.max(0, now2() + +g("data-stj2")), true);
+      else if (b.id === "stPlay" && ready) { if (pl.getPlayerState() === 1) pl.pauseVideo(); else pl.playVideo(); }
+      else if (b.id === "stPlay2" && ready2) { if (pl2.getPlayerState() === 1) pl2.pauseVideo(); else pl2.playVideo(); }
+      else if (g("data-ps") !== null && ready) { cur.p[+g("data-ps")] = Math.round(now() * 10) / 10; keep(); drawPeriods(); }
+      else if (g("data-pe") !== null && ready) { cur.e[+g("data-pe")] = Math.round(now() * 10) / 10; keep(); drawPeriods(); }
+      else if (g("data-pc") !== null) { delete cur.p[+g("data-pc")]; delete cur.e[+g("data-pc")]; keep(); drawPeriods(); }
+      else if (g("data-pgo") !== null && ready) { pl.seekTo(+g("data-pgo"), true); pl.playVideo(); }
+      else if (g("data-adel") !== null) { cur.a.splice(+g("data-adel"), 1); keep(); drawAngles(); $("stSyncBox").hidden = true; }
+      else if (g("data-asy") !== null) {
+        matchIdx = +g("data-asy"); var c = cur.a[matchIdx]; if (!c) return;
+        $("stSyncBox").hidden = false; $("stSyncHead").textContent = "Match the angle: " + c.name; ready2 = false;
+        $("stYt2").innerHTML = '<div id="stP2"></div>';
+        ytApi(function () { pl2 = new window.YT.Player("stP2", {videoId: ytId(c.url), width: "100%", height: "100%", playerVars: {playsinline: 1, rel: 0}, events: {onReady: function () { ready2 = true; }}}); });
+        $("stSyncBox").scrollIntoView({block: "nearest"});
+      }
+      else if (b.id === "stMatch" && ready && ready2 && matchIdx >= 0) {
+        cur.a[matchIdx].off = Math.round((now2() - now()) * 10) / 10; keep(); drawAngles();
+        $("stSaved").textContent = "Matched. This angle is " + (cur.a[matchIdx].off >= 0 ? "+" : "") + cur.a[matchIdx].off.toFixed(1) + " seconds from the main video. Press Save for everyone.";
+      }
+      else if (b.id === "stAAdd") {
+        var nm = $("stAName").value.replace(/[|\r\n]+/g, " ").trim().slice(0, 30), u = $("stALink").value.trim(), note = $("stANote");
+        if (!nm) { note.textContent = "Type a name for the angle first."; return; }
+        if (!ytId(u) || !/^https:\/\/(www\.|m\.)?(youtube\.com|youtu\.be)\//.test(u)) { note.textContent = "That does not look like a YouTube link. It should start with https://."; return; }
+        if (cur.a.length >= 6) { note.textContent = "That is the most angles for one game."; return; }
+        cur.a.push({name: nm, url: u, off: 0}); $("stAName").value = ""; $("stALink").value = ""; note.textContent = "Added. Tap Match to line it up with the main video."; keep(); drawAngles();
+      }
+      else if (b.id === "stSave") {
+        var sv = $("stSaved"); keep();
+        if (!(D.cfg && D.cfg.submitUrl)) { sv.textContent = "Saved on this device only (no helper is set up)."; return; }
+        sv.textContent = "Sending...";
+        fetch(workerUrl(), {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({kind: "sync", date: date, passcode: coachCfg().pass, text: fmtSync(cur)})})
+          .then(function (r) { return r.json().catch(function () { return {ok: false, error: "Bad reply"}; }); })
+          .then(function (j) {
+            if (j.ok) { D.sync[date] = JSON.parse(JSON.stringify(cur)); var l = lget(SYK); delete l[date]; lset(SYK, l); }
+            sv.textContent = j.ok ? "Saved for everyone. Period times show on every device in a minute." : "Not saved for everyone: " + (j.error || "unknown problem") + ". It is kept on this device. Press Save again to retry.";
+          }).catch(function () { sv.textContent = "No connection. Kept on this device. Press Save again to retry."; });
+      }
+    };
+    root.addEventListener("click", window.__stH);
+    ytApi(function () {
+      $("stYt").innerHTML = '<div id="stP"></div>';
+      pl = new window.YT.Player("stP", {videoId: id, width: "100%", height: "100%", playerVars: {playsinline: 1, rel: 0}, events: {onReady: function () { ready = true; }}});
     });
   }
 
@@ -2956,7 +3109,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (base === "shots" && parts[1] === "mark") { location.replace("#/coach"); return; }
     if (base === "clips") { location.replace("#/video" + (parts[1] ? "/" + parts[1] : "")); return; }
     if (base === "coach" && needLock()) h += lockView();
-    else if (base === "coach") h += parts[1] === "shots" ? vShots("mark") : parts[1] === "players" ? vCoachPlayers() : parts[1] === "shifts" ? vShifts(parts[2]) : parts[1] === "clip" ? vClipEditor(parts[2], +parts[3], +parts[4]) : (parts[1] === "analysis" || /^\d{4}-\d{2}-\d{2}$/.test(parts[1] || "")) ? vReview(parts.filter(function (x) { return /^\d{4}-\d{2}-\d{2}$/.test(x); })[0]) : vCoachClips();
+    else if (base === "coach") h += parts[1] === "shots" ? vShots("mark") : parts[1] === "players" ? vCoachPlayers() : parts[1] === "shifts" ? vShifts(parts[2]) : parts[1] === "setup" ? vSetup(parts[2]) : parts[1] === "clip" ? vClipEditor(parts[2], +parts[3], +parts[4]) : (parts[1] === "analysis" || /^\d{4}-\d{2}-\d{2}$/.test(parts[1] || "")) ? vReview(parts.filter(function (x) { return /^\d{4}-\d{2}-\d{2}$/.test(x); })[0]) : vCoachClips();
     else if (base === "shots") h += vShots();
     else if (base === "next") h += vMatchup(parts[1]);
     else if (!D.games.length) h += vEmpty();
@@ -2969,7 +3122,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     else h += vOverview();
     $("app").innerHTML = h;
     if (base === "coach" && needLock()) bindLock();
-    else if (base === "coach") { if (parts[1] === "shots") bindShots("mark"); else if (parts[1] === "players") bindPlayersEditor(); else if (parts[1] === "shifts") bindShifts(parts[2]); else if (parts[1] === "clip") bindClipEditor(parts[2], +parts[3], +parts[4]); else if (parts[1] === "analysis" || /^\d{4}-\d{2}-\d{2}$/.test(parts[1] || "")) bindReview(); else bindCoachClips(); }
+    else if (base === "coach") { if (parts[1] === "shots") bindShots("mark"); else if (parts[1] === "players") bindPlayersEditor(); else if (parts[1] === "shifts") bindShifts(parts[2]); else if (parts[1] === "setup") bindSetup(); else if (parts[1] === "clip") bindClipEditor(parts[2], +parts[3], +parts[4]); else if (parts[1] === "analysis" || /^\d{4}-\d{2}-\d{2}$/.test(parts[1] || "")) bindReview(); else bindCoachClips(); }
     if (base === "video") bindVideo();
     if (base === "player") bindPlayerClips(+parts[1]);
     if (base === "game") bindGameEvents();
