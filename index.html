@@ -922,7 +922,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var dseen = {}; D.games.forEach(function (g) { dseen[g.date] = g; });
     Object.keys(D.review).concat(Object.keys(lget(RK))).forEach(function (d) { dseen[d] = dseen[d] || null; });
     Object.keys(dseen).forEach(function (d) {
-      var gm = dseen[d], label = fmtDate(d) + (gm ? " vs " + gm.away : "");
+      var gm = dseen[d], label = fmtDate(d) + (oppFor(d) ? " vs " + oppFor(d) : "");
       allReview(d).forEach(function (c) {
         var tag = RV_DERIVE[c.tag];
         if (!tag) { items.push({date: d, game: label, sec: c.sec, start: Math.max(0, c.sec - LEAD), end: c.sec + TAIL, mark: c.sec, tag: c.tag, disp: geName(c.tag), players: c.players || [], assists: c.assists || [], label: "", coach: c.coach || GAME_LABEL, lists: c.lists || [], rvAll: true}); return; }
@@ -943,7 +943,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
         var tag = "Penalty", pl = [], as = [];
         if (g1) {
           if (match) { var gx = g.goals[gi++]; tag = gx.home ? "Goal" : "Goal against"; if (gx.home) { pl = gx.scorer !== null && gx.scorer !== undefined ? [gx.scorer] : []; as = gx.assists || []; } }
-          else tag = e.label.indexOf(g.away) >= 0 ? "Goal against" : "Goal";
+          else tag = e.label.indexOf(g.sAway || g.away) >= 0 ? "Goal against" : "Goal";
         }
         var covered = items.some(function (o) { return o.date === g.date && (g1 ? /^Goal/.test(o.tag) : /Penalty/.test(o.tag)) && Math.abs(o.mark - e.sec) <= 25; });
         if (covered) return;
@@ -968,7 +968,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var nums = Object.keys(items.reduce(function (m, c) { c.players.forEach(function (n) { m[n] = 1; }); return m; }, {})).map(Number).sort(function (a, b) { return a - b; });
     h += '<div class="card" id="vpCard" hidden style="position:sticky;top:96px;z-index:4"><div class="ytbox" id="vpBox"></div><p class="note" id="vpNow" style="margin:8px 0 0"></p></div>';
     h += '<div class="card" style="margin-top:12px"><div class="filters">' +
-      '<div class="fld"><label for="vfGame">Game</label><select id="vfGame"><option value="">All games</option>' + games.map(function (d) { var g = D.games.filter(function (x) { return x.date === d; })[0]; return '<option value="' + d + '">' + fmtDate(d) + (g ? " vs " + esc(g.away) : "") + "</option>"; }).join("") + "</select></div>" +
+      '<div class="fld"><label for="vfGame">Game</label><select id="vfGame"><option value="">All games</option>' + games.map(function (d) { var g = D.games.filter(function (x) { return x.date === d; })[0]; return '<option value="' + d + '">' + fmtDate(d) + (oppFor(d) ? " vs " + esc(oppFor(d)) : "") + "</option>"; }).join("") + "</select></div>" +
       '<div class="fld"><label for="vfTag">Type</label><select id="vfTag"><option value="">All types</option>' + tags.map(function (t) { return "<option>" + esc(t) + "</option>"; }).join("") + "</select></div>" +
       '<div class="fld"><label for="vfList2">Playlist</label><select id="vfList2"><option value="">All clips</option>' + lists.map(function (n) { return "<option>" + esc(n) + "</option>"; }).join("") + "</select></div>" +
       '<div class="fld"><label for="vfCoach">Marked by</label><select id="vfCoach"><option value="">Everyone</option>' + coaches.map(function (c) { return "<option>" + esc(c) + "</option>"; }).join("") + "</select></div>" +
@@ -1072,7 +1072,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   function shiftClick(e) {
     var b = e.target.closest && e.target.closest("button[data-shift]"); if (!b || !$("vpCard")) return;
     var p = b.getAttribute("data-shift").split("|"), a = Math.floor(+p[1]), z = Math.ceil(+p[2] || +p[1]), gm = D.games.filter(function (g) { return g.date === p[0]; })[0];
-    playItem({date: p[0], game: fmtDate(p[0]) + (gm ? " vs " + gm.away : ""), sec: a, start: Math.max(0, a - 4), end: z + 2, mark: a, tag: "Shift", players: [], lists: []});
+    playItem({date: p[0], game: fmtDate(p[0]) + (oppFor(p[0]) ? " vs " + oppFor(p[0]) : ""), sec: a, start: Math.max(0, a - 4), end: z + 2, mark: a, tag: "Shift", players: [], lists: []});
   }
   document.addEventListener("click", shiftClick);
   function plClick(e) {
@@ -1252,8 +1252,8 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   }
   // The opponent for a date: the finished game if there is one, otherwise a game made in Game setup, otherwise the schedule.
   function oppFor(d) {
-    var g = D.games.filter(function (x) { return x.date === d; })[0]; if (g) return g.away;
     var sy = syncOf(d); if (sy && sy.g && sy.g.opp) return sy.g.opp;
+    var g = D.games.filter(function (x) { return x.date === d; })[0]; if (g) return g.away;
     var sc = (D.schedule || []).filter(function (x) { return x.date === d; })[0]; return sc ? sc.opp : "";
   }
   function dateSelect(id, dates, cur) {
@@ -1282,7 +1282,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   // ---------- highlights page ----------
   function clipsBlock(date, url) {
     var list = allClips(date); if (!list.length) return "";
-    var gm = D.games.filter(function (g) { return g.date === date; })[0], gl = fmtDate(date) + (gm ? " vs " + gm.away : "");
+    var gm = D.games.filter(function (g) { return g.date === date; })[0], gl = fmtDate(date) + (oppFor(date) ? " vs " + oppFor(date) : "");
     vp.player = null; vp.id = null; PL = [];
     return "<h2>Highlights<small><a href='#/clips/" + date + "'>filter and watch</a></small></h2>" + playCard() + "<div class='card'>" + list.map(function (c) {
       var tl = timeBtn({date: date, game: gl, sec: c.sec, end: c.end, tag: c.tag}, !!ytId(url));
@@ -1586,7 +1586,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var tags = VID_TAGS.filter(function (t) { return seenT[t]; }).concat(Object.keys(seenT).filter(function (t) { return VID_TAGS.indexOf(t) < 0; }).sort());
     var lists = Object.keys(items.reduce(function (m, c) { (c.lists || []).forEach(function (n) { m[n] = 1; }); return m; }, {})).sort();
     h += '<div class="card" style="margin-top:12px"><h3 style="margin-top:0">Pick a clip to teach with</h3><p class="note" style="margin-top:0">Tap a clip to open it in the editor. There you can pause the video and draw on it with arrows, circles and notes.</p><div class="filters">' +
-      '<div class="fld"><label for="ccGame">Game</label><select id="ccGame"><option value="">All games</option>' + games.map(function (d) { var g = D.games.filter(function (x) { return x.date === d; })[0]; return '<option value="' + d + '">' + fmtDate(d) + (g ? " vs " + esc(g.away) : "") + "</option>"; }).join("") + "</select></div>" +
+      '<div class="fld"><label for="ccGame">Game</label><select id="ccGame"><option value="">All games</option>' + games.map(function (d) { var g = D.games.filter(function (x) { return x.date === d; })[0]; return '<option value="' + d + '">' + fmtDate(d) + (oppFor(d) ? " vs " + esc(oppFor(d)) : "") + "</option>"; }).join("") + "</select></div>" +
       '<div class="fld"><label for="ccTag">Type</label><select id="ccTag"><option value="">All types</option>' + tags.map(function (t) { return "<option>" + esc(t) + "</option>"; }).join("") + "</select></div>" +
       '<div class="fld"><label for="ccList">Playlist</label><select id="ccList"><option value="">All clips</option>' + lists.map(function (n) { return "<option>" + esc(n) + "</option>"; }).join("") + "</select></div>" +
       '<div class="fld"><label for="ccDrawn">Show</label><select id="ccDrawn"><option value="">All clips</option><option value="1">Only clips with drawings</option></select></div></div><p class="note" id="ccCount" style="margin:0"></p></div>' +
@@ -1618,7 +1618,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var g = D.games.filter(function (x) { return x.date === date; })[0];
     var title = it ? (it.disp || it.tag) : "Clip";
     var url = D.videos[date] || lget(VK)[date] || "";
-    var h = '<a class="back" href="#/coach">&larr; All clips</a><h2>Clip editor<small>' + fmtDate(date) + (g ? " vs " + esc(g.away) : "") + ", " + esc(title) + " at " + hms(start) + "</small></h2>";
+    var h = '<a class="back" href="#/coach">&larr; All clips</a><h2>Clip editor<small>' + fmtDate(date) + (oppFor(date) ? " vs " + esc(oppFor(date)) : "") + ", " + esc(title) + " at " + hms(start) + "</small></h2>";
     if (!ytId(url)) return h + '<div class="card empty"><p>This game has no video link yet.</p><p class="note">Add the YouTube link in <b>Game analysis</b> first, then come back.</p></div>';
     h += '<div class="card"><div id="teBox" style="position:relative;max-width:860px;margin:0 auto"><div class="ytbox" id="teYt" style="max-height:none"></div><canvas id="teCv" style="position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;border-radius:12px;touch-action:none"></canvas></div>' +
       '<p class="note" id="teTime" style="text-align:center;margin:6px 0">Loading the video.</p>' +
@@ -1816,7 +1816,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var h = playCard() + "<h2>Ice time<small>" + games.length + (games.length === 1 ? " game" : " games") + ", stoppages not counted</small></h2><div class='kpis'>" + kpi(mss(toi / games.length), "Ice time per game") + kpi((cnt / games.length).toFixed(1), "Shifts per game") + kpi(mss(toi / cnt), "Average shift") + kpi(mss(mx), "Longest shift") + "</div>";
     h += "<div class='card scroll' style='margin-top:12px'><table><thead><tr><th>Game (tap for every shift)</th><th>Shifts</th><th>Ice time</th><th>Avg</th><th>Longest</th></tr></thead><tbody>" + games.slice().reverse().map(function (x) {
       var gm = D.games.filter(function (q) { return q.date === x.date; })[0], hasV = !!ytId(D.videos[x.date] || lget(VK)[x.date] || "");
-      return "<tr class='click' data-iceg='" + x.date + "'><td>&#9656; " + fmtDate(x.date) + (gm ? " vs " + esc(gm.away) : "") + (gm ? " <a href='#/game/" + gm.id + "' class='mut' style='font-size:12px'>game page</a>" : "") + "</td><td>" + x.r.count + "</td><td><b>" + mss(x.r.toi) + "</b></td><td>" + mss(x.r.avg) + "</td><td>" + mss(x.r.max) + "</td></tr>" +
+      return "<tr class='click' data-iceg='" + x.date + "'><td>&#9656; " + fmtDate(x.date) + (oppFor(x.date) ? " vs " + esc(oppFor(x.date)) : "") + (gm ? " <a href='#/game/" + gm.id + "' class='mut' style='font-size:12px'>game page</a>" : "") + "</td><td>" + x.r.count + "</td><td><b>" + mss(x.r.toi) + "</b></td><td>" + mss(x.r.avg) + "</td><td>" + mss(x.r.max) + "</td></tr>" +
         "<tr hidden data-icegd='" + x.date + "'><td colspan='5'>" + x.r.shifts.map(function (s, i) {
           return "<div class='ev'><span class='t' style='font-family:var(--display);font-weight:700;min-width:70px'>#" + (i + 1) + "</span><span class='lb'>" + mss(s.len) + " " + (hasV ? '<button class="tm" data-shift="' + x.date + "|" + s.a + "|" + s.b + '" style="background:none;border:0;color:var(--accent);padding:0;font-weight:700">watch at ' + hms(Math.floor(s.a)) + "</button>" : "<span class='mut'>at video " + hms(Math.floor(s.a)) + "</span>") + "</span></div>";
         }).join("") + "</td></tr>";
@@ -3157,7 +3157,12 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (pr && ev && pr !== ev) note("Our penalties: the scoreboard timeline has " + ev + ", video review has " + pr + ". Penalty minutes stay as the scoreboard has them.");
     g.result = g.hs > g.as ? "W" : g.hs < g.as ? "L" : "T";
   }
+  // Game setup wins over Streamn: an opponent set there replaces the one in the game file everywhere.
+  function applySyncNames() {
+    D.games.forEach(function (g) { var sy = syncOf(g.date); if (sy && sy.g && sy.g.opp) { if (g.sAway === undefined) g.sAway = g.away; g.away = sy.g.opp; } else if (g.sAway !== undefined) { g.away = g.sAway; } });
+  }
   function route() {
+    applySyncNames();
     D.games.forEach(applyReview);
     if (window.__rvT) { clearInterval(window.__rvT); window.__rvT = null; }
     var parts = location.hash.replace(/^#\/?/, "").split("/");
