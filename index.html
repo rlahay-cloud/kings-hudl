@@ -916,7 +916,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var known = {}; D.games.forEach(function (g) { known[g.date] = 1; });
     dateChoices().forEach(function (d) {
       if (known[d]) return;
-      allClips(d).forEach(function (c) { var w = leadWin(c.sec); items.push({date: d, game: fmtDate(d), sec: w.sec, start: w.start, end: w.end, mark: w.mark, tag: c.tag, label: c.label || "", players: c.players || [], assists: c.assists || [], coach: c.coach, lists: c.lists || []}); });
+      allClips(d).forEach(function (c) { var w = leadWin(c.sec); items.push({date: d, game: fmtDate(d) + (oppFor(d) ? " vs " + oppFor(d) : ""), sec: w.sec, start: w.start, end: w.end, mark: w.mark, tag: c.tag, label: c.label || "", players: c.players || [], assists: c.assists || [], coach: c.coach, lists: c.lists || []}); });
     });
     // Goals and penalties marked in the review become clips too, unless an older game event already covers them
     var dseen = {}; D.games.forEach(function (g) { dseen[g.date] = g; });
@@ -987,6 +987,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       var a = l.trim().split("|"), k = a[0];
       if ((k === "P" || k === "E") && /^[1-5]$/.test(a[1] || "") && !isNaN(parseFloat(a[2]))) o[k.toLowerCase()][+a[1]] = parseFloat(a[2]);
       else if (k === "L") { var v = (a[1] || "").split(",").map(Number).filter(function (x) { return x > 0 && x < 100; }); if (v.length) o.L = v; }
+      else if (k === "G" && a[1]) o.g = {opp: a[1], home: a[2] !== "A", time: (a[3] || "").trim(), arena: (a[4] || "").trim()};
       else if (k === "A" && a[1] && ytId(a[2]) && !isNaN(parseFloat(a[3]))) o.a.push({name: a[1], url: a[2], off: parseFloat(a[3])});
     });
     return o;
@@ -994,6 +995,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   function fmtSync(o) {
     var out = [];
     [1, 2, 3, 4, 5].forEach(function (k) { if (o.p[k] !== undefined) out.push("P|" + k + "|" + (+o.p[k]).toFixed(1)); if (o.e[k] !== undefined) out.push("E|" + k + "|" + (+o.e[k]).toFixed(1)); });
+    if (o.g && o.g.opp) out.push("G|" + String(o.g.opp).replace(/[|\r\n]+/g, " ").slice(0, 40) + "|" + (o.g.home === false ? "A" : "H") + "|" + (o.g.time || "") + "|" + String(o.g.arena || "").replace(/[|\r\n]+/g, " ").slice(0, 40));
     if (o.L && o.L.length) out.push("L|" + o.L.join(","));
     o.a.forEach(function (x) { out.push("A|" + String(x.name).replace(/[|\r\n]+/g, " ").slice(0, 30) + "|" + x.url + "|" + (+x.off).toFixed(1)); });
     return out.join("\n") + "\n";
@@ -1244,13 +1246,20 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   function todayStr() { var d = new Date(), p = function (n) { return (n < 10 ? "0" : "") + n; }; return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()); }
   function dateChoices() {
     var set = {}; D.games.forEach(function (g) { set[g.date] = 1; }); set[todayStr()] = 1;
+    Object.keys(D.sync || {}).concat(Object.keys(lget(SYK))).forEach(function (d) { set[d] = 1; });
     Object.keys(lget(CK)).concat(Object.keys(lget(SK)), Object.keys(lget(EK)), Object.keys(lget(RK)), Object.keys(D.clips), Object.keys(D.shots), Object.keys(D.review)).forEach(function (d) { set[d] = 1; });
     return Object.keys(set).sort().reverse();
   }
+  // The opponent for a date: the finished game if there is one, otherwise a game made in Game setup, otherwise the schedule.
+  function oppFor(d) {
+    var g = D.games.filter(function (x) { return x.date === d; })[0]; if (g) return g.away;
+    var sy = syncOf(d); if (sy && sy.g && sy.g.opp) return sy.g.opp;
+    var sc = (D.schedule || []).filter(function (x) { return x.date === d; })[0]; return sc ? sc.opp : "";
+  }
   function dateSelect(id, dates, cur) {
     return '<select id="' + id + '">' + dates.map(function (d) {
-      var g = D.games.filter(function (x) { return x.date === d; })[0];
-      return '<option value="' + d + '"' + (d === cur ? " selected" : "") + ">" + fmtDate(d) + " " + d.slice(0, 4) + (g ? " vs " + esc(g.away) : "") + "</option>";
+      var op = oppFor(d);
+      return '<option value="' + d + '"' + (d === cur ? " selected" : "") + ">" + fmtDate(d) + " " + d.slice(0, 4) + (op ? " vs " + esc(op) : "") + "</option>";
     }).join("") + "</select>";
   }
   function saveFile(name, text, noteEl) {
@@ -2062,13 +2071,66 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   }
 
   // ---------- Game setup page ----------
+  function gameFormHtml(date, isNew) {
+    var sy = syncOf(date), g = sy && sy.g ? sy.g : null, sc = (D.schedule || []).filter(function (x) { return x.date === date; })[0], gm = D.games.filter(function (x) { return x.date === date; })[0];
+    var opp = g ? g.opp : gm ? gm.away : sc ? sc.opp : "", home = g ? g.home : sc ? sc.home : true, time = g ? g.time : sc ? sc.time : "", arena = g ? g.arena : sc ? sc.venue || "" : "", link = D.videos[date] || lget(VK)[date] || "";
+    var names = {}; (D.schedule || []).forEach(function (x) { if (x.opp) names[x.opp] = 1; }); D.games.forEach(function (x) { if (x.away) names[x.away] = 1; });
+    var h = '<div class="card" style="margin-top:12px"><h3 style="margin-top:0">' + (isNew ? "New game" : "Game details") + "</h3>";
+    if (isNew) {
+      var up = (D.schedule || []).slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+      h += '<div class="fld"><label for="gfPick">Fill in from the schedule (optional)</label><select id="gfPick"><option value="">Pick a scheduled game</option>' + up.map(function (x, i) { return '<option value="' + i + '">' + fmtDate(x.date) + " " + (x.home ? "vs " : "at ") + esc(x.opp) + "</option>"; }).join("") + "</select></div>";
+    }
+    h += '<div class="filters"><div class="fld"><label for="gfDate">Date</label><input type="date" id="gfDate" value="' + date + '"' + (isNew ? "" : " disabled") + '></div>' +
+      '<div class="fld"><label for="gfOpp">Opponent</label><input type="text" id="gfOpp" list="gfNames" maxlength="40" value="' + esc(opp) + '" placeholder="Like Ottawa Sting"><datalist id="gfNames">' + Object.keys(names).sort().map(function (n) { return '<option value="' + esc(n) + '">'; }).join("") + "</datalist></div>" +
+      '<div class="fld"><label for="gfHome">Home or away</label><select id="gfHome"><option value="H"' + (home ? " selected" : "") + '>Home</option><option value="A"' + (home ? "" : " selected") + ">Away</option></select></div>" +
+      '<div class="fld"><label for="gfTime">Start time</label><input type="time" id="gfTime" value="' + esc(time) + '"></div>' +
+      '<div class="fld"><label for="gfArena">Arena</label><input type="text" id="gfArena" maxlength="40" value="' + esc(arena) + '" placeholder="Like Cardinal"></div>' +
+      '<div class="fld"><label for="gfLink">Game video (YouTube link)</label><input type="text" id="gfLink" value="' + esc(link) + '" placeholder="https://youtube.com/..."></div></div>' +
+      '<div class="seg"><button class="btn" id="gfSave" style="width:100%">' + (isNew ? "Create game" : "Save details") + '</button></div><p class="note" id="gfNote" aria-live="polite"></p></div>';
+    return h;
+  }
+  function bindGameForm(isNew) {
+    var pick = $("gfPick");
+    if (pick) pick.addEventListener("change", function () {
+      var up = (D.schedule || []).slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; }), x = up[+pick.value]; if (!x) return;
+      $("gfDate").value = x.date; $("gfOpp").value = x.opp; $("gfHome").value = x.home ? "H" : "A"; $("gfTime").value = x.time.length === 4 ? "0" + x.time : x.time; $("gfArena").value = x.venue || "";
+    });
+    $("gfSave").addEventListener("click", function () {
+      var note = $("gfNote"), date = $("gfDate").value, opp = $("gfOpp").value.replace(/[|\r\n]+/g, " ").trim(), link = $("gfLink").value.trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { note.textContent = "Pick the game date first."; return; }
+      if (!opp) { note.textContent = "Type the opponent first."; return; }
+      if (link && (!ytId(link) || !/^https:\/\/(www\.|m\.)?(youtube\.com|youtu\.be)\//.test(link))) { note.textContent = "That does not look like a YouTube link. It should start with https://."; return; }
+      var o = JSON.parse(JSON.stringify(syncOf(date) || emptySync()));
+      o.g = {opp: opp, home: $("gfHome").value !== "A", time: $("gfTime").value, arena: $("gfArena").value.replace(/[|\r\n]+/g, " ").trim().slice(0, 40)};
+      var l = lget(SYK); l[date] = {v: o, pending: true}; lset(SYK, l);
+      if (link) { var vk = lget(VK); vk[date] = link; lset(VK, vk); }
+      var done = function (msg, ok) {
+        if (ok) { D.sync[date] = o; var l2 = lget(SYK); delete l2[date]; lset(SYK, l2); if (link) D.videos[date] = link; }
+        if (isNew) { location.hash = "#/coach/setup/" + date; } else { route(); var n2 = $("gfNote"); if (n2) n2.textContent = msg; }
+      };
+      if (!(D.cfg && D.cfg.submitUrl)) { done("Saved on this device only (no helper is set up).", false); return; }
+      note.textContent = "Saving...";
+      var post = function (b) { return fetch(workerUrl(), {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(Object.assign({date: date, passcode: coachCfg().pass}, b))}).then(function (r) { return r.json().catch(function () { return {ok: false, error: "Bad reply"}; }); }); };
+      post({kind: "sync", text: fmtSync(o)}).then(function (j) {
+        if (!j.ok) return done("Not saved for everyone: " + (j.error || "unknown problem") + ". It is kept on this device. Press Save again to retry.", false);
+        if (link && D.videos[date] !== link) return post({kind: "video", text: link}).then(function (v) { done(v.ok ? "Saved for everyone. It shows on every device in a minute." : "Details saved, but the video link was not: " + (v.error || "unknown problem") + ".", true); });
+        done("Saved for everyone. It shows on every device in a minute.", true);
+      }).catch(function () { done("No connection. Kept on this device. Press Save again to retry.", false); });
+    });
+  }
+  function vSetupNew() {
+    return "<h2>Coach’s Corner</h2>" + coachSubTabs("setup") + '<p class="note" style="margin:12px 0 0">Make a game that is not in the site yet, so you can load its video, set periods and add angles. Games from Streamn join it automatically when their file arrives for the same date.</p>' + gameFormHtml(todayStr(), true);
+  }
   function vSetup(dateParam) {
+    if (dateParam === "new") return vSetupNew();
     var dates = dateChoices(), date = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : (D.games.length ? D.games[D.games.length - 1].date : dates[0]);
     if (dates.indexOf(date) < 0) dates.unshift(date);
     var url = D.videos[date] || lget(VK)[date] || "";
     var h = "<h2>Coach’s Corner</h2>" + coachSubTabs("setup");
-    h += '<div class="card" style="margin-top:12px"><div class="fld"><label for="stDate">Game</label>' + dateSelect("stDate", dates, date) + "</div>";
-    if (!ytId(url)) return h + '<p class="note">This game has no video link yet. Add the YouTube link in <b>Game analysis</b> first, then come back.</p></div>';
+    h += '<div class="card" style="margin-top:12px"><div class="fld"><label for="stDate">Game</label>' + dateSelect("stDate", dates, date) + '</div><div class="seg"><button onclick="location.hash=\'#/coach/setup/new\'">+ New game</button></div></div>';
+    h += gameFormHtml(date, false);
+    if (!ytId(url)) return h + '<div class="card" style="margin-top:12px"><p class="note" style="margin:0">Add the game video link above and save. Then periods and extra camera angles show here.</p></div>';
+    h += '<div class="card" style="margin-top:12px">';
     h += '<p class="note" style="margin-bottom:0">Play the main video. At each puck drop tap <b>Starts now</b> for that period, and <b>Ends now</b> at the horn. Times then show as period time, like P2 4:12, next to the video time. Nothing already saved changes. Extra camera angles are added further down.</p></div>';
     h += '<div class="card" style="margin-top:12px"><div class="ytbox" id="stYt"></div><div class="shfstat"><span id="stTime" class="note" style="margin:0">Loading the video.</span><b id="stPer"></b></div>' +
       '<div class="seg" role="group" aria-label="Main video controls"><button id="stPlay">Play / Pause</button><button data-stj="-5">&larr; 5s</button><button data-stj="-1">&larr; 1s</button><button data-stj="1">1s &rarr;</button><button data-stj="5">5s &rarr;</button></div></div>';
@@ -2085,7 +2147,9 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var prev = window.onYouTubeIframeAPIReady; window.onYouTubeIframeAPIReady = function () { if (prev) prev(); cb(); };
     if (!document.getElementById("yt-api")) { var sc = document.createElement("script"); sc.id = "yt-api"; sc.src = "https://www.youtube.com/iframe_api"; document.head.appendChild(sc); }
   }
-  function bindSetup() {
+  function bindSetup(param) {
+    if (param === "new") { bindGameForm(true); return; }
+    if ($("gfSave")) bindGameForm(false);
     if (!$("stYt")) { if ($("stDate")) $("stDate").addEventListener("change", function () { location.hash = "#/coach/setup/" + $("stDate").value; }); return; }
     var date = $("stDate").value, id = ytId(D.videos[date] || lget(VK)[date] || ""), pl = null, ready = false, pl2 = null, ready2 = false, matchIdx = -1;
     $("stDate").addEventListener("change", function () { location.hash = "#/coach/setup/" + $("stDate").value; });
@@ -2776,7 +2840,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     }
     var ds = shotDates(), nums = rosterNums();
     return "<h2>Shot map</h2>" +
-      '<div class="card"><div class="filters"><div class="fld"><label for="mpGame">Game</label><select id="mpGame"><option value="">All games</option>' + ds.map(function (d) { var g = D.games.filter(function (x) { return x.date === d; })[0], sc = (D.schedule || []).filter(function (x) { return x.date === d; })[0], op = g ? g.away : sc ? sc.opp : ""; return '<option value="' + d + '">' + fmtDate(d) + (op ? " vs " + esc(op) : "") + "</option>"; }).join("") + "</select></div>" +
+      '<div class="card"><div class="filters"><div class="fld"><label for="mpGame">Game</label><select id="mpGame"><option value="">All games</option>' + ds.map(function (d) { var op = oppFor(d); return '<option value="' + d + '">' + fmtDate(d) + (op ? " vs " + esc(op) : "") + "</option>"; }).join("") + "</select></div>" +
       '<div class="fld"><label for="mpPl">Player</label><select id="mpPl"><option value="">Everyone</option>' + nums.map(function (n) { return '<option value="' + n + '">' + esc(label(n)) + "</option>"; }).join("") + "</select></div>" +
       '<div class="fld"><label for="mpRes">Result</label><select id="mpRes"><option value="">All shots</option><option value="G">Goals</option><option value="S">Saved</option><option value="B">Blocked</option></select></div>' +
       '<div class="fld"><label for="mpTeam">Team</label><select id="mpTeam"><option value="">Both teams</option><option value="H">Us</option><option value="A">Opponent</option></select></div>' +
@@ -3122,7 +3186,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     else h += vOverview();
     $("app").innerHTML = h;
     if (base === "coach" && needLock()) bindLock();
-    else if (base === "coach") { if (parts[1] === "shots") bindShots("mark"); else if (parts[1] === "players") bindPlayersEditor(); else if (parts[1] === "shifts") bindShifts(parts[2]); else if (parts[1] === "setup") bindSetup(); else if (parts[1] === "clip") bindClipEditor(parts[2], +parts[3], +parts[4]); else if (parts[1] === "analysis" || /^\d{4}-\d{2}-\d{2}$/.test(parts[1] || "")) bindReview(); else bindCoachClips(); }
+    else if (base === "coach") { if (parts[1] === "shots") bindShots("mark"); else if (parts[1] === "players") bindPlayersEditor(); else if (parts[1] === "shifts") bindShifts(parts[2]); else if (parts[1] === "setup") bindSetup(parts[2]); else if (parts[1] === "clip") bindClipEditor(parts[2], +parts[3], +parts[4]); else if (parts[1] === "analysis" || /^\d{4}-\d{2}-\d{2}$/.test(parts[1] || "")) bindReview(); else bindCoachClips(); }
     if (base === "video") bindVideo();
     if (base === "player") bindPlayerClips(+parts[1]);
     if (base === "game") bindGameEvents();

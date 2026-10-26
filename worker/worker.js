@@ -11,7 +11,7 @@ const REVIEW_LINE = /^\d+:\d{2}:\d{2}\|[^|\n]{1,40}\|[\dai ]{0,90}\|(\d(\.\d{1,3
 const DRAW_LINE = /^\d{1,6}(\.\d{1,2})?\|\d{1,2}\|(pen|line|arrow|circle|text)\|#[0-9a-fA-F]{6}\|\d{1,2}\|\d(\.\d{1,3})?,\d(\.\d{1,3})?(;\d(\.\d{1,3})?,\d(\.\d{1,3})?){0,300}\|[^|\n]{0,60}$/;
 const SHIFT_LINE = /^\d{1,6}(\.\d{1,2})?\|((on|off)\|\d{1,3}|(stop|go)\|)$/;
 const SHOT_LINE = /^P\d+\|[\d.]+\|[\d.]+\|(-|\d+)\|(G|S)\|(H|A)$/;
-const SYNC_LINE = /^([PE]\|[1-5]\|\d{1,6}(\.\d)?|L\|\d{1,2}(,\d{1,2}){0,4}|A\|[^|\n]{1,30}\|https:\/\/(www\.|m\.)?(youtube\.com|youtu\.be)\/[^\s|]{3,200}\|-?\d{1,6}(\.\d)?)$/;
+const SYNC_LINE = /^([PE]\|[1-5]\|\d{1,6}(\.\d)?|L\|\d{1,2}(,\d{1,2}){0,4}|G\|[^|\n]{1,40}\|[HA]\|(\d{1,2}:\d{2})?\|[^|\n]{0,40}|A\|[^|\n]{1,30}\|https:\/\/(www\.|m\.)?(youtube\.com|youtu\.be)\/[^\s|]{3,200}\|-?\d{1,6}(\.\d)?)$/;
 const MAX_BYTES = 60000;
 
 function cors(env, extra) {
