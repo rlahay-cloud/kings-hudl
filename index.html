@@ -448,6 +448,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   function aggPlayers() {
     var m = {};
     D.games.forEach(function (g, gi) {
+      if (g.pending) return;
       g.players.forEach(function (p) {
         var a = m[p.n] || (m[p.n] = {n: p.n, gp: 0, g: 0, a: 0, p: 0, pm: 0, pim: 0, sog: 0, log: []});
         a.gp++; a.g += p.g; a.a += p.a; a.p += p.p; a.pm += p.pm; a.pim += p.pim; a.sog += p.sog;
@@ -459,6 +460,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   function aggGoalies() {
     var m = {};
     D.games.forEach(function (g) {
+      if (g.pending) return;
       g.goalies.forEach(function (x) {
         var a = m[x.n] || (m[x.n] = {n: x.n, gp: 0, sa: 0, ga: 0, toi: 0, log: []});
         a.gp++; a.sa += x.sa; a.ga += x.ga; a.toi += x.toi; a.log.push({game: g, s: x});
@@ -467,7 +469,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     return Object.keys(m).map(function (k) { var a = m[k]; a.sv = svp(a.sa, a.ga); a.gaa = a.toi > 0 ? a.ga * 32 * 60 / a.toi : null; return a; });
   }
   function team() {
-    var G = D.games, t = {gp: G.length, w: 0, l: 0, t: 0};
+    var G = D.games.filter(function (g) { return !g.pending; }), t = {gp: G.length, w: 0, l: 0, t: 0};
     G.forEach(function (g) { if (g.result === "W") t.w++; else if (g.result === "L") t.l++; else t.t++; });
     t.gf = sum(G, function (g) { return g.hs; }); t.ga = sum(G, function (g) { return g.as; });
     t.sf = sum(G, function (g) { return g.hShots; }); t.sa = sum(G, function (g) { return g.aShots; });
@@ -3083,7 +3085,16 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var o = JSON.parse(JSON.stringify(g._o));
     g.hs = o.hs; g.as = o.as; g.hShots = o.hShots; g.aShots = o.aShots; g.goals = o.goals; g.players = o.players; g.goalies = o.goalies; g.dnp = o.dnp;
     g.fo = o.fo; g.notes = []; g.adjusted = false;
-    var R = D.sample ? [] : allReview(g.date); if (!R.length) { g.result = g.hs > g.as ? "W" : g.hs < g.as ? "L" : "T"; return; }
+    var R = D.sample ? [] : allReview(g.date);
+    if (g.setup) {
+      g.pending = !R.some(function (c) { return /Goal$/.test(c.tag); }); g.period = g.pending ? "Not scored yet" : "Final";
+      // who played: everyone named in the marks, plus everyone with a tracked shift
+      var seen = {}, goalie = {}, add = function (n) { n = +n; if (isNaN(n) || seen[n] || D.goalieNums[n]) return; seen[n] = 1; g.players.push({n: n, g: 0, a: 0, p: 0, pm: 0, pim: 0, sog: 0}); };
+      R.forEach(function (c) { if (/^Against:/.test(c.tag)) (c.players || []).forEach(function (n) { goalie[n] = 1; }); else (c.players || []).concat(c.ice || []).concat(c.assists || []).forEach(add); });
+      try { computeShifts(getShifts(g.date)).rows.forEach(function (r) { add(r.n); }); } catch (e) {}
+      Object.keys(goalie).forEach(function (n) { if (!g.goalies.some(function (x) { return x.n === +n; })) g.goalies.push({n: +n, sa: 0, ga: 0, toi: 0}); });
+    }
+    if (!R.length) { g.result = g.hs > g.as ? "W" : g.hs < g.as ? "L" : "T"; return; }
     var by = function (t) { return R.filter(function (c) { return c.tag === t; }).sort(function (a, b) { return a.sec - b.sec; }); };
     var fG = by("For: Goal"), aG = by("Against: Goal"), fS = by("For: Shot on goal"), aS = by("Against: Shot on goal");
     var scorerOf = function (c) { var a = c.assists || []; var l = c.players.filter(function (n) { return a.indexOf(n) < 0; }); return l.length ? l[0] : null; };
@@ -3157,13 +3168,28 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (pr && ev && pr !== ev) note("Our penalties: the scoreboard timeline has " + ev + ", video review has " + pr + ". Penalty minutes stay as the scoreboard has them.");
     g.result = g.hs > g.as ? "W" : g.hs < g.as ? "L" : "T";
   }
+  // Games without a Streamn file: once a played game has review marks, it becomes a game here so it counts everywhere.
+  // Opponent comes from Game setup, then the schedule. Goals, shots, faceoffs and players come from the review marks.
+  function ensureSetupGames() {
+    if (D.sample) return;
+    var known = {}; D.games.forEach(function (g) { known[g.date] = 1; });
+    var cand = {}; Object.keys(D.review).concat(Object.keys(lget(RK))).forEach(function (d) { cand[d] = 1; });
+    var today = todayStr(), added = false;
+    Object.keys(cand).forEach(function (d) {
+      if (known[d] || d > today || !allReview(d).length) return;
+      D.games.push({id: d + "_setup", date: d, home: D.home || "Home Team", away: oppFor(d) || "Opponent", hs: 0, as: 0, period: "Final", hShots: 0, aShots: 0, fo: "", players: [], dnp: [], goalies: [], goals: [], setup: true}); added = true;
+    });
+    if (added) D.games.sort(function (a, b) { return a.id < b.id ? -1 : 1; });
+  }
   // Game setup wins over Streamn: an opponent set there replaces the one in the game file everywhere.
   function applySyncNames() {
     D.games.forEach(function (g) { var sy = syncOf(g.date); if (sy && sy.g && sy.g.opp) { if (g.sAway === undefined) g.sAway = g.away; g.away = sy.g.opp; } else if (g.sAway !== undefined) { g.away = g.sAway; } });
   }
   function route() {
+    ensureSetupGames();
     applySyncNames();
     D.games.forEach(applyReview);
+    D.games.forEach(function (g) { if (g.pending) g.result = "-"; });
     if (window.__rvT) { clearInterval(window.__rvT); window.__rvT = null; }
     var parts = location.hash.replace(/^#\/?/, "").split("/");
     var base = parts[0] || "";
