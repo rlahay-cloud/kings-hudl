@@ -6,3 +6,4 @@ P|3|1816.6
 E|3|2859.7
 G|Seaway Valley Rapids|H|12:30|Cardinal
 L|10,10,12
+A|Away Zone|https://youtu.be/qKrgDv5blPU|101.2
