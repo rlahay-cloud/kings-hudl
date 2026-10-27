@@ -131,6 +131,8 @@ def run(video, outdir, rink_json, step=1.0, start=0.0, end=None, imgsz=1280, con
                "duration": total, "version": 3, "emb_dim": EMB_DIM, "start": start, "end_req": end}, open(os.path.join(outdir, "meta.json"), "w"))
 
     gpu = sbm._has_gpu()
+    log("Loading the programs. The first time this downloads about 100 MB, which can take a minute or two...")
+    log("Graphics card in use: %s" % ("yes" if gpu else "NO (this will be very slow)"))
     model = YOLO(model_path)
     emb_model = YOLO("yolov8n-cls.pt")
     emb_path = os.path.join(outdir, "emb.f16")
@@ -138,10 +140,12 @@ def run(video, outdir, rink_json, step=1.0, start=0.0, end=None, imgsz=1280, con
     femb = open(emb_path, "ab")
     fth = open(os.path.join(outdir, "thumbs.jsonl"), "a")
     reader = easyocr.Reader(["en"], gpu=gpu, verbose=False)
+    log("Ready. Reading the video from %.0f s to %.0f s." % (t, end))
     fsb, fdt, fbn = (open(paths[k], "a") for k in ("scoreboard", "detections", "bench"))
     stride = max(1, int(round(step * fps)))
     cap.set(cv2.CAP_PROP_POS_FRAMES, int(t * fps))
     prev_sig, still_since, done, t0 = None, t, 0, time.time()
+    last_say = 0.0
     while t < end:
         ok, frame = cap.read()
         if not ok:
@@ -189,9 +193,12 @@ def run(video, outdir, rink_json, step=1.0, start=0.0, end=None, imgsz=1280, con
         for f in (fsb, fdt, fbn, femb, fth):
             f.flush()
         done += 1
-        if done % 30 == 0:
+        if done == 1 or time.time() - last_say >= 15:
+            last_say = time.time()
             el = time.time() - t0
-            log("%.0f of %.0f seconds of video done (%.1f s of work per second of video)" % (t, end, el / done))
+            per = el / done
+            left = per * max(0, (end - t) / step)
+            log("%.0f of %.0f seconds of video done. %.1f s of work per second of video. About %.0f minutes left." % (t, end, per / step, left / 60.0))
         if limit and done >= limit:
             break
         t += step
