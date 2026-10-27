@@ -1,4 +1,4 @@
-# Kings HUDL game analyzer (version 2)
+# Kings HUDL game analyzer (version 3)
 
 This reads a wide panorama game video and gives you data to paste into Kings HUDL: faceoffs with zone and win percent, time on ice, goals, penalties and stoppages. It is a helper. You confirm a few things by tapping.
 
@@ -15,11 +15,12 @@ To test first, set START 0 and END 300 in step 3. That does 5 minutes.
 
 ## What the review page gives you
 
-- **Step 1 Colours:** tap the groups that are the Kings.
-- **Step 5 Faceoffs:** one row per clock restart, with the spot, the zone (OZ, NZ, DZ) and a check flag if few skaters were seen. Say which way the Kings attack in each period. Tap Win, Loss or Skip, and type the centre's number if you like. It shows win percent by zone.
-- **Step 6 Line changes:** one card per moment Kings skaters hit the bench, with small pictures. Type the numbers who came off and came on. The page carries the "on the ice now" list forward. It writes the shift lines and a time on ice table.
-- **Step 4 Scoreboard events:** goals and penalties found from the scoreboard changing, as lines to check.
-- **Steps 2 and 3** (naming every box) are still there as a fallback.
+1. **Colours:** tap the groups that are the Kings.
+2. **Name each player once:** the program groups skaters by how they look across the game and shows about 20 player cards. Type the jersey number on each card. Use "Not Kings" for referees and the other team.
+3. **Check only what it is unsure about:** it labels everything else from your answers, shows how much ice time is labelled with confidence, and lists the least certain pieces first, with its best guesses as one tap buttons. Answer as many as you like. If a skater was big and close, it also shows a number it read, as a hint.
+4. **Ice time, shifts, paths and heat maps:** time on ice and shifts per player (clock time, with stoppages taken out), a path and heat map for each shift or the whole game, and a team heat map. It writes shift lines for the Shifts tab and a tracking file.
+5. **Faceoffs with zone:** tap Win or Loss. Zone and spot are automatic.
+6. **Line changes:** bench pictures to confirm who came on and off, if you prefer that way.
 
 ## Paste into Kings HUDL
 
@@ -30,13 +31,14 @@ Times are in video seconds. If your video starts at a different moment than the 
 
 ## What it can and cannot do (honest list)
 
-- **Player numbers are not read automatically.** From this camera distance the numbers are too small and blurry (about 1 in 6 right in a test). You type them, but only at line changes (1 or 2 taps) instead of for every box.
+- **Players are matched by look, which is only a hint.** In a test on your clip, a skater's second half was matched to their first half correctly about 1 time in 3 when the program had to choose among about 10 look-alikes (chance would be about 1 in 10). So expect to answer a fair number of questions. Position and timing rules (a player cannot be in two places, tracks that follow on from each other) help, and the review page reports how much is labelled with confidence so you can see how it is doing.
+- **Numbers are a hint, not an answer.** Only skaters seen big and close have readable numbers, and reads are often wrong. The program never fills a number in for you.
 - **Faceoff spot and zone are automatic.** Win or Loss is a tap, because the video cannot show who won the puck. Spots were checked on the first 60 seconds of your clip (centre ice came out right). Other zones are untested on a real game, so look at the flags.
 - **Line changes are suggestions.** They come from skaters appearing at or leaving the bench boards. A busy bench can merge two changes into one card.
 - **Shots are not found.** The puck is too small to find reliably.
 - **Goals and penalties** depend on the scoreboard. The score change finder had no false alarms on a quiet 2 minutes, but was never tested on a real goal or penalty. Every line says CHECK.
 - **One rink is set up:** Ingredion Centre Rink 1, with its ice outline, scoreboard and blue lines in `rinks/ingredion_rink1.json`.
-- **Speed:** it reads the video once, in order. On the free T4 card a full game should take roughly 20 to 40 minutes, but this has not been timed on Colab yet. On a computer with no graphics card it is about 10 seconds of work for each second of video, so use Colab.
+- **Speed:** it reads the video once, in order. How long a full game takes on the free T4 card is not known yet. Do the 5 minute test first and multiply by the game length. On a computer with no graphics card it was about 20 seconds of work for each second of video, so use Colab.
 
 ## Hudl's data points we follow
 

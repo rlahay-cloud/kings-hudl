@@ -26,6 +26,34 @@ table{border-collapse:collapse;width:100%}td,th{padding:4px 8px;border-bottom:1p
 <p class="mute">Tap every group that shows the Kings (more than one if your team was split, for example by a dark helmet or a goalie). Tap again to undo. The program only guesses colours, so a referee or goalie may land in a group by mistake. You can fix any single box below.</p>
 <div class="groups" id="groups"></div>
 
+<div id="v3" style="display:none">
+<h2>2. Name each player once</h2>
+<div class="card">
+  <p class="mute">Each card is one player, found by how they look across the game. Type the jersey number you can see. If a card mixes two players or is not a Kings skater, use the buttons. You only need the big cards; the rest get labelled from them.</p>
+  <div id="gcards"></div>
+</div>
+<h2>3. Check only what it is unsure about</h2>
+<div class="card">
+  <div class="bar"><span class="pill" id="cover"></span><span class="mute" id="overnote"></span></div>
+  <p class="mute">Most useful first. Answer as many as you like, then stop. Every answer makes the labels around it better.</p>
+  <div id="asklist"></div>
+</div>
+<h2>4. Ice time, shifts, paths and heat maps</h2>
+<div class="card">
+  <div class="bar"><label>Clock time uses stoppages <input type="checkbox" id="useStops" checked></label></div>
+  <table id="toiTab"></table>
+  <div id="pmap" style="display:none"><h3 style="font-size:15px;margin:12px 0 4px" id="pmTitle"></h3>
+    <div class="bar"><label>Show <select id="pmShift" style="width:auto"></select></label><label><input type="checkbox" id="pmHeat" checked> Heat</label><label><input type="checkbox" id="pmPath" checked> Path</label></div>
+    <canvas id="rinkc" width="900" height="380" style="width:100%;border:1px solid var(--line);border-radius:8px;margin-top:6px"></canvas>
+    <p class="mute">Kings attack to the right of the picture in period 1. Paths start blue and end orange.</p></div>
+  <h3 style="font-size:15px;margin:12px 0 4px">Whole team heat</h3>
+  <canvas id="teamc" width="900" height="380" style="width:100%;border:1px solid var(--line);border-radius:8px"></canvas>
+  <p class="mute">Shift lines for Kings HUDL (Shifts tab, "Add shifts from the game analyzer"):</p>
+  <textarea id="v3out" readonly></textarea>
+  <div class="bar" style="margin-top:8px"><button id="v3copy">Copy</button><button class="alt" id="v3dl">Download tracking file</button><span class="mute" id="v3msg"></span></div>
+</div>
+</div>
+<details id="oldway"><summary class="mute" style="cursor:pointer">The old way: name every box</summary>
 <h2>2. Name each box</h2>
 <p class="mute">Type the jersey number for each Kings box. If you cannot read it, tap the picture to make it bigger, or leave it empty. Use <b>x</b> for a box that is not a skater. The same number on several boxes means that player came on the ice several times.</p>
 <div class="bar card">
@@ -36,7 +64,7 @@ table{border-collapse:collapse;width:100%}td,th{padding:4px 8px;border-bottom:1p
 <div class="card" id="rows"></div>
 <datalist id="nums"></datalist>
 
-<h2>3. Shifts for the Shifts tab</h2>
+<h2>3b. Shifts from boxes you named</h2>
 <div class="card">
   <label class="mute">This video starts this many seconds after the main video (use a minus sign if it starts before). Leave 0 if both start together.</label>
   <input type="number" id="off" value="0" step="0.1" style="max-width:160px">
@@ -46,6 +74,7 @@ table{border-collapse:collapse;width:100%}td,th{padding:4px 8px;border-bottom:1p
   <div class="bar" style="margin-top:8px"><button id="copy">Copy</button><button class="alt" id="dl">Download file</button><span class="mute" id="msg"></span></div>
   <h2 style="margin-top:16px">Ice time so far</h2><table id="sum"></table>
 </div>
+</details>
 <div id="board" style="display:none">
 <h2>4. Goals, penalties and stoppages from the scoreboard</h2>
 <div class="card">
@@ -78,6 +107,9 @@ table{border-collapse:collapse;width:100%}td,th{padding:4px 8px;border-bottom:1p
 </div>
 <div id="zoom"><img alt=""></div>
 
+<script>
+/*IDENTITY*/
+</script>
 <script>
 var DATA=/*DATA*/null, ROSTER=/*ROSTER*/[];
 var KEY="kh-analyzer2-"+(DATA&&DATA.meta?DATA.meta.video:"x");
@@ -219,5 +251,85 @@ function drawCH(){
 $("chcopy").onclick=function(){var t=$("chout");t.select();try{document.execCommand("copy")}catch(e){}$("chmsg").textContent="Copied"};
 $("off").addEventListener("input",function(){expFO();drawCH()});
 document.addEventListener("click",function(e){if(e.target.closest&&e.target.closest("#groups"))setTimeout(drawCH,50)});
-drawGroups();drawRows();exp();drawBoard();drawFO();drawCH();
+/* ---- v3: players by look, ask only when unsure ---- */
+S.seed=S.seed||{};S.notk=S.notk||{};
+var TL=(DATA.tracklets||[]);
+var HAVE3=TL.length>0;
+function kOK(t){return S.ks.indexOf(t.g)>=0&&!S.notk[t.id]}
+var RES=null;
+function solve(){Identity.prep(TL);RES=Identity.assign(TL,S.seed,kOK,0.12)}
+function thumbsHtml(t,h){return (t.th||[]).map(function(s){return'<img src="'+s+'" style="height:'+(h||80)+'px;border-radius:6px;margin:2px;cursor:zoom-in" class="zi">'}).join("")||'<span class="mute">no picture</span>'}
+function numHint(t){return t.num?'<span class="pill" title="Read from the picture, often wrong">Read: #'+t.num.n+' ('+t.num.votes+' look'+(t.num.votes>1?'s':'')+(t.num.roster?', on roster':', not on roster')+')</span>':""}
+function guessesFor(t){ // best three player numbers for this tracklet, with a score
+  var names={};Object.keys(S.seed).forEach(function(id){names[S.seed[id].n]=1});
+  var tb={};TL.forEach(function(x){tb[x.id]=x});
+  return Object.keys(names).map(function(n){var best=-1;Object.keys(S.seed).forEach(function(id){if(S.seed[id].n!==n)return;var d=Identity.dot(t.c,tb[id].c);if(d>best)best=d});return{n:n,s:best}}).sort(function(a,b){return b.s-a.s}).slice(0,3)}
+function drawCards(){
+  if(!HAVE3)return;Identity.prep(TL);
+  var G=Identity.groups(TL,kOK,22).slice(0,24),h="";
+  if(!S.ks.length){$("gcards").innerHTML='<p class="mute">First pick your team colours in step 1.</p>';return}
+  G.forEach(function(g,gi){
+    var named=null;g.m.forEach(function(t){if(S.seed[t.id]&&S.seed[t.id].w>=1)named=S.seed[t.id].n;else if(!named&&S.seed[t.id])named=S.seed[t.id].n});
+    var hint=g.m.map(numHint).filter(Boolean)[0]||"",ex=hint+g.m.slice(0,4).map(function(t){return thumbsHtml({th:(t.th||[]).slice(0,1)},90)}).join("");
+    h+='<div class="row" data-gi="'+gi+'"><div class="meta"><b>Player card '+(gi+1)+'</b> <span class="mute">seen '+mmss(g.dur)+' in '+g.m.length+' pieces</span><div>'+ex+'</div></div>'+
+      '<div><input type="text" inputmode="numeric" class="num gnum" placeholder="#" value="'+(named||"")+'"><div style="margin-top:6px"><button class="alt gno">Not Kings</button></div></div></div>'});
+  $("gcards").innerHTML=h||'<p class="mute">No tracks yet for those colours.</p>';
+  document.querySelectorAll("#gcards .row").forEach(function(row){var g=G[+row.dataset.gi];
+    row.querySelector(".gnum").onchange=function(e){var v=e.target.value.replace(/\D/g,"").slice(0,3);
+      g.m.forEach(function(t){if(S.seed[t.id]&&S.seed[t.id].w>=1)return;if(v)S.seed[t.id]={n:v,w:0.6};else delete S.seed[t.id]});save();refreshV3()};
+    row.querySelector(".gno").onclick=function(){g.m.forEach(function(t){S.notk[t.id]=1;delete S.seed[t.id]});save();refreshV3()}})}
+function drawAsk(){
+  if(!HAVE3)return;
+  var list=(RES&&RES.ask||[]).slice(0,12),tb={};TL.forEach(function(x){tb[x.id]=x});
+  var tot=0,ok=0;TL.filter(kOK).forEach(function(t){tot+=t.dur;var l=RES&&RES.lab[t.id];if(l&&l.conf>=0.5)ok+=t.dur});
+  $("cover").textContent=tot?Math.round(100*ok/tot)+"% of Kings ice time labelled with confidence":"Name a few players first";
+  $("overnote").textContent=RES&&RES.over.length?RES.over.length+" seconds show more than 6 Kings skaters at once, so some label is wrong":"";
+  if(!Object.keys(S.seed).length){$("asklist").innerHTML='<p class="mute">Name a few player cards above and this fills in.</p>';return}
+  $("asklist").innerHTML=list.length?list.map(function(id){var t=tb[id],l=RES.lab[id],gs=guessesFor(t);
+    return'<div class="row" data-id="'+id+'"><div class="meta"><b>'+ms(t.t0)+'</b> to '+ms(t.t1)+' <span class="mute">video time</span><div>'+thumbsHtml(t,90)+'</div></div><div style="flex:1 1 200px">'+
+    '<div class="mute">Best guesses</div>'+gs.map(function(g,i){return'<button class="alt ask1" data-n="'+g.n+'">#'+g.n+(i===0?' <span class="mute">closest</span>':'')+'</button> '}).join("")+(t.num&&gs.every(function(g){return g.n!==t.num.n})?'<button class="alt ask1" data-n="'+t.num.n+'">#'+t.num.n+' <span class="mute">read</span></button> ':"")+" "+numHint(t)+
+    '<div style="margin-top:6px"><input type="text" inputmode="numeric" class="num askn" placeholder="#"> <button class="alt askno">Not Kings</button></div></div></div>'}).join(""):'<p class="mute">Nothing left that it is unsure about.</p>';
+  document.querySelectorAll("#asklist .row").forEach(function(row){var id=row.dataset.id;
+    function set(n){S.seed[id]={n:n,w:1};save();refreshV3()}
+    row.querySelectorAll(".ask1").forEach(function(b){b.onclick=function(){set(b.dataset.n)}});
+    row.querySelector(".askn").onchange=function(e){var v=e.target.value.replace(/\D/g,"").slice(0,3);if(v)set(v)};
+    row.querySelector(".askno").onclick=function(){S.notk[id]=1;delete S.seed[id];save();refreshV3()}})}
+/* the rink */
+function rinkBase(c){var x=c.getContext("2d"),W=c.width,H=c.height;x.clearRect(0,0,W,H);x.fillStyle="#eef4fa";x.fillRect(0,0,W,H);x.lineWidth=2;
+  function vl(u,col){x.strokeStyle=col;x.beginPath();x.moveTo(u*W,0);x.lineTo(u*W,H);x.stroke()}
+  vl(0.5,"#d44");vl(0.375,"#35c");vl(0.625,"#35c");vl(0.055,"#d44");vl(0.945,"#d44");
+  x.strokeStyle="#d44";[[0.155,0.24],[0.155,0.76],[0.845,0.24],[0.845,0.76]].forEach(function(d){x.beginPath();x.arc(d[0]*W,d[1]*H,0.075*H*1.6,0,7);x.stroke()});
+  x.strokeStyle="#35c";x.beginPath();x.arc(0.5*W,0.5*H,0.08*W,0,7);x.stroke();x.strokeRect(1,1,W-2,H-2);return x}
+function drawHeat(x,c,pts,col){var nx=40,ny=17,h=Identity.heat(pts,nx,ny),mx=Math.max.apply(null,h)||1,W=c.width,H=c.height;
+  h.forEach(function(v,i){if(!v)return;x.fillStyle="rgba("+col+","+(0.15+0.65*v/mx)+")";x.fillRect((i%nx)*W/nx,Math.floor(i/nx)*H/ny,W/nx+1,H/ny+1)})}
+function drawPath(x,c,pts){if(pts.length<2)return;var W=c.width,H=c.height,a=pts[0][0],b=pts[pts.length-1][0]||a+1;
+  for(var i=1;i<pts.length;i++){var f=(pts[i][0]-a)/Math.max(1,b-a);if(pts[i][0]-pts[i-1][0]>6||Math.hypot(pts[i][1]-pts[i-1][1],pts[i][2]-pts[i-1][2])>0.25)continue;x.strokeStyle="hsl("+(220-170*f)+",85%,50%)";x.lineWidth=3;x.beginPath();x.moveTo(pts[i-1][1]*W,pts[i-1][2]*H);x.lineTo(pts[i][1]*W,pts[i][2]*H);x.stroke()}}
+var ST=null,PM=null;
+function stopsList(){return $("useStops").checked?(DATA.stops||[]):[]}
+function drawStats(){
+  if(!HAVE3||!RES)return;ST=Identity.stats(TL,RES.lab,stopsList(),8);
+  var ns=Object.keys(ST).sort(function(a,b){return ST[b].toi-ST[a].toi});
+  $("toiTab").innerHTML="<tr><th>Player</th><th>Shifts</th><th>Ice time</th><th>Avg shift</th></tr>"+ns.map(function(n){var q=ST[n];return'<tr class="click" data-n="'+n+'" style="cursor:pointer"><td>#'+n+'</td><td>'+q.shifts.length+'</td><td><b>'+mmss(q.toi)+'</b></td><td>'+mmss(q.toi/Math.max(1,q.shifts.length))+'</td></tr>'}).join("");
+  document.querySelectorAll("#toiTab tr[data-n]").forEach(function(r){r.onclick=function(){PM=r.dataset.n;drawPlayer()}});
+  var c=$("teamc"),x=rinkBase(c),all=[];TL.forEach(function(t){if(kOK(t))all=all.concat(t.pts)});drawHeat(x,c,all,"220,60,60");
+  var ev=[];ns.forEach(function(n){ST[n].shifts.forEach(function(s){ev.push([s.a,"on|"+n]);ev.push([s.b,"off|"+n])})});
+  var off=parseFloat($("off").value)||0;
+  if(ev.length){ev.push([Math.min.apply(null,ev.map(function(e){return e[0]}))-0.1,"go|"]);var f0=Math.min.apply(null,ev.map(function(e){return e[0]}));(DATA.stops||[]).forEach(function(q){if(q[1]<=f0)return;ev.push([Math.max(q[0],f0+0.05),"stop|"]);ev.push([q[1],"go|"])})}
+  ev=ev.map(function(e){return[Math.max(0,e[0]+off),e[1]]}).sort(function(a,b){return a[0]-b[0]});
+  $("v3out").value=ev.map(function(e){return e[0].toFixed(1)+"|"+e[1]}).join("\n");
+  if(PM&&ST[PM])drawPlayer()}
+function drawPlayer(){
+  var q=ST[PM];if(!q)return;$("pmap").style.display="";$("pmTitle").textContent="#"+PM+": "+q.shifts.length+" shifts, "+mmss(q.toi)+" on the ice";
+  var sel=$("pmShift"),cur=sel.value;sel.innerHTML='<option value="all">All shifts</option>'+q.shifts.map(function(s,i){return'<option value="'+i+'">Shift '+(i+1)+' ('+ms(s.a)+', '+mmss(s.clock)+')</option>'}).join("");sel.value=(cur&&sel.querySelector('option[value="'+cur+'"]'))?cur:"all";
+  var c=$("rinkc"),x=rinkBase(c),use=sel.value==="all"?q.shifts:[q.shifts[+sel.value]],pts=[];use.forEach(function(s){pts=pts.concat(s.pts)});
+  if($("pmHeat").checked)drawHeat(x,c,pts,"30,110,230");if($("pmPath").checked)use.forEach(function(s){drawPath(x,c,s.pts)})}
+$("pmShift").onchange=drawPlayer;$("pmHeat").onchange=drawPlayer;$("pmPath").onchange=drawPlayer;$("useStops").onchange=drawStats;
+$("v3copy").onclick=function(){var t=$("v3out");t.select();try{document.execCommand("copy")}catch(e){}$("v3msg").textContent="Copied"};
+$("v3dl").onclick=function(){if(!ST)return;var o={game:DATA.meta.video,players:{}};Object.keys(ST).forEach(function(n){var q=ST[n];o.players[n]={toi:Math.round(q.toi),shifts:q.shifts.map(function(s){return{a:Math.round(s.a),b:Math.round(s.b),clock:Math.round(s.clock),heat:Identity.heat(s.pts,40,17)}}),heat:Identity.heat([].concat.apply([],q.shifts.map(function(s){return s.pts})),40,17)}});
+  var b=new Blob([JSON.stringify(o)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="tracking_from_analyzer.json";a.click()};
+function refreshV3(){if(!HAVE3)return;solve();drawCards();drawAsk();drawStats()}
+document.addEventListener("click",function(e){var i=e.target.closest&&e.target.closest("img.zi");if(i){$("zoom").querySelector("img").src=i.src;$("zoom").style.display="flex"}});
+if(HAVE3){$("v3").style.display="";$("oldway").open=false;if(!(DATA.tracks||[]).length)$("oldway").style.display="none"}
+document.addEventListener("click",function(e){if(e.target.closest&&e.target.closest("#groups"))setTimeout(refreshV3,60)});
+drawGroups();drawRows();exp();drawBoard();refreshV3();drawFO();drawCH();
 </script></body></html>

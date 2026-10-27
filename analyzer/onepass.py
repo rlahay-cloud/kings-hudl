@@ -41,6 +41,33 @@ def far_edge(poly):
     return np.array(xs), np.array(ys)
 
 
+EMB_DIM = 256
+
+
+def body_square(frame, box, size=128):
+    """The skater cut out, padded to a square so a picture model sees the whole body."""
+    x1, y1, x2, y2 = [int(v) for v in box]
+    c = frame[max(0, y1):max(0, y2), max(0, x1):max(0, x2)]
+    if c.size == 0:
+        return np.full((size, size, 3), 114, np.uint8)
+    h, w = c.shape[:2]
+    sc = size / float(max(h, w))
+    c = cv2.resize(c, (max(2, int(w * sc)), max(2, int(h * sc))), interpolation=cv2.INTER_AREA)
+    out = np.full((size, size, 3), 114, np.uint8)
+    oy, ox = (size - c.shape[0]) // 2, (size - c.shape[1]) // 2
+    out[oy:oy + c.shape[0], ox:ox + c.shape[1]] = c
+    return out
+
+
+def embed(model, crops):
+    if not crops:
+        return np.zeros((0, EMB_DIM), np.float16)
+    e = model.embed(crops, imgsz=128, verbose=False)
+    e = np.stack([x.cpu().numpy().reshape(-1) for x in e]).astype(np.float32)
+    e /= (np.linalg.norm(e, axis=1, keepdims=True) + 1e-6)
+    return e.astype(np.float16)
+
+
 def thumb_small(frame, box, h_out=72):
     x1, y1, x2, y2 = [int(v) for v in box]
     c = frame[max(0, y1):y2, max(0, x1):x2]
@@ -83,10 +110,15 @@ def run(video, outdir, rink_json, step=1.0, start=0.0, end=None, imgsz=1280, con
         t = max(t, last + step)
         log("Carrying on from %.0f s" % t)
     json.dump({"video": os.path.basename(video), "w": W, "h": H, "fps": fps, "step": step, "rink": name,
-               "duration": total, "version": 2}, open(os.path.join(outdir, "meta.json"), "w"))
+               "duration": total, "version": 3, "emb_dim": EMB_DIM}, open(os.path.join(outdir, "meta.json"), "w"))
 
     gpu = sbm._has_gpu()
     model = YOLO(model_path)
+    emb_model = YOLO("yolov8n-cls.pt")
+    emb_path = os.path.join(outdir, "emb.f16")
+    emb_rows = os.path.getsize(emb_path) // (EMB_DIM * 2) if os.path.exists(emb_path) else 0
+    femb = open(emb_path, "ab")
+    fth = open(os.path.join(outdir, "thumbs.jsonl"), "a")
     reader = easyocr.Reader(["en"], gpu=gpu, verbose=False)
     fsb, fdt, fbn = (open(paths[k], "a") for k in ("scoreboard", "detections", "bench"))
     stride = max(1, int(round(step * fps)))
@@ -128,10 +160,15 @@ def run(video, outdir, rink_json, step=1.0, start=0.0, end=None, imgsz=1280, con
                 if y2 - edge < bench_band:  # standing near the far boards where the benches are
                     fbn.write(json.dumps({"t": round(t, 2), "i": len(dets) - 1, "x": round((x1 + x2) / 2),
                                           "y": round(y2), "img": thumb_small(frame, (x1, y1, x2, y2))}) + "\n")
-            fdt.write(json.dumps({"t": round(t, 2), "d": dets}) + "\n")
+            vecs = embed(emb_model, [body_square(frame, d[:4]) for d in dets])
+            femb.write(vecs.tobytes())
+            if int(round(t)) % 3 == 0:  # a small picture of some skaters, so the review page can show who is who
+                fth.write(json.dumps({"i": emb_rows, "k": [thumb_small(frame, d[:4], 64) if (d[3] - d[1]) >= 36 else "" for d in dets]}) + "\n")
+            fdt.write(json.dumps({"t": round(t, 2), "d": dets, "e": emb_rows}) + "\n")
+            emb_rows += len(dets)
         else:
             fdt.write(json.dumps({"t": round(t, 2), "d": [], "skip": 1}) + "\n")
-        for f in (fsb, fdt, fbn):
+        for f in (fsb, fdt, fbn, femb, fth):
             f.flush()
         done += 1
         if done % 30 == 0:
@@ -143,7 +180,7 @@ def run(video, outdir, rink_json, step=1.0, start=0.0, end=None, imgsz=1280, con
         for _ in range(stride - 1):
             if not cap.grab():
                 break
-    for f in (fsb, fdt, fbn):
+    for f in (fsb, fdt, fbn, femb, fth):
         f.close()
     log("Pass finished: %d seconds of video" % done)
     return outdir

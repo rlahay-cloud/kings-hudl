@@ -180,7 +180,7 @@ def track(rows, labels, step, max_gap=3.0, min_len=1.5):
         dets = []
         for di, d in enumerate(r["d"]):
             dets.append({"x": (d[0] + d[2]) / 2.0, "y": float(d[3]), "h": float(d[3] - d[1]),
-                         "box": d[:4], "conf": d[4], "g": labels.get((ri, di), 0), "rgb": d[5:8]})
+                         "box": d[:4], "conf": d[4], "g": labels.get((ri, di), 0), "rgb": d[5:8], "ei": (r["e"] + di) if "e" in r else -1})
         t = r["t"]
         active = [a for a in active if t - a["last"] <= max_gap + 1e-6]
         if active and dets:
@@ -196,13 +196,13 @@ def track(rows, labels, step, max_gap=3.0, min_len=1.5):
             for i, j in zip(ri_, ci_):
                 if cost[i, j] < 1e5:
                     a, d = active[i], dets[j]
-                    a["pts"].append([t, round(d["x"]), round(d["y"]), round(d["h"]), d["conf"], d["g"]] + d["box"])
+                    a["pts"].append([t, round(d["x"]), round(d["y"]), round(d["h"]), d["conf"], d["g"]] + d["box"] + [d["ei"]])
                     a["x"], a["y"], a["h"], a["last"], a["g"] = d["x"], d["y"], d["h"], t, d["g"]
                     used.add(j)
             dets = [d for j, d in enumerate(dets) if j not in used]
         for d in dets:
             tr = {"x": d["x"], "y": d["y"], "h": d["h"], "last": t, "g": d["g"],
-                  "pts": [[t, round(d["x"]), round(d["y"]), round(d["h"]), d["conf"], d["g"]] + d["box"]]}
+                  "pts": [[t, round(d["x"]), round(d["y"]), round(d["h"]), d["conf"], d["g"]] + d["box"] + [d["ei"]]]}
             tracks.append(tr)
             active.append(tr)
     out = []
@@ -264,7 +264,7 @@ def thumb(frame, box, h_out=150):
     return "data:image/jpeg;base64," + base64.b64encode(buf).decode()
 
 
-def build(video, outdir, rink, k=4, log=print, read_nums=False, min_len=1.5, thumbs=False):
+def build(video, outdir, rink, k=4, log=print, read_nums=False, min_len=3.0, thumbs=False):
     meta = json.load(open(os.path.join(outdir, "meta.json")))
     rows = read_dets(outdir)
     if not rows:
@@ -291,9 +291,41 @@ def build(video, outdir, rink, k=4, log=print, read_nums=False, min_len=1.5, thu
     faceoff_list = events.faceoffs(rows, board, cfg) if board else []
     change_list = events.changes(rows, labels, outdir, tracks, cfg)
     log("%d faceoffs, %d line change moments" % (len(faceoff_list), len(change_list)))
+    import identify
+    E = identify.load_emb(outdir, meta.get("emb_dim", 256))
+    TLs = identify.tracklets(tracks, E, cfg, identify.load_thumbs(outdir)) if E is not None else []
+    if TLs:
+        log("%d tracklets with appearance fingerprints" % len(TLs))
     cap, fps = None, meta["fps"]
     if thumbs or read_nums:
         cap = cv2.VideoCapture(video)
+    if read_nums and TLs and cap is not None and cap.isOpened():
+        # only skaters seen big and close (numbers are readable), only a few pictures each
+        try:
+            import easyocr, jersey_numbers, torch
+            reader = easyocr.Reader(["en"], gpu=bool(torch.cuda.is_available()), verbose=False)
+            rp0 = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "roster.json")
+            ros = {int(x["n"]) for x in json.load(open(rp0)).get("roster", [])} if os.path.exists(rp0) else set()
+            byid = {tr["id"]: tr for tr in tracks}
+            cand = [t for t in TLs if t["h"] >= 110]
+            cand.sort(key=lambda t: -t["h"])
+            for ci, t in enumerate(cand[:250]):
+                pts = [q for q in byid[t["id"]]["pts"] if q[3] >= 130]
+                pts = sorted(pts, key=lambda q: -q[3])[:4]
+                frames = []
+                for q in pts:
+                    cap.set(cv2.CAP_PROP_POS_FRAMES, int(q[0] * fps))
+                    ok, f = cap.read()
+                    if ok:
+                        frames.append((f, q[6:10], q[3]))
+                if frames:
+                    r = jersey_numbers.read_track(frames, reader, ros, max_samples=4)
+                    if r["best"]:
+                        t["num"] = {"n": r["best"], "votes": r["cands"][0]["votes"], "roster": r["cands"][0]["roster"]}
+                if ci % 25 == 0:
+                    log("Numbers: %d of %d close-up skaters" % (ci, min(250, len(cand))))
+        except Exception as e:
+            log("Number reading skipped: %s" % e)
 
     def grab(t):
         cap.set(cv2.CAP_PROP_POS_FRAMES, int(t * fps))
@@ -331,7 +363,12 @@ def build(video, outdir, rink, k=4, log=print, read_nums=False, min_len=1.5, thu
         if not cand:
             cand = ["data:image/jpeg;base64," + c["thumbs"][str(g)][0] for c in change_list if c["thumbs"].get(str(g))]
         samples[g] = cand[:4]
-    data = {"meta": meta, "colours": centres, "samples": {str(g): s for g, s in samples.items()},
+    if TLs:
+        for g in range(k):
+            pics = [t["th"][0] for t in sorted(TLs, key=lambda t: -t["h"]) if t["g"] == g and t["th"]]
+            samples[g] = pics[:4]
+        tracks = []
+    data = {"meta": meta, "colours": centres, "tracklets": TLs, "samples": {str(g): s for g, s in samples.items()},
             "tracks": tracks, "stops": stops, "board": board,
             "faceoffs": faceoff_list, "changes": change_list}
     json.dump(data, open(os.path.join(outdir, "analysis.json"), "w"))
@@ -342,7 +379,8 @@ def build(video, outdir, rink, k=4, log=print, read_nums=False, min_len=1.5, thu
     page = os.path.join(outdir, "review.html")
     here = os.path.dirname(os.path.abspath(__file__))
     tpl = open(os.path.join(here, "review_template.html")).read()
-    html = tpl.replace("/*DATA*/null", json.dumps(data)).replace("/*ROSTER*/[]", json.dumps(roster))
+    ident = open(os.path.join(here, "identity.js")).read()
+    html = tpl.replace("/*IDENTITY*/", ident).replace("/*DATA*/null", json.dumps(data)).replace("/*ROSTER*/[]", json.dumps(roster))
     open(page, "w").write(html)
     log("Review page written: " + page)
     return page
