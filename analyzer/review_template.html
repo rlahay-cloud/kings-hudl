@@ -46,6 +46,17 @@ table{border-collapse:collapse;width:100%}td,th{padding:4px 8px;border-bottom:1p
   <div class="bar" style="margin-top:8px"><button id="copy">Copy</button><button class="alt" id="dl">Download file</button><span class="mute" id="msg"></span></div>
   <h2 style="margin-top:16px">Ice time so far</h2><table id="sum"></table>
 </div>
+<div id="board" style="display:none">
+<h2>4. Goals, penalties and stoppages from the scoreboard</h2>
+<div class="card">
+  <p class="mute" id="boardnote"></p>
+  <label class="mute">In this video, the Kings are the <select id="side" style="width:auto"><option value="home">Home side (left on the board)</option><option value="visitor">Visitor side (right on the board)</option></select></label>
+  <p class="mute" style="margin-top:10px"><b>Game clock:</b> <span id="periodsTxt"></span></p>
+  <div id="evlist"></div>
+  <p class="mute">Each goal is saved 12 seconds before the scoreboard changed, because the person running the board taps a little after the goal. On the site, open Coach's Corner, then Game analysis, pick the game, open Add goals and penalties from the game analyzer (near the bottom), and paste these lines. Check each one by watching it.</p>
+  <textarea id="evout" readonly></textarea>
+  <div class="bar" style="margin-top:8px"><button id="evcopy">Copy</button><span class="mute" id="evmsg"></span></div>
+</div></div>
 <div id="zoom"><img alt=""></div>
 
 <script>
@@ -68,6 +79,10 @@ function drawGroups(){
        (DATA.samples[g]||[]).map(function(s){return '<img src="'+s+'">'}).join("")+'</div>'});
   $("groups").innerHTML=h}
 $("groups").onclick=function(e){var g=e.target.closest(".grp");if(!g)return;var gi=+g.dataset.g,at=S.ks.indexOf(gi);if(at>=0)S.ks.splice(at,1);else S.ks.push(gi);save();drawGroups();drawRows();exp()};
+function guess(tr,v){
+  var g=tr.num;if(!g||!g.best||v)return "";
+  var lv="Guess, often wrong";
+  return '<div class="mute" style="font-size:12px;margin-top:4px;text-align:center">'+lv+': <button class="alt takeg" data-n="'+g.best+'" style="padding:2px 8px;font-size:13px">#'+g.best+'?</button></div>'}
 function drawRows(){
   var f=$("filter").value,h="",n=0,named=0;
   DATA.tracks.forEach(function(tr){
@@ -78,13 +93,15 @@ function drawRows(){
       tr.thumbs.map(function(s){return '<img src="'+s+'">'}).join("")+
       '<div class="meta"><b>'+mmss(tr.t0)+' to '+mmss(tr.t1)+'</b><div class="mute">'+Math.round(tr.t1-tr.t0)+' seconds</div>'+
       '<select class="g" style="margin-top:6px"><option value="k"'+(k?' selected':'')+'>Kings</option><option value="o"'+(!k?' selected':'')+'>Not Kings</option></select></div>'+
-      '<input class="num" type="text" inputmode="numeric" list="nums" placeholder="#" value="'+(v||"")+'"></div>'});
+      '<div><input class="num" type="text" inputmode="numeric" list="nums" placeholder="#" value="'+(v||"")+'">'+guess(tr,v)+'</div></div>'});
   $("rows").innerHTML=h||'<p class="mute">Nothing to show here. Pick your team colours above, or change the filter.</p>';
   $("count").textContent=named+" Kings boxes named, "+n+" showing"+(n>150?" (first 150)":"")}
 $("rows").onchange=function(e){var r=e.target.closest(".row");if(!r)return;var id=+r.dataset.id;
   if(e.target.classList.contains("num")){var v=e.target.value.trim().toLowerCase();if(v===""||v==="x"||/^\d{1,3}$/.test(v)){if(v)S.num[id]=v;else delete S.num[id]}else{e.target.value="";return}save();exp();$("count").textContent=$("count").textContent}
   else if(e.target.classList.contains("g")){var tr=DATA.tracks[id-1];if(e.target.value==="k")S.grp[id]=S.ks.length?S.ks[0]:0;else{var o=-1;for(var q=0;q<DATA.colours.length;q++)if(S.ks.indexOf(q)<0){o=q;break}S.grp[id]=o}save();drawRows();exp()}}
-$("rows").onclick=function(e){if(e.target.tagName==="IMG"){$("zoom").querySelector("img").src=e.target.src;$("zoom").style.display="flex"}}
+$("rows").onclick=function(e){
+  var tg=e.target.closest(".takeg");if(tg){var rw=tg.closest(".row");S.num[+rw.dataset.id]=tg.dataset.n;save();drawRows();exp();return}
+  if(e.target.tagName==="IMG"){$("zoom").querySelector("img").src=e.target.src;$("zoom").style.display="flex"}}
 $("zoom").onclick=function(){$("zoom").style.display="none"};
 $("filter").onchange=drawRows;
 $("clearall").onclick=function(){if(confirm("Erase all numbers you typed here?")){S.num={};S.grp={};save();drawRows();exp()}};
@@ -106,5 +123,29 @@ function exp(){
 $("copy").onclick=function(){var t=$("out");t.select();var ok=false;try{ok=document.execCommand("copy")}catch(e){}
   if(navigator.clipboard&&!ok)navigator.clipboard.writeText(t.value);$("msg").textContent="Copied"};
 $("dl").onclick=function(){var b=new Blob([$("out").value+"\n"],{type:"text/plain"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="shifts_from_analyzer.txt";a.click()};
-drawGroups();drawRows();exp();
+function hms(sec){sec=Math.max(0,Math.round(sec));return Math.floor(sec/3600)+":"+("0"+Math.floor(sec%3600/60)).slice(-2)+":"+("0"+sec%60).slice(-2)}
+function ms(sec){sec=Math.max(0,Math.round(sec));return Math.floor(sec/60)+":"+("0"+sec%60).slice(-2)}
+function clockAt(t){var c=DATA.board&&DATA.board.clock||[],best=null;for(var i=0;i<c.length;i++){if(c[i].t<=t+0.5&&c[i].sec!==null)best=c[i]}return best}
+function evs(){
+  var B=DATA.board;if(!B)return [];
+  var off=parseFloat($("off").value)||0,kh=$("side").value==="home",out=[];
+  function goal(list,ours){(list||[]).forEach(function(c){var t=c.t-12+off;if(t<0)return;var k=clockAt(c.t);
+    out.push({t:t,line:hms(t)+"|"+(ours?"Goal":"Goal against")+"||Scoreboard changed at "+ms(c.t)+(k?" (clock "+ms(k.sec)+")":"")+(c.clear?"":" CHECK: small change"),
+      show:(ours?"Kings goal":"Goal against")+" at video "+ms(c.t)+(k?", clock "+ms(k.sec):"")+(c.clear?"":" (not sure, check)")})})}
+  goal(B.home_changes,kh);goal(B.visitor_changes,!kh);
+  function pen(runs,ours){[0,1].forEach(function(r){(runs[r]||[]).forEach(function(a){var t=a[0]-8+off;if(t<0)return;
+    out.push({t:t,line:hms(t)+"|"+(ours?"Penalty":"Away Penalty")+"||Penalty box lit "+ms(a[0])+" to "+ms(a[1])+" CHECK: board reading unproven",
+      show:(ours?"Kings penalty":"Penalty on them")+", box lit "+ms(a[0])+" to "+ms(a[1])+" (check)"})})})}
+  pen(B.pen_home,kh);pen(B.pen_visitor,!kh);
+  out.sort(function(a,b){return a.t-b.t});return out}
+function drawBoard(){
+  var B=DATA.board;if(!B)return;$("board").style.display="";
+  $("boardnote").textContent="Read from the real scoreboard in the video ("+B.samples+" readings). The score box and penalty boxes are only checked for changes, not read as numbers, so every line needs a quick look.";
+  var ph=(B.periods||[]).map(function(p,i){return "period "+(i+1)+" starts at video "+ms(p.start)+(p.open?"":", ends "+ms(p.end))}).join("; ");
+  $("periodsTxt").textContent=(ph||"no period start found")+". "+(B.stops||[]).length+" stoppages found.";
+  var e=evs();$("evlist").innerHTML=e.length?'<ul style="margin:6px 0 6px 18px;padding:0">'+e.map(function(x){return"<li>"+x.show+"</li>"}).join("")+"</ul>":'<p class="mute">No goals or penalties found on the scoreboard in this part of the game.</p>';
+  $("evout").value=e.map(function(x){return x.line}).join("\n")}
+$("side").onchange=drawBoard;$("off").addEventListener("input",drawBoard);
+$("evcopy").onclick=function(){var t=$("evout");t.select();try{document.execCommand("copy")}catch(e){}$("evmsg").textContent="Copied"};
+drawGroups();drawRows();exp();drawBoard();
 </script></body></html>

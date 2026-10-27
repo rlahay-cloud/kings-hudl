@@ -13,6 +13,8 @@ import argparse, base64, json, math, os, sys, time
 import numpy as np
 import cv2
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 TILE_W = 1600
 TILE_STRIDE = 1240
 
@@ -262,7 +264,7 @@ def thumb(frame, box, h_out=150):
     return "data:image/jpeg;base64," + base64.b64encode(buf).decode()
 
 
-def build(video, outdir, rink, k=4, log=print):
+def build(video, outdir, rink, k=4, log=print, read_nums=False):
     meta = json.load(open(os.path.join(outdir, "meta.json")))
     rows = read_dets(outdir)
     if not rows:
@@ -271,6 +273,18 @@ def build(video, outdir, rink, k=4, log=print):
     centres, labels = colour_groups(rows, k)
     tracks = track(rows, labels, step)
     stops = stoppages(tracks, step)
+    board = None
+    sbp = os.path.join(outdir, "scoreboard.jsonl")
+    if os.path.exists(sbp):
+        try:
+            import scoreboard as sbm
+            board = sbm.analyze(sbp)
+            if board["stops"]:
+                stops = [[a, b] for a, b, _ in board["stops"]]
+                log("Using %d stoppages read from the scoreboard clock" % len(stops))
+        except Exception as e:  # keep going without the scoreboard
+            log("Scoreboard readings could not be used: %s" % e)
+            board = None
     log("%d pictures, %d tracks, %d suggested stoppages" % (len(rows), len(tracks), len(stops)))
     cap = cv2.VideoCapture(video)
     fps = meta["fps"]
@@ -280,8 +294,29 @@ def build(video, outdir, rink, k=4, log=print):
         ok, f = cap.read()
         return f if ok else None
 
-    for tr in tracks:
+    reader, roster = None, set()
+    if read_nums:
+        try:
+            import easyocr, jersey_numbers
+            import torch
+            reader = easyocr.Reader(["en"], gpu=bool(torch.cuda.is_available()), verbose=False)
+            rp0 = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "roster.json")
+            if os.path.exists(rp0):
+                roster = {int(x["n"]) for x in json.load(open(rp0)).get("roster", [])}
+        except Exception as e:
+            log("Number reading is off: %s" % e)
+            reader = None
+    for ti, tr in enumerate(tracks):
         p = tr["pts"]
+        if reader is not None:
+            frames = []
+            for q in sorted(p, key=lambda q: -q[3])[:8]:
+                f = grab(q[0])
+                if f is not None:
+                    frames.append((f, q[6:10], q[3]))
+            tr["num"] = jersey_numbers.read_track(frames, reader, roster, max_samples=8)
+            if ti % 25 == 0:
+                log("Numbers: %d of %d boxes" % (ti, len(tracks)))
         # two pictures: the biggest view and one from the middle
         big = max(p, key=lambda q: q[3] * q[4])
         mid = p[len(p) // 2]
@@ -297,7 +332,7 @@ def build(video, outdir, rink, k=4, log=print):
         cand.sort(key=lambda c: -c[1][3])
         samples[g] = [c[0]["thumbs"][0] for c in cand[:4] if c[0]["thumbs"]]
     data = {"meta": meta, "colours": centres, "samples": {str(g): s for g, s in samples.items()},
-            "tracks": tracks, "stops": stops}
+            "tracks": tracks, "stops": stops, "board": board}
     json.dump(data, open(os.path.join(outdir, "analysis.json"), "w"))
     roster = []
     rp = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "roster.json")
@@ -314,7 +349,7 @@ def build(video, outdir, rink, k=4, log=print):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["detect", "build"])
+    ap.add_argument("cmd", choices=["detect", "scoreboard", "build"])
     ap.add_argument("video")
     ap.add_argument("outdir")
     ap.add_argument("--rink", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "rinks", "ingredion_rink1.json"))
@@ -324,11 +359,15 @@ def main():
     ap.add_argument("--imgsz", type=int, default=1280)
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--model", default="yolov8s.pt")
+    ap.add_argument("--numbers", action="store_true")
     a = ap.parse_args()
-    if a.cmd == "detect":
+    if a.cmd == "scoreboard":
+        import scoreboard
+        scoreboard.read_series(a.video, a.rink, a.outdir, step=1.0, start=a.start, end=a.end)
+    elif a.cmd == "detect":
         detect(a.video, a.outdir, a.rink, a.step, a.start, a.end, a.imgsz, limit=a.limit, model_path=a.model)
     else:
-        build(a.video, a.outdir, a.rink)
+        build(a.video, a.outdir, a.rink, read_nums=a.numbers)
 
 
 if __name__ == "__main__":
