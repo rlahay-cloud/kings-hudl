@@ -98,6 +98,24 @@ def run(video, outdir, rink_json, step=1.0, start=0.0, end=None, imgsz=1280, con
     fx, fy = far_edge(poly)
     bench_band = 230.0 * W / 4080.0
 
+    # Results left by an older program or a different part of the video must never be mixed in.
+    mp = os.path.join(outdir, "meta.json")
+    stale = False
+    if os.path.exists(mp):
+        try:
+            old = json.load(open(mp))
+            stale = not (old.get("version") == 3 and old.get("video") == os.path.basename(video)
+                         and old.get("step") == step and abs(old.get("start", 0) - start) < 1e-6
+                         and old.get("end_req") == end)
+        except Exception:
+            stale = True
+    if stale:
+        log("Found results from an earlier run with different settings. Starting fresh.")
+        for fn in ("scoreboard.jsonl", "detections.jsonl", "bench.jsonl", "thumbs.jsonl", "emb.f16",
+                   "analysis.json", "review.html"):
+            fp = os.path.join(outdir, fn)
+            if os.path.exists(fp):
+                os.remove(fp)
     paths = {k: os.path.join(outdir, k + ".jsonl") for k in ("scoreboard", "detections", "bench")}
     t = start
     last = None
@@ -110,7 +128,7 @@ def run(video, outdir, rink_json, step=1.0, start=0.0, end=None, imgsz=1280, con
         t = max(t, last + step)
         log("Carrying on from %.0f s" % t)
     json.dump({"video": os.path.basename(video), "w": W, "h": H, "fps": fps, "step": step, "rink": name,
-               "duration": total, "version": 3, "emb_dim": EMB_DIM}, open(os.path.join(outdir, "meta.json"), "w"))
+               "duration": total, "version": 3, "emb_dim": EMB_DIM, "start": start, "end_req": end}, open(os.path.join(outdir, "meta.json"), "w"))
 
     gpu = sbm._has_gpu()
     model = YOLO(model_path)
