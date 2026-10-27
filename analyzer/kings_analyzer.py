@@ -264,14 +264,14 @@ def thumb(frame, box, h_out=150):
     return "data:image/jpeg;base64," + base64.b64encode(buf).decode()
 
 
-def build(video, outdir, rink, k=4, log=print, read_nums=False):
+def build(video, outdir, rink, k=4, log=print, read_nums=False, min_len=1.5):
     meta = json.load(open(os.path.join(outdir, "meta.json")))
     rows = read_dets(outdir)
     if not rows:
         raise SystemExit("No detections found in " + outdir)
     step = meta["step"]
     centres, labels = colour_groups(rows, k)
-    tracks = track(rows, labels, step)
+    tracks = track(rows, labels, step, min_len=min_len)
     stops = stoppages(tracks, step)
     board = None
     sbp = os.path.join(outdir, "scoreboard.jsonl")
