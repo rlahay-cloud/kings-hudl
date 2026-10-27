@@ -13,14 +13,23 @@ This reads a wide panorama game video and gives you data to paste into Kings HUD
 
 To test first, set START 0 and END 300 in step 3. That does 5 minutes.
 
-## What the review page gives you
+## The review app (review.html)
 
-1. **Colours:** tap the groups that are the Kings.
-2. **Name each player once:** the program groups skaters by how they look across the game and shows about 20 player cards. Type the jersey number on each card. Use "Not Kings" for referees and the other team.
-3. **Check only what it is unsure about:** it labels everything else from your answers, shows how much ice time is labelled with confidence, and lists the least certain pieces first, with its best guesses as one tap buttons. Answer as many as you like. If a skater was big and close, it also shows a number it read, as a hint.
-4. **Ice time, shifts, paths and heat maps:** time on ice and shifts per player (clock time, with stoppages taken out), a path and heat map for each shift or the whole game, and a team heat map. It writes shift lines for the Shifts tab and a tracking file.
-5. **Faceoffs with zone:** tap Win or Loss. Zone and spot are automatic.
-6. **Line changes:** bench pictures to confirm who came on and off, if you prefer that way.
+Open `review.html` in Chrome, then choose the game video (it stays on your computer). The video sits beside a timeline that shows activity, stoppages, line changes, faceoffs, period starts and shots. Click the timeline to jump. Space plays and pauses, arrows move 1 second, Shift and arrows move 5 seconds.
+
+Tabs on the right:
+
+- **Roster:** tick which colour groups are the Kings, add names and extra numbers, set a time offset.
+- **Periods:** say which way the Kings attack in each period.
+- **Line changes (N left):** a queue. Each card has pictures from the bench. Tap who came off and who came on. Names carry forward. Next to check jumps to the next one.
+- **Stoppages:** found from the scoreboard clock. Delete wrong ones or add your own.
+- **Faceoffs:** spot and zone are automatic. Tap Win or Loss. Win percent by zone, and lines for Kings HUDL.
+- **Shots:** not automatic. Press S or D at a shot. Lines for Kings HUDL.
+- **Penalties:** scoreboard hints to check, plus your own marks.
+- **Shifts:** ice time per player (game time, stoppages removed) from either the tracks you ticked or the line changes you confirmed. Copy lines for the Shifts tab.
+- **Heatmaps:** a rink diagram with a heat map and path for one player (whole video or one shift) or the whole team, live play only if you like. Below it, "Which tracks are this player?" with pictures. Tick the tracks that show the player. The more you tick, the more the app labels for you, and it shows what percent of ice time is labelled with confidence.
+
+Everything saves in the browser as you go. Save review file and Load review file keep a copy. Export JSON and Export shifts CSV are at the top. `review_classic.html` is the older page.
 
 ## Paste into Kings HUDL
 

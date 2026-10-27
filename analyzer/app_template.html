@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kings HUDL game review</title>
+<style>
+:root{--bg:#0f141b;--card:#171e28;--card2:#1e2733;--ink:#e8edf2;--mute:#8d9bab;--line:#2a3541;--acc:#4da3ff;--k:#3b82f6;--o:#f0714f;--ok:#4ade80;--bad:#ff8a80;--warn:#f5c04a}
+@media (prefers-color-scheme:light){:root{--bg:#f3f5f8;--card:#fff;--card2:#eef2f7;--ink:#14202e;--mute:#5d6b7a;--line:#d5dce5;--acc:#0b5cab;--ok:#1a7f4b;--bad:#b3261e}}
+*{box-sizing:border-box}html,body{margin:0}body{background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,sans-serif}
+header{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--card)}
+header h1{font-size:16px;margin:0;flex:1 1 300px}header .mute{font-weight:400;font-size:13px}
+button,select,input{font:inherit;color:var(--ink)}
+button{background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer}
+button:hover{border-color:var(--acc)}button.pri{background:var(--acc);border-color:var(--acc);color:#fff}button.on{border-color:var(--acc);background:rgba(77,163,255,.18)}
+button.link{background:none;border:0;color:var(--acc);padding:4px}
+select,input[type=text],input[type=number]{background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:7px 9px}
+.wrap{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:14px;padding:14px}
+@media (max-width:980px){.wrap{grid-template-columns:1fr}}
+.mute{color:var(--mute)}.small{font-size:13px}
+#vbox{position:relative;background:#000;border-radius:10px;overflow:hidden}#vid{width:100%;display:block;max-height:60vh;background:#000}
+#vpick{position:absolute;inset:0;display:flex;flex-direction:column;gap:10px;align-items:center;justify-content:center;text-align:center;padding:20px;background:rgba(15,20,27,.92)}
+.ctl{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:10px 0}.ctl .sp{flex:1}
+#tlw{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px}canvas{display:block;width:100%}
+#tl{height:120px;cursor:pointer}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--mute);margin-top:6px}.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px}
+.tabs{display:flex;gap:2px 14px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding:0 2px 6px;margin-bottom:12px}
+.tabs button{background:none;border:0;border-bottom:2px solid transparent;border-radius:0;padding:6px 2px;color:var(--mute)}
+.tabs button.act{color:var(--ink);border-bottom-color:var(--acc)}.tabs .n{font-size:11px;background:var(--card2);border-radius:99px;padding:1px 6px;margin-left:3px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px}
+.item{border-top:1px solid var(--line);padding:10px 0}.item:first-child{border-top:0}.item.done{opacity:.55}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chip{padding:4px 9px;border-radius:99px;border:1px solid var(--line);background:var(--card2);cursor:pointer;font-weight:600;min-width:38px;text-align:center}
+.chip.sel{background:var(--acc);border-color:var(--acc);color:#fff}.chip.off{background:var(--o);border-color:var(--o);color:#fff}
+.th img{height:64px;border-radius:5px;margin:2px;cursor:zoom-in}
+table{border-collapse:collapse;width:100%}td,th{padding:5px 8px;border-bottom:1px solid var(--line);text-align:left}th{color:var(--mute);font-weight:600;font-size:13px}tr.cl{cursor:pointer}tr.cl:hover td{background:var(--card2)}
+textarea{width:100%;min-height:120px;font:13px ui-monospace,monospace;background:var(--card2);border:1px solid var(--line);border-radius:8px;color:var(--ink);padding:8px}
+#rink{border:1px solid var(--line);border-radius:8px;background:#fff}
+.tk{display:flex;gap:6px;flex-wrap:wrap}.tkc{border:2px solid var(--line);border-radius:8px;padding:4px;cursor:pointer;background:var(--card2)}.tkc.mine{border-color:var(--ok)}.tkc.other{opacity:.35}.tkc.auto{border-style:dashed;border-color:var(--ok)}
+.tkc img{height:70px;border-radius:4px;margin-right:2px}.tkc div{font-size:12px;color:var(--mute)}
+#zoom{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:50}#zoom img{max-width:94vw;max-height:90vh}
+.pill{padding:2px 8px;border-radius:99px;border:1px solid var(--line);font-size:12px}
+</style></head><body>
+<header>
+  <h1 id="title">Kings HUDL game review <span class="mute" id="saved"></span></h1>
+  <button id="bJson">Export JSON</button><button id="bCsv">Export shifts CSV</button><button id="bSave">Save review file</button>
+  <button class="link" id="bLoad">Load review file</button><input type="file" id="fLoad" accept=".json" style="display:none">
+</header>
+<div class="wrap">
+ <div>
+  <div id="vbox"><video id="vid" playsinline preload="metadata"></video>
+    <div id="vpick"><div><b>Choose the game video</b></div><div class="mute small">The same file you analysed, or a smaller copy of it. It stays on your computer and is never uploaded.</div><input type="file" id="fVid" accept="video/*,.mov,.mp4,.mkv"></div></div>
+  <div class="ctl"><button id="cB5">-5s</button><button id="cB1">-1s</button><button id="cPlay" class="pri">Play</button><button id="cF1">+1s</button><button id="cF5">+5s</button>
+    <select id="cSpd"><option>0.5</option><option selected>1</option><option>2</option><option>3</option><option>4</option></select>
+    <span class="sp"></span><span id="clk" style="text-align:right"></span></div>
+  <div id="tlw"><canvas id="tl" height="120"></canvas>
+    <div class="legend"><span><i style="background:#566"></i>Stoppage</span><span><i style="background:var(--k)"></i>Kings change</span><span><i style="background:var(--o)"></i>Other change</span><span><i style="background:var(--warn)"></i>Faceoff</span><span><i style="background:#fff"></i>Period start</span><span><i style="background:#9cf"></i>Shot</span><span class="small">Space play/pause, arrows 1 s, Shift+arrows 5 s, S shot, D their shot</span></div></div>
+  <div class="panel small mute" style="margin-top:12px" id="foot"></div>
+ </div>
+ <div>
+  <div class="tabs" id="tabs"></div>
+  <div id="pane"></div>
+ </div>
+</div>
+<div id="zoom"><img alt=""></div>
+<script>
+/*IDENTITY*/
+</script>
+<script>
+var DATA=/*DATA*/null, ROSTER=/*ROSTER*/[];
+var $=function(i){return document.getElementById(i)};
+var KEY="kh-app-"+(DATA.meta.video||"x");
+var S={ks:[],seed:{},notk:{},chg:{},atk:{},fo:{},fon:{},shots:[],pens:[],stopsAdd:[],stopsDel:{},extra:[],names:{},off:0,pm:null,src:"tracks",team:"K",mode:"one",range:"all",live:true,path:true,tab:"roster",pend:null};
+try{var sv=JSON.parse(localStorage.getItem(KEY)||"null");if(sv)for(var k in sv)S[k]=sv[k]}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));$("saved").textContent="Saved in this browser "+new Date().toLocaleTimeString()}catch(e){}}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function ms(t){t=Math.max(0,Math.round(t));return Math.floor(t/60)+":"+("0"+t%60).slice(-2)}
+function hms(t){t=Math.max(0,Math.round(t));return Math.floor(t/3600)+":"+("0"+Math.floor(t%3600/60)).slice(-2)+":"+("0"+t%60).slice(-2)}
+var V=$("vid"),DUR=DATA.meta.duration||600,END=(DATA.meta.end_req||DUR),TL=DATA.tracklets||[],B=DATA.board||{};
+Identity.prep(TL);
+$("title").firstChild.textContent=(DATA.meta.video||"Game")+" ";
+function now(){return V.currentTime||0}
+function seek(t){if(V.readyState>0||V.src)V.currentTime=Math.max(0,t);drawTL()}
+function kOK(t){return S.ks.indexOf(t.g)>=0&&!S.notk[t.id]}
+function oOK(t){return S.ks.indexOf(t.g)<0&&!S.notk[t.id]}
+function stops(){var a=(DATA.stops||[]).filter(function(s,i){return !S.stopsDel[i]}).map(function(s){return[s[0],s[1]]});return a.concat(S.stopsAdd).sort(function(x,y){return x[0]-y[0]})}
+function inStop(t){return stops().some(function(s){return t>=s[0]&&t<=s[1]})}
+var PER=(B.periods||[]);
+function perOf(t){var n=1;PER.forEach(function(p,i){if(t>=p.start-2)n=i+1});return n}
+function atkOf(p){return S.atk[p]||"R"}
+function clockAt(t){var c=B.clock||[],best=null;for(var i=0;i<c.length;i++){if(c[i].t<=t+0.5&&c[i].sec!==null)best=c[i]}return best}
+function rosterNums(){var m={};ROSTER.forEach(function(p){m[p.n]=p.name});S.extra.forEach(function(n){if(!(n in m))m[n]=""});Object.keys(S.names).forEach(function(n){m[n]=S.names[n]});return Object.keys(m).map(Number).sort(function(a,b){return a-b}).map(function(n){return{n:String(n),name:m[n]||S.names[n]||""}})}
+function nameOf(n){var r=rosterNums().filter(function(x){return x.n===String(n)})[0];return"#"+n+(r&&r.name?" "+r.name.split(" ")[0]:"")}
+/* ---- identity ---- */
+var RES=null,ST=null;
+function solve(){RES=Identity.assign(TL,S.seed,kOK,0.12)}
+function trackStats(){ST=Identity.stats(TL,RES?RES.lab:{},stops(),8)}
+/* ---- line changes ---- */
+var CH=DATA.changes||[];
+function chgState(){var on={},before=[];CH.forEach(function(c,i){before[i]=Object.keys(on);var st=S.chg[i]||{};(st.off||[]).forEach(function(n){delete on[n]});(st.on||[]).forEach(function(n){on[n]=1})});return{before:before,final:Object.keys(on)}}
+function shiftsFromChanges(){
+  var ev=[];CH.forEach(function(c,i){var st=S.chg[i]||{},t=(c.t0+c.t1)/2;(st.off||[]).forEach(function(n){ev.push([t,"off",n])});(st.on||[]).forEach(function(n){ev.push([t,"on",n])})});
+  var by={},open={};ev.sort(function(a,b){return a[0]-b[0]});
+  ev.forEach(function(e){var n=e[2];by[n]=by[n]||[];if(e[1]==="on"){if(open[n]===undefined)open[n]=e[0]}else{var a=open[n]!==undefined?open[n]:null;if(a!==null){by[n].push({a:a,b:e[0],pts:[]});delete open[n]}}});
+  Object.keys(open).forEach(function(n){by[n]=by[n]||[];by[n].push({a:open[n],b:Math.max(open[n],Math.min(END,DUR)),pts:[],live:true})});
+  var out={},sp=stops();
+  Object.keys(by).forEach(function(n){var toi=0;by[n].forEach(function(s){var run=s.b-s.a;sp.forEach(function(q){var o=Math.min(s.b,q[1])-Math.max(s.a,q[0]);if(o>0)run-=o});s.clock=Math.max(0,run);toi+=s.clock});if(by[n].length)out[n]={shifts:by[n],toi:toi}});
+  return out}
+function shifts(){return S.src==="changes"?shiftsFromChanges():(ST||{})}
+/* ---- timeline ---- */
+var ACT=null;
+function activity(){ACT=new Float32Array(Math.ceil(DUR)+2);TL.forEach(function(t){for(var i=1;i<t.pts.length;i++){var a=t.pts[i-1],b=t.pts[i],dt=b[0]-a[0];if(dt<=0||dt>4)continue;ACT[Math.floor(b[0])]+=Math.hypot((b[1]-a[1])*200,(b[2]-a[2])*85)/dt}});
+  var s=new Float32Array(ACT.length);for(var i=0;i<ACT.length;i++){var q=0,c=0;for(var j=-3;j<=3;j++)if(ACT[i+j]!==undefined){q+=ACT[i+j];c++}s[i]=q/c}ACT=s}
+function drawTL(){
+  var c=$("tl"),w=c.clientWidth||600;c.width=w*2;c.height=240;var x=c.getContext("2d");x.scale(2,2);var H=120;
+  var span=Math.max(10,Math.min(DUR,END)),X=function(t){return t/span*w};
+  x.fillStyle="#141b24";x.fillRect(0,0,w,H);
+  stops().forEach(function(s){x.fillStyle="rgba(120,140,150,.35)";x.fillRect(X(s[0]),0,Math.max(2,X(s[1])-X(s[0])),H)});
+  if(!ACT)activity();var mx=Math.max.apply(null,ACT)||1;x.strokeStyle="#aab6c4";x.lineWidth=1.3;x.beginPath();for(var i=0;i<ACT.length;i++){var px=X(i),py=H-8-(ACT[i]/mx)*(H-30);if(i)x.lineTo(px,py);else x.moveTo(px,py)}x.stroke();
+  CH.forEach(function(ch,i){var kings=Object.keys(ch.thumbs).some(function(g){return S.ks.indexOf(+g)>=0}),dn=(S.chg[i]||{}).done;x.fillStyle=kings?"#3b82f6":"#f0714f";x.globalAlpha=dn?0.35:1;x.fillRect(X(ch.t0),kings?10:H-50,2,40);x.globalAlpha=1});
+  (DATA.faceoffs||[]).forEach(function(f){x.fillStyle="#f5c04a";x.beginPath();x.moveTo(X(f.t),H-2);x.lineTo(X(f.t)-4,H-10);x.lineTo(X(f.t)+4,H-10);x.fill()});
+  S.shots.forEach(function(s){x.fillStyle=s.team==="K"?"#9cf":"#fa9";x.beginPath();x.moveTo(X(s.t),6);x.lineTo(X(s.t)+4,11);x.lineTo(X(s.t),16);x.lineTo(X(s.t)-4,11);x.fill()});
+  PER.forEach(function(p,i){x.fillStyle="#fff";x.fillRect(X(p.start),0,2,H);x.font="11px sans-serif";x.fillText("P"+(i+1),X(p.start)+4,12)});
+  x.fillStyle="#7cc4ff";x.fillRect(X(Math.min(now(),span)),0,2,H);
+  var cl=clockAt(now());$("clk").innerHTML="<b>"+ms(now())+"</b> / "+ms(Math.min(DUR,END))+"<div class='mute small'>Period "+perOf(now())+(cl?" · game clock "+ms(cl.sec):"")+"</div>"}
+$("tl").addEventListener("pointerdown",function(e){var r=this.getBoundingClientRect(),span=Math.max(10,Math.min(DUR,END));function go(ev){seek(Math.max(0,Math.min(span,(ev.clientX-r.left)/r.width*span)))}go(e);var mv=function(ev){go(ev)},up=function(){window.removeEventListener("pointermove",mv);window.removeEventListener("pointerup",up)};window.addEventListener("pointermove",mv);window.addEventListener("pointerup",up)});
+/* ---- video controls ---- */
+$("fVid").onchange=function(e){var f=e.target.files[0];if(!f)return;V.src=URL.createObjectURL(f);$("vpick").style.display="none";V.playbackRate=+$("cSpd").value};
+$("cPlay").onclick=function(){if(V.paused)V.play();else V.pause()};
+$("cB5").onclick=function(){seek(now()-5)};$("cB1").onclick=function(){seek(now()-1)};$("cF1").onclick=function(){seek(now()+1)};$("cF5").onclick=function(){seek(now()+5)};
+$("cSpd").onchange=function(){V.playbackRate=+$("cSpd").value};
+V.addEventListener("play",function(){$("cPlay").textContent="Pause"});V.addEventListener("pause",function(){$("cPlay").textContent="Play"});
+setInterval(function(){if(!V.paused)drawTL()},250);V.addEventListener("seeked",drawTL);
+document.addEventListener("keydown",function(e){var tg=e.target.tagName;if(tg==="INPUT"||tg==="TEXTAREA"||tg==="SELECT")return;
+  if(e.key===" "){e.preventDefault();$("cPlay").click()}else if(e.key==="ArrowLeft"){e.preventDefault();seek(now()-(e.shiftKey?5:1))}else if(e.key==="ArrowRight"){e.preventDefault();seek(now()+(e.shiftKey?5:1))}
+  else if(e.key==="."){seek(now()+1/24)}else if(e.key===","){seek(now()-1/24)}else if(e.key==="s"||e.key==="S"){addShot("K")}else if(e.key==="d"||e.key==="D"){addShot("O")}});
+function addShot(team){S.shots.push({t:Math.round(now()*10)/10,team:team,n:""});S.shots.sort(function(a,b){return a.t-b.t});save();drawTL();if(S.tab==="shots")render()}
+$("zoom").onclick=function(){$("zoom").style.display="none"};
+document.addEventListener("click",function(e){var i=e.target.closest&&e.target.closest("img.zi");if(i){$("zoom").querySelector("img").src=i.src;$("zoom").style.display="flex"}});
+function thumbs(c,n){var h="";Object.keys(c.thumbs||{}).forEach(function(g){if(S.ks.length&&S.ks.indexOf(+g)<0)return;c.thumbs[g].slice(0,n||3).forEach(function(s){h+='<img class="zi" src="data:image/jpeg;base64,'+s+'">'})});return h||'<span class="mute small">pick your team colours in Roster to filter</span>'}
+</script>
+<script>
+/* ---- tabs ---- */
+function left(){return CH.filter(function(c,i){return !(S.chg[i]||{}).done}).length}
+var TABS=[["roster","Roster",function(){return rosterNums().length}],["periods","Periods",function(){return PER.length}],["changes","Line changes",function(){return left()+" left"}],["stops","Stoppages",function(){return stops().length}],["faceoffs","Faceoffs",function(){return(DATA.faceoffs||[]).length}],["shots","Shots",function(){return S.shots.length}],["pens","Penalties",function(){return S.pens.length+penRuns().length}],["shifts","Shifts",null],["heat","Heatmaps",null],["help","Help",null]];
+function render(){
+  $("tabs").innerHTML=TABS.map(function(t){var n=t[2]?t[2]():"";return'<button data-t="'+t[0]+'" class="'+(S.tab===t[0]?"act":"")+'">'+t[1]+(n!==""?'<span class="n">'+n+'</span>':"")+"</button>"}).join("");
+  document.querySelectorAll("#tabs button").forEach(function(b){b.onclick=function(){S.tab=b.dataset.t;save();render()}});
+  solve();trackStats();var f=PANES[S.tab]||PANES.help;$("pane").innerHTML='<div class="panel">'+f()+"</div>";(BIND[S.tab]||function(){})();drawTL();
+  var tot=0,ok=0;TL.filter(kOK).forEach(function(t){tot+=t.dur;var l=RES&&RES.lab[t.id];if(l&&l.conf>=0.5)ok+=t.dur});
+  $("foot").textContent=(S.ks.length?"Kings colours chosen. ":"Choose your team colours in the Roster tab. ")+(tot?Math.round(100*ok/tot)+"% of Kings ice time is labelled with confidence from the tracks you ticked. ":"")+(RES&&RES.over.length?RES.over.length+" seconds show more than 6 Kings skaters at once, so a tick is wrong somewhere.":"")}
+var PANES={},BIND={};
+function chips(list,sel,cls){return list.map(function(n){return'<span class="chip '+(sel.indexOf(String(n))>=0?cls:"")+'" data-n="'+n+'">'+n+"</span>"}).join("")}
+/* roster */
+PANES.roster=function(){
+  var g=DATA.colours.map(function(c,i){var sm=(DATA.samples[i]||[]).slice(0,3).map(function(s){return'<img class="zi" style="height:70px;border-radius:5px;margin:2px" src="'+s+'">'}).join("");
+    return'<div class="item" data-g="'+i+'"><label class="row"><input type="checkbox" class="gk" data-g="'+i+'" '+(S.ks.indexOf(i)>=0?"checked":"")+'> <span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:rgb('+c.join(",")+');border:1px solid var(--line)"></span> <b>Colour group '+(i+1)+'</b> <span class="mute small">'+TL.filter(function(t){return t.g===i}).length+' tracks</span></label><div>'+sm+"</div></div>"}).join("");
+  var r=rosterNums().map(function(p){return'<tr><td><b>#'+p.n+'</b></td><td><input type="text" class="rn" data-n="'+p.n+'" value="'+esc(p.name)+'" placeholder="name" style="width:100%"></td></tr>'}).join("");
+  return'<b>Which colours are the Kings?</b><p class="mute small">Tick every group that is your team. Referees and the other team stay unticked.</p>'+g+'<h3>Players</h3><table>'+r+'</table><div class="row" style="margin-top:8px"><input type="number" id="addn" placeholder="add #" style="width:90px"><button id="addb">Add</button></div><h3>Time offset</h3><p class="mute small">If your video starts at a different moment than the main stream, type the seconds of difference. It is added to exported times.</p><input type="number" id="offs" step="0.1" value="'+(S.off||0)+'" style="width:120px">'};
+BIND.roster=function(){document.querySelectorAll(".gk").forEach(function(c){c.onchange=function(){var g=+c.dataset.g,i=S.ks.indexOf(g);if(c.checked&&i<0)S.ks.push(g);if(!c.checked&&i>=0)S.ks.splice(i,1);save();render()}});
+  document.querySelectorAll(".rn").forEach(function(i){i.onchange=function(){S.names[i.dataset.n]=i.value;save()}});
+  $("addb").onclick=function(){var n=$("addn").value.replace(/\D/g,"");if(n&&S.extra.indexOf(n)<0){S.extra.push(n);save();render()}};
+  $("offs").onchange=function(){S.off=parseFloat($("offs").value)||0;save()}};
+/* periods */
+PANES.periods=function(){return PER.length?'<p class="mute small">Which way do the Kings attack in each period, as seen in the picture? This decides which end is the offensive zone for faceoffs and heat maps.</p>'+PER.map(function(p,i){return'<div class="item row"><b>Period '+(i+1)+'</b><span class="mute">starts '+ms(p.start)+(p.open?"":", ends "+ms(p.end))+'</span><button class="link" data-go="'+p.start+'">Go</button><span class="sp" style="flex:1"></span><select class="atk" data-p="'+(i+1)+'"><option value="R"'+(atkOf(i+1)==="R"?" selected":"")+'>Kings attack right</option><option value="L"'+(atkOf(i+1)==="L"?" selected":"")+'>Kings attack left</option></select></div>'}).join(""):'<p class="mute">No period start found on the scoreboard in this part of the game.</p>'};
+BIND.periods=function(){document.querySelectorAll("[data-go]").forEach(function(b){b.onclick=function(){seek(+b.dataset.go)}});document.querySelectorAll(".atk").forEach(function(s){s.onchange=function(){S.atk[s.dataset.p]=s.value;save();render()}})};
+/* line changes */
+PANES.changes=function(){
+  if(!CH.length)return'<p class="mute">No bench activity was found.</p>';
+  var st=chgState(),nums=rosterNums().map(function(p){return p.n}),first=-1;CH.forEach(function(c,i){if(first<0&&!(S.chg[i]||{}).done)first=i});
+  return'<div class="row"><b>'+left()+' left</b><button id="nxt" class="pri">Next to check</button><span class="mute small">Tap who came off, then who came on. Names carry forward.</span></div>'+
+  CH.map(function(c,i){var s=S.chg[i]||{off:[],on:[]},bef=st.before[i],bench=nums.filter(function(n){return bef.indexOf(n)<0});
+    return'<div class="item'+(s.done?" done":"")+'" data-i="'+i+'"><div class="row"><b>'+ms(c.t0)+'</b><button class="link" data-go="'+c.t0+'">Go</button><span class="mute small">'+c.on+' arrived, '+c.off+' left the bench area</span><span style="flex:1"></span><button class="dn">'+(s.done?"Undo":"Done")+'</button></div><div class="th">'+thumbs(c,3)+'</div>'+
+    '<div class="small mute">Came off</div><div class="row cof">'+(bef.length?chips(bef,s.off||[],"off"):'<span class="mute small">nobody on yet</span>')+'</div><div class="small mute">Came on</div><div class="row con">'+chips(bench,s.on||[],"sel")+'<input type="number" class="more" placeholder="other #" style="width:90px"></div></div>'}).join("")+
+  '<h3>Who is on the ice now (end of list)</h3><div>'+st.final.map(function(n){return'<span class="chip sel">'+n+"</span>"}).join(" ")+"</div>"};
+BIND.changes=function(){
+  document.querySelectorAll("[data-go]").forEach(function(b){b.onclick=function(){seek(+b.dataset.go-3)}});
+  $("nxt")&&($("nxt").onclick=function(){for(var i=0;i<CH.length;i++)if(!(S.chg[i]||{}).done){seek(CH[i].t0-3);var el=document.querySelector('.item[data-i="'+i+'"]');el&&el.scrollIntoView({block:"center"});V.play();return}});
+  document.querySelectorAll("#pane .item[data-i]").forEach(function(it){var i=+it.dataset.i;
+    function st(){return S.chg[i]=S.chg[i]||{off:[],on:[]}}
+    it.querySelectorAll(".cof .chip").forEach(function(c){c.onclick=function(){var s=st(),k=s.off.indexOf(c.dataset.n);if(k>=0)s.off.splice(k,1);else s.off.push(c.dataset.n);save();render()}});
+    it.querySelectorAll(".con .chip").forEach(function(c){c.onclick=function(){var s=st(),k=s.on.indexOf(c.dataset.n);if(k>=0)s.on.splice(k,1);else s.on.push(c.dataset.n);save();render()}});
+    it.querySelector(".more").onchange=function(e){var n=e.target.value.replace(/\D/g,"").slice(0,3);if(n){var s=st();if(s.on.indexOf(n)<0)s.on.push(n);if(S.extra.indexOf(n)<0&&!rosterNums().some(function(p){return p.n===n}))S.extra.push(n);save();render()}};
+    it.querySelector(".dn").onclick=function(){var s=st();s.done=!s.done;save();render()}})};
+/* stoppages */
+PANES.stops=function(){var sp=DATA.stops||[];return'<p class="mute small">Found from the scoreboard clock stopping. Delete wrong ones, or add one: tap Stop now when play stops and Restart now when it starts.</p><div class="row"><button id="sNow">'+(S.pend===null?"Stop now":"Restart now")+'</button>'+(S.pend!==null?'<span class="mute small">stop marked at '+ms(S.pend)+'</span>':"")+'</div>'+
+  sp.map(function(s,i){var d=S.stopsDel[i];return'<div class="item row'+(d?" done":"")+'"><b>'+ms(s[0])+" to "+ms(s[1])+'</b><span class="mute small">'+Math.round(s[1]-s[0])+' s</span><button class="link" data-go="'+s[0]+'">Go</button><span style="flex:1"></span><button data-d="'+i+'">'+(d?"Restore":"Delete")+"</button></div>"}).join("")+
+  S.stopsAdd.map(function(s,i){return'<div class="item row"><b>'+ms(s[0])+" to "+ms(s[1])+'</b><span class="mute small">added by you</span><button class="link" data-go="'+s[0]+'">Go</button><span style="flex:1"></span><button data-a="'+i+'">Delete</button></div>'}).join("")};
+BIND.stops=function(){document.querySelectorAll("[data-go]").forEach(function(b){b.onclick=function(){seek(+b.dataset.go-2)}});
+  document.querySelectorAll("[data-d]").forEach(function(b){b.onclick=function(){S.stopsDel[b.dataset.d]=!S.stopsDel[b.dataset.d];save();render()}});
+  document.querySelectorAll("[data-a]").forEach(function(b){b.onclick=function(){S.stopsAdd.splice(+b.dataset.a,1);save();render()}});
+  $("sNow").onclick=function(){var t=Math.round(now()*10)/10;if(S.pend===null)S.pend=t;else{if(t>S.pend)S.stopsAdd.push([S.pend,t]);S.pend=null}save();render()}};
+/* faceoffs */
+function zoneOf(f){if(f.zone==="N")return"NZ";return f.side===atkOf(perOf(f.t))?"OZ":"DZ"}
+PANES.faceoffs=function(){var F=DATA.faceoffs||[];if(!F.length)return'<p class="mute">No faceoffs found. This needs the scoreboard clock.</p>';
+  var tot={OZ:[0,0],NZ:[0,0],DZ:[0,0]},lines=[];F.forEach(function(f,i){var r=S.fo[i];if((r==="W"||r==="L")&&f.zone){var z=zoneOf(f);tot[z][r==="W"?0:1]++;var rs=atkOf(perOf(f.t))==="R",u=rs?f.u:1-f.u,v=rs?f.v:1-f.v,t=f.t+(S.off||0);if(t>=0)lines.push(hms(t)+"|Faceoff: "+z+" "+(r==="W"?"Win":"Loss")+"|"+(S.fon[i]||"")+"|"+u+","+v.toFixed(3)+","+perOf(f.t)+",f")}});
+  var all=[0,0];var tb="<table><tr><th>Zone</th><th>Won</th><th>Lost</th><th>Win %</th></tr>"+["OZ","NZ","DZ"].map(function(z){var w=tot[z][0],l=tot[z][1];all[0]+=w;all[1]+=l;return"<tr><td>"+z+"</td><td>"+w+"</td><td>"+l+"</td><td>"+(w+l?Math.round(100*w/(w+l))+"%":"-")+"</td></tr>"}).join("")+"<tr><td><b>All</b></td><td>"+all[0]+"</td><td>"+all[1]+"</td><td>"+(all[0]+all[1]?Math.round(100*all[0]/(all[0]+all[1]))+"%":"-")+"</td></tr></table>";
+  return'<p class="mute small">Spot and zone are found from where the skaters bunched at the restart. Tap Win or Loss. Set the attack direction in Periods first.</p>'+F.map(function(f,i){var r=S.fo[i]||"";return'<div class="item row" data-i="'+i+'"><b>'+ms(f.t)+'</b><button class="link" data-go="'+f.t+'">Go</button><span>P'+perOf(f.t)+' · <b>'+(f.zone?zoneOf(f):"?")+'</b></span>'+(f.flag?'<span class="pill" style="color:var(--warn)">check: '+esc(f.flag)+"</span>":"")+'<span style="flex:1"></span>'+["W","L","x"].map(function(k){return'<button class="fob'+(r===k?" on":"")+'" data-k="'+k+'">'+(k==="W"?"Win":k==="L"?"Loss":"Skip")+"</button>"}).join("")+'<input type="text" class="fon" placeholder="#" value="'+(S.fon[i]||"")+'" style="width:56px"></div>'}).join("")+"<h3>Win percent by zone</h3>"+tb+'<h3>Lines for Kings HUDL (Game analysis box)</h3><textarea readonly id="foT">'+lines.join("\n")+'</textarea><button id="foC">Copy</button>'};
+BIND.faceoffs=function(){document.querySelectorAll("[data-go]").forEach(function(b){b.onclick=function(){seek(+b.dataset.go-2)}});
+  document.querySelectorAll("#pane .item[data-i]").forEach(function(it){var i=it.dataset.i;it.querySelectorAll(".fob").forEach(function(b){b.onclick=function(){S.fo[i]=b.dataset.k;save();render()}});it.querySelector(".fon").onchange=function(e){S.fon[i]=e.target.value.replace(/\D/g,"").slice(0,3);save();render()}});
+  $("foC")&&($("foC").onclick=function(){$("foT").select();try{document.execCommand("copy")}catch(e){}})};
+/* shots */
+PANES.shots=function(){return'<p class="mute small">Shots are not found automatically yet. Press S (Kings) or D (other team) when you see a shot, or use the buttons. Add the shooter\'s number if you know it.</p><div class="row"><button id="shK" class="pri">Kings shot (S)</button><button id="shO">Their shot (D)</button></div>'+
+  S.shots.map(function(s,i){return'<div class="item row"><b>'+ms(s.t)+'</b><button class="link" data-go="'+s.t+'">Go</button><span class="pill">'+(s.team==="K"?"Kings":"Other")+'</span><input type="text" class="sn" data-i="'+i+'" placeholder="#" value="'+esc(s.n)+'" style="width:60px"><span style="flex:1"></span><button data-x="'+i+'">Delete</button></div>'}).join("")+'<h3>Lines for Kings HUDL (Game analysis box)</h3><textarea readonly id="shT">'+S.shots.map(function(s){return hms(Math.max(0,s.t+(S.off||0)))+"|"+(s.team==="K"?"For":"Against")+": Shot on goal|"+(s.team==="K"?s.n:"")+"|,,"+perOf(s.t)+",f"}).join("\n")+'</textarea>'};
+BIND.shots=function(){$("shK").onclick=function(){addShot("K")};$("shO").onclick=function(){addShot("O")};
+  document.querySelectorAll("[data-go]").forEach(function(b){b.onclick=function(){seek(+b.dataset.go-2)}});
+  document.querySelectorAll("[data-x]").forEach(function(b){b.onclick=function(){S.shots.splice(+b.dataset.x,1);save();render()}});
+  document.querySelectorAll(".sn").forEach(function(i){i.onchange=function(){S.shots[+i.dataset.i].n=i.value.replace(/\D/g,"").slice(0,3);save()}})};
+/* penalties */
+function penRuns(){var o=[];[["pen_home",true],["pen_visitor",false]].forEach(function(k){var runs=B[k[0]]||[];[0,1].forEach(function(r){(runs[r]||[]).forEach(function(a){o.push({t:a[0],end:a[1],h:k[1]})})})});return o.sort(function(a,b){return a.t-b.t})}
+PANES.pens=function(){var pr=penRuns();return'<p class="mute small">Penalty boxes lighting up on the scoreboard (not proven on a real penalty yet, so check each). Add your own with the buttons.</p><div class="row"><button id="pK">Kings penalty now</button><button id="pO">Their penalty now</button></div>'+
+  pr.map(function(p){return'<div class="item row"><b>'+ms(p.t)+" to "+ms(p.end)+'</b><button class="link" data-go="'+p.t+'">Go</button><span class="pill" style="color:var(--warn)">scoreboard, check</span></div>'}).join("")+
+  S.pens.map(function(p,i){return'<div class="item row"><b>'+ms(p.t)+'</b><button class="link" data-go="'+p.t+'">Go</button><span class="pill">'+(p.k?"Kings":"Other")+'</span><span style="flex:1"></span><button data-x="'+i+'">Delete</button></div>'}).join("")+'<h3>Lines for Kings HUDL (Game analysis box)</h3><textarea readonly id="pT">'+S.pens.map(function(p){return hms(Math.max(0,p.t+(S.off||0)))+"|"+(p.k?"Penalty":"Away Penalty")+"||marked in review"}).join("\n")+'</textarea>'};
+BIND.pens=function(){$("pK").onclick=function(){S.pens.push({t:Math.round(now()*10)/10,k:true});save();render()};$("pO").onclick=function(){S.pens.push({t:Math.round(now()*10)/10,k:false});save();render()};
+  document.querySelectorAll("[data-go]").forEach(function(b){b.onclick=function(){seek(+b.dataset.go-3)}});document.querySelectorAll("[data-x]").forEach(function(b){b.onclick=function(){S.pens.splice(+b.dataset.x,1);save();render()}})};
+/* shifts */
+function shiftLines(sh){var ev=[];Object.keys(sh).forEach(function(n){sh[n].shifts.forEach(function(s){ev.push([s[0]!==undefined?s[0]:s.a,"on|"+n]);ev.push([s.b,"off|"+n])})});if(!ev.length)return"";var f0=Math.min.apply(null,ev.map(function(e){return e[0]}));ev.push([f0-0.1,"go|"]);stops().forEach(function(q){if(q[1]<=f0)return;ev.push([Math.max(q[0],f0+0.05),"stop|"]);ev.push([q[1],"go|"])});
+  return ev.map(function(e){return[Math.max(0,e[0]+(S.off||0)),e[1]]}).sort(function(a,b){return a[0]-b[0]}).map(function(e){return e[0].toFixed(1)+"|"+e[1]}).join("\n")}
+PANES.shifts=function(){var sh=shifts(),ns=Object.keys(sh).sort(function(a,b){return sh[b].toi-sh[a].toi});
+  return'<div class="row"><label>Source <select id="src"><option value="tracks"'+(S.src==="tracks"?" selected":"")+'>Tracks you ticked</option><option value="changes"'+(S.src==="changes"?" selected":"")+'>Line changes you confirmed</option></select></label></div><p class="mute small">Ice time is game time, with stoppages taken out.</p>'+
+  (ns.length?"<table><tr><th>Player</th><th>Shifts</th><th>Ice time</th><th>Avg shift</th></tr>"+ns.map(function(n){var q=sh[n];return'<tr class="cl" data-n="'+n+'"><td>'+esc(nameOf(n))+"</td><td>"+q.shifts.length+"</td><td><b>"+ms(q.toi)+"</b></td><td>"+ms(q.toi/Math.max(1,q.shifts.length))+"</td></tr>"}).join("")+"</table>":'<p class="mute">Nothing yet. Tick tracks in Heatmaps, or confirm line changes.</p>')+'<h3>Lines for Kings HUDL (Shifts tab box)</h3><textarea readonly id="sT">'+shiftLines(sh)+'</textarea><button id="sC">Copy</button>'};
+BIND.shifts=function(){$("src").onchange=function(){S.src=$("src").value;save();render()};$("sC").onclick=function(){$("sT").select();try{document.execCommand("copy")}catch(e){}};document.querySelectorAll("tr.cl").forEach(function(r){r.onclick=function(){S.pm=r.dataset.n;S.tab="heat";save();render()}})};
+</script>
+<script>
+/* ---- heat maps ---- */
+function rinkDraw(c,w){var x=c.getContext("2d"),W=c.width,H=c.height;x.clearRect(0,0,W,H);x.fillStyle="#fff";x.fillRect(0,0,W,H);
+  function px(u){return u*W}function py(v){return v*H}var red="#d6403a",blue="#2f5fc4";
+  x.lineWidth=2;x.strokeStyle="#333";x.beginPath();var r=0.12*H;x.moveTo(r,2);x.lineTo(W-r,2);x.arcTo(W-2,2,W-2,r,r);x.lineTo(W-2,H-r);x.arcTo(W-2,H-2,W-r,H-2,r);x.lineTo(r,H-2);x.arcTo(2,H-2,2,H-r,r);x.lineTo(2,r);x.arcTo(2,2,r,2,r);x.stroke();
+  function vl(u,col,wd){x.strokeStyle=col;x.lineWidth=wd;x.beginPath();x.moveTo(px(u),3);x.lineTo(px(u),H-3);x.stroke()}
+  vl(0.5,red,3);vl(0.375,blue,5);vl(0.625,blue,5);vl(0.055,red,1.5);vl(0.945,red,1.5);
+  x.strokeStyle=red;x.lineWidth=1.5;[[0.155,0.24],[0.155,0.76],[0.845,0.24],[0.845,0.76]].forEach(function(d){x.beginPath();x.ellipse(px(d[0]),py(d[1]),0.075*W,0.176*H,0,0,7);x.stroke();x.fillStyle=red;x.beginPath();x.arc(px(d[0]),py(d[1]),4,0,7);x.fill()});
+  [[0.4,0.24],[0.4,0.76],[0.6,0.24],[0.6,0.76],[0.5,0.5]].forEach(function(d){x.fillStyle=d[0]===0.5?blue:red;x.beginPath();x.arc(px(d[0]),py(d[1]),4,0,7);x.fill()});
+  x.strokeStyle=blue;x.beginPath();x.ellipse(px(0.5),py(0.5),0.075*W,0.176*H,0,0,7);x.stroke();
+  [[0.055,1],[0.945,1]].forEach(function(d){x.strokeStyle=red;x.strokeRect(px(d[0])-(d[0]<0.5?0:14),py(0.5)-14,14,28)})}
+function pal(v){var s=[[0,[46,70,200]],[.25,[40,170,230]],[.45,[60,200,90]],[.65,[240,230,50]],[.85,[250,140,40]],[1,[225,40,30]]];for(var i=1;i<s.length;i++)if(v<=s[i][0]){var a=s[i-1],b=s[i],f=(v-a[0])/(b[0]-a[0]);return[0,1,2].map(function(k){return Math.round(a[1][k]+(b[1][k]-a[1][k])*f)})}return s[5][1]}
+function heatDraw(c,pts){var gw=140,gh=60,g=new Float32Array(gw*gh);pts.forEach(function(p){var cx=p[1]*gw,cy=p[2]*gh;for(var dy=-4;dy<=4;dy++)for(var dx=-4;dx<=4;dx++){var X=Math.round(cx+dx),Y=Math.round(cy+dy);if(X<0||Y<0||X>=gw||Y>=gh)continue;g[Y*gw+X]+=Math.exp(-(dx*dx+dy*dy)/6)}});
+  var mx=Math.max.apply(null,g)||1,o=document.createElement("canvas");o.width=gw;o.height=gh;var ox=o.getContext("2d"),im=ox.createImageData(gw,gh);
+  for(var i=0;i<g.length;i++){var v=g[i]/mx;if(v<0.06){im.data[i*4+3]=0;continue}var q=pal(v);im.data[i*4]=q[0];im.data[i*4+1]=q[1];im.data[i*4+2]=q[2];im.data[i*4+3]=Math.min(235,60+v*190)}
+  ox.putImageData(im,0,0);var x=c.getContext("2d");x.imageSmoothingEnabled=true;x.imageSmoothingQuality="high";x.drawImage(o,0,0,c.width,c.height)}
+function pathDraw(c,seg){var x=c.getContext("2d"),W=c.width,H=c.height;x.lineWidth=2.2;x.strokeStyle="rgba(20,20,20,.75)";x.lineJoin="round";seg.forEach(function(s){x.beginPath();s.forEach(function(p,i){if(i)x.lineTo(p[1]*W,p[2]*H);else x.moveTo(p[1]*W,p[2]*H)});x.stroke()})}
+function flip(p){var a=atkOf(perOf(p[0]));return a==="R"?p:[p[0],1-p[1],1-p[2]]}
+function playerPts(n,range,live){var q=ST&&ST[n];if(!q)return{pts:[],seg:[]};var use=range==="all"?q.shifts:[q.shifts[+range]].filter(Boolean),pts=[],seg=[];
+  use.forEach(function(s){var cur=[];s.pts.forEach(function(p){if(live&&inStop(p[0])){if(cur.length>1)seg.push(cur);cur=[];return}var f=flip(p);pts.push(f);if(cur.length&&(p[0]-cur[cur.length-1][0]>6||Math.hypot(f[1]-cur[cur.length-1][1],f[2]-cur[cur.length-1][2])>0.3*(p[0]-cur[cur.length-1][0])+0.05)){if(cur.length>1)seg.push(cur);cur=[]}cur.push(f)});if(cur.length>1)seg.push(cur)});return{pts:pts,seg:seg}}
+function teamPts(team,live){var pts=[];TL.forEach(function(t){if(S.notk[t.id])return;if(team==="K"?!kOK(t):!oOK(t))return;t.pts.forEach(function(p){if(live&&inStop(p[0]))return;pts.push(flip(p))})});return pts}
+function feet(seg){var d=0;seg.forEach(function(s){for(var i=1;i<s.length;i++)d+=Math.hypot((s[i][1]-s[i-1][1])*200,(s[i][2]-s[i-1][2])*85)});return Math.round(d)}
+PANES.heat=function(){
+  var ns=Object.keys(ST||{}).sort(function(a,b){return a-b});if(S.mode==="one"&&(!S.pm||!(S.pm in (ST||{}))))S.pm=ns[0]||S.pm;
+  var q=ST&&ST[S.pm],opts=(q?q.shifts:[]).map(function(s,i){return'<option value="'+i+'"'+(S.range==String(i)?" selected":"")+'>Shift '+(i+1)+" ("+ms(s.a)+", "+ms(s.clock)+")</option>"}).join("");
+  var all=rosterNums().map(function(p){return p.n});ns.forEach(function(n){if(all.indexOf(n)<0)all.push(n)});all.sort(function(a,b){return a-b});
+  return'<div class="row"><select id="hTeam"><option value="K"'+(S.team==="K"?" selected":"")+'>Kings</option><option value="O"'+(S.team==="O"?" selected":"")+'>Other team</option></select><select id="hMode"><option value="one"'+(S.mode==="one"?" selected":"")+'>One player</option><option value="team"'+(S.mode==="team"?" selected":"")+'>Whole team</option></select>'+
+  (S.mode==="one"?'<select id="hPl">'+all.map(function(n){return'<option value="'+n+'"'+(String(S.pm)===String(n)?" selected":"")+">"+esc(nameOf(n))+(ST&&ST[n]?"":" (no tracks yet)")+"</option>"}).join("")+'</select><select id="hRange"><option value="all">Whole video</option>'+opts+"</select>":"")+
+  '<label><input type="checkbox" id="hLive" '+(S.live?"checked":"")+'> live play only</label><label><input type="checkbox" id="hPath" '+(S.path?"checked":"")+'> show path</label></div>'+
+  '<div style="margin-top:8px"><b id="hT"></b><canvas id="rink" width="1200" height="510"></canvas><div class="mute small" id="hN"></div></div><div class="row" style="margin-top:8px"><button id="hDl">Download image</button></div>'+
+  (S.mode==="one"?'<h3>Which tracks are this player?</h3><p class="mute small">The app follows players in pieces (tracks). Tick every track that shows '+esc(nameOf(S.pm||"?"))+'. Green dashed ones were labelled automatically from your ticks. Ones given to someone else are dimmed.</p><div class="tk" id="tk">'+trackCards()+"</div>":"")};
+function trackCards(){var list=TL.filter(function(t){return(S.team==="K"?kOK(t):oOK(t))}).sort(function(a,b){return a.t0-b.t0});if(!S.ks.length)return'<span class="mute small">Choose your team colours in the Roster tab first.</span>';
+  return list.map(function(t){var sd=S.seed[t.id],lab=RES&&RES.lab[t.id],mine=sd&&sd.n===String(S.pm)&&sd.w>=1,other=sd&&sd.n!==String(S.pm),auto=!sd&&lab&&String(lab.n)===String(S.pm)&&lab.conf>=0.5,oauto=!sd&&lab&&String(lab.n)!==String(S.pm);
+    return'<div class="tkc '+(mine?"mine":other||oauto?"other":auto?"auto":"")+'" data-id="'+t.id+'">'+(t.th||[]).slice(0,2).map(function(s){return'<img src="'+s+'">'}).join("")+'<div>'+ms(t.t0)+"-"+ms(t.t1)+" ("+Math.round(t.dur)+" s)"+(mine?" ✓":auto?" auto":"")+"</div></div>"}).join("")||'<span class="mute small">No tracks for those colours.</span>'}
+BIND.heat=function(){
+  function paint(){var c=$("rink");if(!c)return;rinkDraw(c);var pts,seg=[],t,note;
+    if(S.mode==="team"){pts=teamPts(S.team,S.live);t=(S.team==="K"?"Kings":"Other team")+" · whole team";note=pts.length+" tracked positions"}
+    else{var r=playerPts(S.pm,S.range,S.live);pts=r.pts;seg=r.seg;var q=ST&&ST[S.pm];t=nameOf(S.pm||"?")+(q?" · "+q.shifts.length+" shifts, "+ms(q.toi)+" on the ice":"");note=pts.length?pts.length+" s tracked skating, about "+feet(seg)+" ft"+(S.live?", live play only":"")+". Rink diagram is approximate.":"No tracks ticked for this player yet."}
+    if(pts.length)heatDraw(c,pts);if(S.path&&seg.length)pathDraw(c,seg);$("hT").textContent=t;$("hN").textContent=note}
+  paint();
+  $("hTeam").onchange=function(){S.team=$("hTeam").value;save();render()};$("hMode").onchange=function(){S.mode=$("hMode").value;save();render()};
+  $("hLive").onchange=function(){S.live=$("hLive").checked;save();render()};$("hPath").onchange=function(){S.path=$("hPath").checked;save();paint()};
+  $("hPl")&&($("hPl").onchange=function(){S.pm=$("hPl").value;S.range="all";save();render()});$("hRange")&&($("hRange").onchange=function(){S.range=$("hRange").value;save();paint()});
+  $("hDl").onclick=function(){var a=document.createElement("a");a.href=$("rink").toDataURL("image/png");a.download="heatmap.png";a.click()};
+  document.querySelectorAll(".tkc").forEach(function(c){c.onclick=function(){var id=c.dataset.id,sd=S.seed[id];if(sd&&sd.n===String(S.pm)&&sd.w>=1)delete S.seed[id];else S.seed[id]={n:String(S.pm),w:1};save();render()}})};
+/* help */
+PANES.help=function(){return'<b>How to use this</b><ol class="small"><li><b>Choose the game video</b> (the file you analysed). It stays on your computer.</li><li>In <b>Roster</b>, tick your team colours and add names.</li><li><b>Periods</b>: say which way the Kings attack.</li><li><b>Line changes</b>: work down the queue. Tap who came off and who came on. Press Next to check to jump there.</li><li><b>Faceoffs</b>: tap Win or Loss.</li><li><b>Heatmaps</b>: pick a player, tick the tracks that show them. The more you tick, the more it labels for you.</li><li><b>Shifts</b>: copy the lines into Kings HUDL.</li></ol><p class="small mute">Everything saves in this browser as you go. Use Save review file to keep a copy or move to another computer.</p><p class="small mute">Not automatic yet: shots (press S), penalties, and anything about who has the puck.</p>'};
+/* save / export */
+function dl(name,text,type){var b=new Blob([text],{type:type||"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=name;a.click()}
+$("bSave").onclick=function(){dl("review_"+(DATA.meta.video||"game").replace(/\.[^.]+$/,"")+".json",JSON.stringify(S))};
+$("bLoad").onclick=function(){$("fLoad").click()};
+$("fLoad").onchange=function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var o=JSON.parse(r.result);for(var k in o)S[k]=o[k];save();render()}catch(x){alert("That file could not be read.")}};r.readAsText(f)};
+$("bJson").onclick=function(){solve();trackStats();var sh=shifts(),out={game:DATA.meta.video,players:{},faceoffs:(DATA.faceoffs||[]).map(function(f,i){return{t:f.t,zone:f.zone?zoneOf(f):null,result:S.fo[i]||null,number:S.fon[i]||null}}),shots:S.shots,penalties:S.pens,stoppages:stops(),state:S};
+  Object.keys(sh).forEach(function(n){out.players[n]={name:nameOf(n),toi:Math.round(sh[n].toi),shifts:sh[n].shifts.map(function(s){return{a:Math.round(s.a),b:Math.round(s.b),clock:Math.round(s.clock)}})}});dl("kings_review_export.json",JSON.stringify(out))};
+$("bCsv").onclick=function(){var sh=shifts(),rows=["player,shift,start_video_s,end_video_s,game_clock_s"];Object.keys(sh).forEach(function(n){sh[n].shifts.forEach(function(s,i){rows.push([nameOf(n).replace(/,/g," "),i+1,Math.round(s.a),Math.round(s.b),Math.round(s.clock)].join(","))})});dl("shifts.csv",rows.join("\n"),"text/csv")};
+window.addEventListener("resize",drawTL);
+render();
+</script></body></html>

@@ -376,12 +376,17 @@ def build(video, outdir, rink, k=4, log=print, read_nums=False, min_len=3.0, thu
     rp = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "roster.json")
     if os.path.exists(rp):
         roster = json.load(open(rp)).get("roster", [])
-    page = os.path.join(outdir, "review.html")
     here = os.path.dirname(os.path.abspath(__file__))
-    tpl = open(os.path.join(here, "review_template.html")).read()
     ident = open(os.path.join(here, "identity.js")).read()
+    page = os.path.join(outdir, "review.html")
+    use = "app_template.html" if TLs else "review_template.html"
+    tpl = open(os.path.join(here, use)).read()
     html = tpl.replace("/*IDENTITY*/", ident).replace("/*DATA*/null", json.dumps(data)).replace("/*ROSTER*/[]", json.dumps(roster))
     open(page, "w").write(html)
+    if TLs:  # the older page, in case it is wanted
+        old_tpl = open(os.path.join(here, "review_template.html")).read()
+        open(os.path.join(outdir, "review_classic.html"), "w").write(
+            old_tpl.replace("/*IDENTITY*/", ident).replace("/*DATA*/null", json.dumps(data)).replace("/*ROSTER*/[]", json.dumps(roster)))
     log("Review page written: " + page)
     return page
 
