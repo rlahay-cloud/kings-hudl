@@ -15,3 +15,6 @@
 0:09:06|Penalty||,,1,f
 0:09:54|Faceoff: OZ Win|17|,,1,f
 0:10:04|For: Goal|10 a18 a17 i14 i88 i17 i18|0.769,0.384,1,f
+0:10:35|Faceoff: NZ Win|17|,,1,f
+0:13:13|Against: Shot on goal|2|0.206,0.270,1,f
+0:13:33|Faceoff: DZ Win|97|,,1,f
