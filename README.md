@@ -94,3 +94,7 @@ Games that have no Streamn file still show up: once a played game has review mar
 ## Game analyzer (version 1, early)
 
 The `analyzer` folder holds a helper that watches a wide panorama game video, finds and follows the skaters, and makes a review page where you type each jersey number once. It then writes shifts lines you paste into Coach’s Corner, Shifts, under **Add shifts from the game analyzer**. It runs on a free Google Colab graphics card, not on your computer, and it cannot read jersey numbers or find shots yet. See `analyzer/README.md`.
+
+## Shifts: one tap line changes
+
+On the Shifts tab, tap **L1 on**, **L2 on**, **L3 on** or **D1 on**, **D2 on**, **D3 on** to put a whole line or pair on the ice. The players of that kind who were on come off in the same tap. Undo last tap takes the whole change back. Set up the lines once by dragging numbers into the grid.

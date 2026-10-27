@@ -56,6 +56,7 @@ tbody tr.click { cursor: pointer; } tbody tr.click:hover { background: var(--pan
 .pcard .nm { font-weight: 600; margin: 2px 0 8px; overflow-wrap: anywhere; }
 .shfv { background: var(--bg); padding-bottom: 4px; }
 .shfl .shfrow { display: grid; grid-template-columns: 40px repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 8px; align-items: stretch; } .shfl .shfrow.d { grid-template-columns: 40px repeat(2, minmax(0, 1fr)); }
+button.lnb { background: none; border: 1px solid var(--line); border-radius: 6px; cursor: pointer; padding: 6px 8px; min-width: 52px; color: var(--accent); }
 .shfrl { align-self: center; color: var(--muted); font-size: 12px; font-weight: 700; }
 .shfslot { min-height: 68px; border: 2px dashed var(--line); border-radius: 12px; display: flex; align-items: stretch; justify-content: center; color: var(--muted); font-size: 11px; }
 .shfslot.e { align-items: center; } .shfslot .shfp { width: 100%; min-height: 64px; }
@@ -1897,9 +1898,9 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       L.F.concat(L.D).forEach(function (n) { if (n !== null) placed[n] = 1; });
       var slot = function (key, n, ph) { return '<div class="shfslot' + (n === null ? " e" : "") + '" data-slot="' + key + '">' + (n === null ? ph : chipHtml(n, s)) + "</div>"; };
       var h = '<div class="shfh">Forwards</div>';
-      for (var r = 0; r < 3; r++) h += '<div class="shfrow"><span class="shfrl">L' + (r + 1) + "</span>" + [0, 1, 2].map(function (c) { return slot("F" + (r * 3 + c), L.F[r * 3 + c], ["LW", "C", "RW"][c]); }).join("") + "</div>";
+      for (var r = 0; r < 3; r++) h += '<div class="shfrow"><button class="shfrl lnb" data-line="F' + r + '" title="Put this whole line on the ice">L' + (r + 1) + " on</button>" + [0, 1, 2].map(function (c) { return slot("F" + (r * 3 + c), L.F[r * 3 + c], ["LW", "C", "RW"][c]); }).join("") + "</div>";
       h += '<div class="shfh">Defence</div>';
-      for (var q = 0; q < 3; q++) h += '<div class="shfrow d"><span class="shfrl">D' + (q + 1) + "</span>" + [0, 1].map(function (c) { return slot("D" + (q * 2 + c), L.D[q * 2 + c], c ? "RD" : "LD"); }).join("") + "</div>";
+      for (var q = 0; q < 3; q++) h += '<div class="shfrow d"><button class="shfrl lnb" data-line="D' + q + '" title="Put this pair on the ice">D' + (q + 1) + " on</button>" + [0, 1].map(function (c) { return slot("D" + (q * 2 + c), L.D[q * 2 + c], c ? "RD" : "LD"); }).join("") + "</div>";
       var bench = list.filter(function (n) { return !placed[n]; });
       h += '<div class="shfh">Bench</div><div class="shfbench" data-slot="B">' + (bench.length ? bench.map(function (n) { return chipHtml(n, s); }).join("") : '<span class="note" style="margin:0">Empty. Drag a number here to take it off the lines.</span>') + "</div>";
       $("shfGrid").innerHTML = h;
@@ -1970,7 +1971,21 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       $("shfLast").disabled = !ev.length;
     }
     function refresh() { status(); grid(); results(); }
+    // One tap puts a whole line or pair on: everyone of that kind who is on the ice comes off, the chosen line goes on.
+    function changeLine(code) {
+      var L = curLines(nums()), isD = code[0] === "D", i = +code.slice(1), size = isD ? 2 : 3;
+      var target = (isD ? L.D : L.F).slice(i * size, i * size + size).filter(function (x) { return x !== null; });
+      if (!target.length) return;
+      var on = onNow().on, t = Math.round(now() * 10) / 10, gp = Date.now(), any = false;
+      Object.keys(on).map(Number).forEach(function (n) {
+        if ((L.D.indexOf(n) >= 0 || posGroup(D.pos[n]) === "D") !== isD) return;
+        if (target.indexOf(n) < 0) { ev.push({t: t, k: "off", n: n, grp: gp}); any = true; }
+      });
+      target.forEach(function (n) { if (!on[n]) { ev.push({t: t, k: "on", n: n, grp: gp}); any = true; } });
+      if (any) { persist(); sig = ""; refresh(); }
+    }
     $("shfGrid").addEventListener("click", function (e) {
+      var lb = e.target.closest("button[data-line]"); if (lb && ready) { changeLine(lb.getAttribute("data-line")); return; }
       var b = e.target.closest("button[data-n]"); if (!b || !ready || suppress) return;
       var n = +b.getAttribute("data-n"); add(onNow().on[n] ? "off" : "on", n);
     });
