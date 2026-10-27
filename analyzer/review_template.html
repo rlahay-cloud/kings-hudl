@@ -57,6 +57,25 @@ table{border-collapse:collapse;width:100%}td,th{padding:4px 8px;border-bottom:1p
   <textarea id="evout" readonly></textarea>
   <div class="bar" style="margin-top:8px"><button id="evcopy">Copy</button><span class="mute" id="evmsg"></span></div>
 </div></div>
+<h2>5. Faceoffs with zone</h2>
+<div class="card" id="fo5">
+  <p class="mute">Found from the scoreboard clock starting again. Tap Win, Loss or Skip. The spot on the ice and the zone are worked out from the blue lines. Say which way the Kings attack in each period, since that decides which end is the offensive zone.</p>
+  <div id="atk" class="bar"></div>
+  <div id="folist"></div>
+  <h3 style="font-size:15px;margin:12px 0 4px">Faceoff win percent by zone</h3><table id="fosum"></table>
+  <textarea id="foout" readonly></textarea>
+  <div class="bar" style="margin-top:8px"><button id="focopy">Copy</button><span class="mute" id="fomsg"></span></div>
+  <p class="mute">Paste into Kings HUDL, Game analysis, "Add goals and penalties from the game analyzer" box.</p>
+</div>
+<h2>6. Line changes and time on ice</h2>
+<div class="card" id="ch6">
+  <p class="mute">Each card is a moment when Kings skaters showed up at or left the bench. Type the jersey numbers that came off and the numbers that came on, separated by commas. The "now on the ice" line is carried forward so you only fix what changed.</p>
+  <div id="chlist"></div>
+  <textarea id="chout" readonly></textarea>
+  <div class="bar" style="margin-top:8px"><button id="chcopy">Copy</button><span class="mute" id="chmsg"></span></div>
+  <h3 style="font-size:15px;margin:12px 0 4px">Time on ice</h3><table id="chsum"></table>
+  <p class="mute">Paste into Kings HUDL, Shifts tab, "Add shifts from the game analyzer" box.</p>
+</div>
 <div id="zoom"><img alt=""></div>
 
 <script>
@@ -147,5 +166,58 @@ function drawBoard(){
   $("evout").value=e.map(function(x){return x.line}).join("\n")}
 $("side").onchange=drawBoard;$("off").addEventListener("input",drawBoard);
 $("evcopy").onclick=function(){var t=$("evout");t.select();try{document.execCommand("copy")}catch(e){}$("evmsg").textContent="Copied"};
-drawGroups();drawRows();exp();drawBoard();
+
+S.fo=S.fo||{};S.atk=S.atk||{};S.chg=S.chg||{};S.fon=S.fon||{};
+function perOf(t){var P=(DATA.board&&DATA.board.periods)||[],n=1;P.forEach(function(p,i){if(t>=p.start-2)n=i+1});return n}
+function zoneOf(f){if(f.zone==="N")return "NZ";var r=(S.atk[perOf(f.t)]||"R");return (f.side===r)?"OZ":"DZ"}
+function drawFO(){
+  var F=DATA.faceoffs||[];var per={};F.forEach(function(f){per[perOf(f.t)]=1});
+  $("atk").innerHTML=Object.keys(per).map(function(p){var v=S.atk[p]||"R";return'<label>Period '+p+', Kings attack <select data-p="'+p+'" class="atksel" style="width:auto"><option value="R"'+(v==="R"?" selected":"")+'>right side of picture</option><option value="L"'+(v==="L"?" selected":"")+'>left side of picture</option></select></label>'}).join(" ");
+  document.querySelectorAll(".atksel").forEach(function(e){e.onchange=function(){S.atk[e.dataset.p]=e.value;save();drawFO()}});
+  $("folist").innerHTML=F.length?F.map(function(f,i){var r=S.fo[i]||"";var z=f.zone?zoneOf(f):"?";
+    return'<div class="row" data-i="'+i+'"><div class="meta"><b>'+ms(f.t)+'</b> video time, period '+perOf(f.t)+', zone <b>'+z+'</b>'+(f.flag?' <span class="pill" style="color:var(--bad)">check: '+f.flag+'</span>':"")+'</div>'+
+    ["W","L","x"].map(function(k){return'<button class="fob '+(r===k?"":"alt")+'" data-k="'+k+'">'+(k==="W"?"Win":k==="L"?"Loss":"Skip")+"</button>"}).join("")+
+    '<input type="text" class="num focn" placeholder="#" value="'+(S.fon[i]||"")+'"></div>'}).join(""):'<p class="mute">No faceoffs found. This needs the scoreboard clock readings.</p>';
+  document.querySelectorAll("#folist .row").forEach(function(row){var i=row.dataset.i;
+    row.querySelectorAll(".fob").forEach(function(b){b.onclick=function(){S.fo[i]=b.dataset.k;save();drawFO()}});
+    row.querySelector(".focn").oninput=function(e){S.fon[i]=e.target.value.replace(/\D/g,"").slice(0,3);save();expFO()}});
+  expFO()}
+function expFO(){
+  var F=DATA.faceoffs||[],off=parseFloat($("off").value)||0,lines=[],tot={OZ:[0,0],NZ:[0,0],DZ:[0,0]};
+  F.forEach(function(f,i){var r=S.fo[i];if((r!=="W"&&r!=="L")||!f.zone)return;var z=zoneOf(f),t=f.t+off;if(t<0)return;
+    var rs=(S.atk[perOf(f.t)]||"R")==="R",u=rs?f.u:1-f.u,v=rs?f.v:1-f.v;
+    tot[z][r==="W"?0:1]++;
+    lines.push(hms(t)+"|Faceoff: "+z+" "+(r==="W"?"Win":"Loss")+"|"+(S.fon[i]||"")+"|"+u+","+v.toFixed(3)+","+perOf(f.t)+",f")});
+  $("foout").value=lines.join("\n");
+  var all=[0,0];$("fosum").innerHTML="<tr><th>Zone</th><th>Won</th><th>Lost</th><th>Win %</th></tr>"+["OZ","NZ","DZ"].map(function(z){var w=tot[z][0],l=tot[z][1];all[0]+=w;all[1]+=l;return"<tr><td>"+z+"</td><td>"+w+"</td><td>"+l+"</td><td>"+(w+l?Math.round(100*w/(w+l))+"%":"-")+"</td></tr>"}).join("")+"<tr><td><b>All</b></td><td>"+all[0]+"</td><td>"+all[1]+"</td><td>"+(all[0]+all[1]?Math.round(100*all[0]/(all[0]+all[1]))+"%":"-")+"</td></tr>"}
+$("focopy").onclick=function(){var t=$("foout");t.select();try{document.execCommand("copy")}catch(e){}$("fomsg").textContent="Copied"};
+function nums(v){return(v||"").split(/[ ,]+/).map(function(x){return x.replace(/\D/g,"")}).filter(function(x){return x}).filter(function(x,i,a){return a.indexOf(x)===i})}
+function drawCH(){
+  var C=DATA.changes||[],now=[],h="",ev=[],stint={},tot={};
+  var ks=S.ks.length?S.ks:null;
+  C.forEach(function(c,i){
+    var st=S.chg[i]||{off:null,on:null};
+    var offv=st.off!==null?nums(st.off):[];var onv=st.on!==null?nums(st.on):[];
+    var thumbs=Object.keys(c.thumbs).filter(function(g){return !ks||ks.indexOf(+g)>=0}).map(function(g){return c.thumbs[g].map(function(s){return'<img src="data:image/jpeg;base64,'+s+'" style="height:72px;border-radius:4px;margin:2px">'}).join("")}).join("");
+    h+='<div class="row" data-i="'+i+'"><div class="meta"><b>'+ms(c.t0)+'</b> to '+ms(c.t1)+'<div>'+(thumbs||'<span class="mute">pick your team colours in step 1 to see pictures</span>')+'</div>'+
+      '<div class="mute">Now on the ice before this: '+(now.length?now.join(", "):"nobody entered yet")+'</div></div>'+
+      '<div style="flex:1 1 200px"><input type="text" class="chf" data-k="off" placeholder="came off, e.g. '+(now.slice(0,3).join(", ")||"7, 12")+'" value="'+(st.off||"")+'" style="margin-bottom:4px"><input type="text" class="chf" data-k="on" placeholder="came on, e.g. 9, 14" value="'+(st.on||"")+'"></div></div>';
+    var t=(c.t0+c.t1)/2;
+    offv.forEach(function(n){var k=now.indexOf(n);if(k>=0){now.splice(k,1);ev.push([t,"off|"+n]);if(stint[n]!==undefined){tot[n]=(tot[n]||[0,0]);tot[n][0]+=t-stint[n];tot[n][1]++;delete stint[n]}}});
+    onv.forEach(function(n){if(now.indexOf(n)<0){now.push(n);ev.push([t,"on|"+n]);stint[n]=t}})});
+  $("chlist").innerHTML=h||'<p class="mute">No bench pictures were found. Use step 2 and 3 instead, or run the analysis again.</p>';
+  document.querySelectorAll("#chlist .row").forEach(function(row){var i=row.dataset.i;row.querySelectorAll(".chf").forEach(function(inp){inp.onchange=function(){S.chg[i]=S.chg[i]||{off:null,on:null};S.chg[i][inp.dataset.k]=inp.value;save();drawCH()}})});
+  var off=parseFloat($("off").value)||0;
+  ev=ev.map(function(e){return[e[0]+off,e[1]]});
+  if(ev.length){ev.push([Math.max(0,Math.min.apply(null,ev.map(function(e){return e[0]}))-0.1),"go|"]);
+    var f0=Math.min.apply(null,ev.map(function(e){return e[0]}));
+    if(DATA.stops)DATA.stops.forEach(function(s){if(s[1]+off<=f0)return;ev.push([Math.max(s[0]+off,f0+0.05),"stop|"]);ev.push([s[1]+off,"go|"])})}
+  ev=ev.filter(function(e){return e[0]>=0}).sort(function(a,b){return a[0]-b[0]});
+  $("chout").value=ev.map(function(e){return e[0].toFixed(1)+"|"+e[1]}).join("\n");
+  var rows=Object.keys(tot).sort(function(a,b){return tot[b][0]-tot[a][0]});
+  $("chsum").innerHTML="<tr><th>Number</th><th>Shifts</th><th>Time on ice (video time)</th></tr>"+rows.map(function(n){return"<tr><td>#"+n+"</td><td>"+tot[n][1]+"</td><td>"+mmss(tot[n][0])+"</td></tr>"}).join("")}
+$("chcopy").onclick=function(){var t=$("chout");t.select();try{document.execCommand("copy")}catch(e){}$("chmsg").textContent="Copied"};
+$("off").addEventListener("input",function(){expFO();drawCH()});
+document.addEventListener("click",function(e){if(e.target.closest&&e.target.closest("#groups"))setTimeout(drawCH,50)});
+drawGroups();drawRows();exp();drawBoard();drawFO();drawCH();
 </script></body></html>

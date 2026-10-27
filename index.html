@@ -2503,7 +2503,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       "</div></div>";
     h += '<h2>Review summary</h2><div id="rvSum"></div>' +
       '<h2>Events<small id="rvCount"></small></h2><div class="card" id="rvList"></div>' +
-      '<details class="card" style="margin-top:12px"><summary style="cursor:pointer">Add goals and penalties from the game analyzer</summary><p class="note" style="margin-top:8px">Paste the lines from the analyzer review page. Each line is a time, a type (Goal, Goal against, Penalty or Away Penalty) and a note. They appear in the Events list below, where you can tap a time to watch it, then fix or delete it. Other types are skipped.</p><textarea id="rvImp" rows="5" style="width:100%" placeholder="0:00:48|Goal||Scoreboard changed at 1:00"></textarea><div class="seg" style="margin-top:8px"><button id="rvImpBtn">Add these lines</button></div><p class="note" id="rvImpNote" aria-live="polite"></p></details>' +
+      '<details class="card" style="margin-top:12px"><summary style="cursor:pointer">Add goals and penalties from the game analyzer</summary><p class="note" style="margin-top:8px">Paste the lines from the analyzer review page. Each line is a time, a type (Goal, Goal against, Penalty, Away Penalty, or a Faceoff with its zone) and a note. They appear in the Events list below, where you can tap a time to watch it, then fix or delete it. Other types are skipped.</p><textarea id="rvImp" rows="5" style="width:100%" placeholder="0:00:48|Goal||Scoreboard changed at 1:00"></textarea><div class="seg" style="margin-top:8px"><button id="rvImpBtn">Add these lines</button></div><p class="note" id="rvImpNote" aria-live="polite"></p></details>' +
       '<div class="seg" style="margin-top:12px"><button class="btn" id="rvUndo">Undo last</button><button class="btn" id="rvClear">Delete all of mine for this game</button></div>' +
       '<div class="seg" style="margin-top:12px"><button class="btn" id="rvSend" style="width:100%">Share to Kings HUDL</button></div><p class="note" id="rvShare" aria-live="polite"></p>';
     return h;
@@ -2781,8 +2781,16 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       st.sel = view[+row.getAttribute("data-i")]; if (cur) cur.seek(st.sel.src === "rv" ? st.sel.sec - 3 : st.sel.sec); drawTl(); drawSel(); drawRink();
     });
     $("rvImpBtn").addEventListener("click", function () {
-      var note = $("rvImpNote"), got = parseClips($("rvImp").value), add = 0, skip = 0, dup = 0;
-      if (!got.length) { note.textContent = "Nothing to add. Each line looks like 0:33:06|Goal||a note."; return; }
+      var note = $("rvImpNote"), txt = $("rvImp").value, add = 0, skip = 0, dup = 0;
+      var foLines = [], evLines = [];
+      txt.split(/\r?\n/).forEach(function (ln) { (/^[^|]*\|Faceoff: (OZ|NZ|DZ) (Win|Loss)\|/.test(ln) ? foLines : evLines).push(ln); });
+      parseReview(foLines.join("\n")).forEach(function (g) {
+        if (!/^Faceoff: (OZ|NZ|DZ) (Win|Loss)$/.test(g.tag)) { skip++; return; }
+        if (RV.some(function (o) { return o.tag === g.tag && Math.abs(o.sec - g.sec) <= 3; })) { dup++; return; }
+        RV.push({src: "rv", sec: g.sec, tag: g.tag, players: g.players.slice(0, 1), assists: [], x: g.x, y: g.y, p: g.p || 1, lists: []}); add++;
+      });
+      var got = parseClips(evLines.join("\n"));
+      if (!got.length && !add && !dup && !skip) { note.textContent = "Nothing to add. Each line looks like 0:33:06|Goal||a note."; return; }
       got.forEach(function (g) {
         if (EVENT_TAGS.indexOf(g.tag) < 0) { skip++; return; }
         if (EV.some(function (o) { return o.tag === g.tag && Math.abs(o.sec - g.sec) <= 3; })) { dup++; return; }

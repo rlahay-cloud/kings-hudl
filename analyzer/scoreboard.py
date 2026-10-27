@@ -39,6 +39,31 @@ def _variants(c):
     return [a, b]
 
 
+def read_frame(f, cfg, sc, reader):
+    """Everything the scoreboard shows in one picture. sc scales a box to this video's size."""
+    rec = {}
+    cl = _crop(f, sc(cfg["clock"]))
+    reads = []
+    for v in _variants(cl):
+        try:
+            res = reader.readtext(v, allowlist="0123456789:.", detail=0, paragraph=False)
+        except Exception:
+            res = []
+        reads.append(re.sub(r"[^0-9]", "", "".join(res)))
+    rec["clock"] = reads
+    rec["clock_sig"] = signature(cl, 16, 8)
+    for k in ("home", "visitor", "period"):
+        rec[k] = signature(_crop(f, sc(cfg[k])))
+    rec["penh"] = [round(lit_fraction(_crop(f, sc(b))), 3) for b in cfg["pen_home"]]
+    rec["penv"] = [round(lit_fraction(_crop(f, sc(b))), 3) for b in cfg["pen_visitor"]]
+    return rec
+
+
+def make_scaler(W, ref_w):
+    sx = W / float(ref_w)
+    return lambda b: [int(round(v * sx)) for v in b]
+
+
 def read_series(video, rink_json, outdir, step=1.0, start=0.0, end=None, reader=None, log=print):
     """Writes scoreboard.jsonl, one line per sample, and can be resumed."""
     cfg = json.load(open(rink_json))["scoreboard"]
@@ -67,32 +92,23 @@ def read_series(video, rink_json, outdir, step=1.0, start=0.0, end=None, reader=
         reader = easyocr.Reader(["en"], gpu=_has_gpu(), verbose=False)
     out = open(path, "a")
     n = 0
+    stride = max(1, int(round(step * fps)))
+    cap.set(cv2.CAP_PROP_POS_FRAMES, int(t * fps))
     while t < end:
-        cap.set(cv2.CAP_PROP_POS_FRAMES, int(t * fps))
         ok, f = cap.read()
         if not ok:
             break
-        rec = {"t": round(t, 2)}
-        cl = _crop(f, sc(cfg["clock"]))
-        reads = []
-        for v in _variants(cl):
-            try:
-                res = reader.readtext(v, allowlist="0123456789:.", detail=0, paragraph=False)
-            except Exception:
-                res = []
-            reads.append(re.sub(r"[^0-9]", "", "".join(res)))
-        rec["clock"] = reads
-        rec["clock_sig"] = signature(cl, 16, 8)
-        for k in ("home", "visitor", "period"):
-            rec[k] = signature(_crop(f, sc(cfg[k])))
-        rec["penh"] = [round(lit_fraction(_crop(f, sc(b))), 3) for b in cfg["pen_home"]]
-        rec["penv"] = [round(lit_fraction(_crop(f, sc(b))), 3) for b in cfg["pen_visitor"]]
+        rec = read_frame(f, cfg, sc, reader)
+        rec["t"] = round(t, 2)
         out.write(json.dumps(rec) + "\n")
         out.flush()
         n += 1
         if n % 60 == 0:
             log("Scoreboard: %.0f of %.0f s" % (t, end))
         t += step
+        for _ in range(stride - 1):
+            if not cap.grab():
+                break
     out.close()
     return path
 

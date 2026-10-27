@@ -264,7 +264,7 @@ def thumb(frame, box, h_out=150):
     return "data:image/jpeg;base64," + base64.b64encode(buf).decode()
 
 
-def build(video, outdir, rink, k=4, log=print, read_nums=False, min_len=1.5):
+def build(video, outdir, rink, k=4, log=print, read_nums=False, min_len=1.5, thumbs=False):
     meta = json.load(open(os.path.join(outdir, "meta.json")))
     rows = read_dets(outdir)
     if not rows:
@@ -286,8 +286,14 @@ def build(video, outdir, rink, k=4, log=print, read_nums=False, min_len=1.5):
             log("Scoreboard readings could not be used: %s" % e)
             board = None
     log("%d pictures, %d tracks, %d suggested stoppages" % (len(rows), len(tracks), len(stops)))
-    cap = cv2.VideoCapture(video)
-    fps = meta["fps"]
+    import events
+    cfg = json.load(open(rink))
+    faceoff_list = events.faceoffs(rows, board, cfg) if board else []
+    change_list = events.changes(rows, labels, outdir, tracks, cfg)
+    log("%d faceoffs, %d line change moments" % (len(faceoff_list), len(change_list)))
+    cap, fps = None, meta["fps"]
+    if thumbs or read_nums:
+        cap = cv2.VideoCapture(video)
 
     def grab(t):
         cap.set(cv2.CAP_PROP_POS_FRAMES, int(t * fps))
@@ -300,39 +306,34 @@ def build(video, outdir, rink, k=4, log=print, read_nums=False, min_len=1.5):
             import easyocr, jersey_numbers
             import torch
             reader = easyocr.Reader(["en"], gpu=bool(torch.cuda.is_available()), verbose=False)
-            rp0 = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "roster.json")
-            if os.path.exists(rp0):
-                roster = {int(x["n"]) for x in json.load(open(rp0)).get("roster", [])}
         except Exception as e:
             log("Number reading is off: %s" % e)
             reader = None
     for ti, tr in enumerate(tracks):
         p = tr["pts"]
-        if reader is not None:
-            frames = []
-            for q in sorted(p, key=lambda q: -q[3])[:8]:
-                f = grab(q[0])
-                if f is not None:
-                    frames.append((f, q[6:10], q[3]))
-            tr["num"] = jersey_numbers.read_track(frames, reader, roster, max_samples=8)
-            if ti % 25 == 0:
-                log("Numbers: %d of %d boxes" % (ti, len(tracks)))
-        # two pictures: the biggest view and one from the middle
-        big = max(p, key=lambda q: q[3] * q[4])
-        mid = p[len(p) // 2]
         tr["thumbs"] = []
-        for q in (big, mid):
-            f = grab(q[0])
+        if cap is not None:
+            if reader is not None:
+                frames = []
+                for q in sorted(p, key=lambda q: -q[3])[:8]:
+                    f = grab(q[0])
+                    if f is not None:
+                        frames.append((f, q[6:10], q[3]))
+                tr["num"] = jersey_numbers.read_track(frames, reader, roster, max_samples=8)
+            big = max(p, key=lambda q: q[3] * q[4])
+            f = grab(big[0])
             if f is not None:
-                tr["thumbs"].append(thumb(f, q[6:10]))
+                tr["thumbs"].append(thumb(f, big[6:10]))
         tr["pts"] = [[q[0], q[1], q[2], q[3]] for q in p[::2]]
     samples = {}
     for g in range(k):
-        cand = [(tr, max(tr["pts"], key=lambda q: q[3])) for tr in tracks if tr["g"] == g]
-        cand.sort(key=lambda c: -c[1][3])
-        samples[g] = [c[0]["thumbs"][0] for c in cand[:4] if c[0]["thumbs"]]
+        cand = [tr["thumbs"][0] for tr in tracks if tr["g"] == g and tr["thumbs"]]
+        if not cand:
+            cand = ["data:image/jpeg;base64," + c["thumbs"][str(g)][0] for c in change_list if c["thumbs"].get(str(g))]
+        samples[g] = cand[:4]
     data = {"meta": meta, "colours": centres, "samples": {str(g): s for g, s in samples.items()},
-            "tracks": tracks, "stops": stops, "board": board}
+            "tracks": tracks, "stops": stops, "board": board,
+            "faceoffs": faceoff_list, "changes": change_list}
     json.dump(data, open(os.path.join(outdir, "analysis.json"), "w"))
     roster = []
     rp = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "roster.json")
@@ -349,7 +350,7 @@ def build(video, outdir, rink, k=4, log=print, read_nums=False, min_len=1.5):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["detect", "scoreboard", "build"])
+    ap.add_argument("cmd", choices=["detect", "scoreboard", "build", "analyze"])
     ap.add_argument("video")
     ap.add_argument("outdir")
     ap.add_argument("--rink", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "rinks", "ingredion_rink1.json"))
@@ -366,6 +367,11 @@ def main():
         scoreboard.read_series(a.video, a.rink, a.outdir, step=1.0, start=a.start, end=a.end)
     elif a.cmd == "detect":
         detect(a.video, a.outdir, a.rink, a.step, a.start, a.end, a.imgsz, limit=a.limit, model_path=a.model)
+    elif a.cmd == "analyze":
+        import onepass
+        onepass.run(a.video, a.outdir, a.rink, step=1.0, start=a.start, end=a.end, imgsz=a.imgsz,
+                    model_path=a.model, limit=a.limit)
+        build(a.video, a.outdir, a.rink)
     else:
         build(a.video, a.outdir, a.rink, read_nums=a.numbers)
 
