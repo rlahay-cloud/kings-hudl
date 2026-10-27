@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kings HUDL analyzer review</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#14202e;--mute:#5d6b7a;--line:#dde3ea;--acc:#0b5cab;--ok:#1a7f4b;--bad:#b3261e}
+@media (prefers-color-scheme:dark){:root{--bg:#10151b;--card:#18202a;--ink:#e8edf2;--mute:#9aa8b6;--line:#2a3541;--acc:#6db1ff;--ok:#5fd397;--bad:#ff8a80}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,sans-serif;padding:16px;max-width:900px;margin:0 auto}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:22px 0 8px}p{margin:6px 0}.mute{color:var(--mute);font-size:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0}
+.groups{display:flex;gap:10px;flex-wrap:wrap}.grp{flex:1 1 220px;border:2px solid var(--line);border-radius:10px;padding:8px;cursor:pointer}
+.grp.sel{border-color:var(--acc)}.grp img{height:90px;margin:2px;border-radius:6px}.sw{display:inline-block;width:18px;height:18px;border-radius:50%;border:1px solid var(--line);vertical-align:middle}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--line);padding:8px 0}.row:first-child{border-top:0}
+.row img{height:110px;border-radius:6px;cursor:zoom-in}.row .meta{flex:1 1 150px}.row.done{opacity:.6}
+input[type=text],input[type=number],select{font:inherit;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);width:100%}
+.num{width:90px!important;font-size:20px;text-align:center}button{font:inherit;padding:10px 14px;border-radius:8px;border:1px solid var(--acc);background:var(--acc);color:#fff;cursor:pointer}
+button.alt{background:transparent;color:var(--acc)}textarea{width:100%;min-height:160px;font:14px ui-monospace,monospace;padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.pill{padding:2px 8px;border-radius:99px;border:1px solid var(--line);font-size:13px}
+#zoom{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:9}#zoom img{max-width:94vw;max-height:90vh}
+table{border-collapse:collapse;width:100%}td,th{padding:4px 8px;border-bottom:1px solid var(--line);text-align:left}
+</style></head><body>
+<h1>Kings HUDL analyzer review</h1>
+<p class="mute" id="info"></p>
+
+<h2>1. Which colours are your team?</h2>
+<p class="mute">Tap every group that shows the Kings (more than one if your team was split, for example by a dark helmet or a goalie). Tap again to undo. The program only guesses colours, so a referee or goalie may land in a group by mistake. You can fix any single box below.</p>
+<div class="groups" id="groups"></div>
+
+<h2>2. Name each box</h2>
+<p class="mute">Type the jersey number for each Kings box. If you cannot read it, tap the picture to make it bigger, or leave it empty. Use <b>x</b> for a box that is not a skater. The same number on several boxes means that player came on the ice several times.</p>
+<div class="bar card">
+  <label>Show <select id="filter" style="width:auto"><option value="k">Kings, not named yet</option><option value="ka">All Kings</option><option value="all">Everything</option></select></label>
+  <span class="pill" id="count"></span>
+  <button class="alt" id="clearall">Start over</button>
+</div>
+<div class="card" id="rows"></div>
+<datalist id="nums"></datalist>
+
+<h2>3. Shifts for the Shifts tab</h2>
+<div class="card">
+  <label class="mute">This video starts this many seconds after the main video (use a minus sign if it starts before). Leave 0 if both start together.</label>
+  <input type="number" id="off" value="0" step="0.1" style="max-width:160px">
+  <p><label><input type="checkbox" id="inclstop" checked> Include suggested stoppages (<span id="nstop"></span> found)</label></p>
+  <p class="mute">Stoppages are a guess from nobody moving. Look them over on the site before you save.</p>
+  <textarea id="out" readonly></textarea>
+  <div class="bar" style="margin-top:8px"><button id="copy">Copy</button><button class="alt" id="dl">Download file</button><span class="mute" id="msg"></span></div>
+  <h2 style="margin-top:16px">Ice time so far</h2><table id="sum"></table>
+</div>
+<div id="zoom"><img alt=""></div>
+
+<script>
+var DATA=/*DATA*/null, ROSTER=/*ROSTER*/[];
+var KEY="kh-analyzer2-"+(DATA&&DATA.meta?DATA.meta.video:"x");
+var S={ks:[],num:{},grp:{},off:0};
+try{var sv=JSON.parse(localStorage.getItem(KEY)||"null");if(sv)S=sv}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function mmss(t){t=Math.max(0,Math.round(t));var m=Math.floor(t/60),s=t%60;return m+":"+(s<10?"0":"")+s}
+function tgrp(tr){return S.grp[tr.id]!==undefined?S.grp[tr.id]:tr.g}
+function isK(tr){return S.ks.indexOf(tgrp(tr))>=0}
+var $=function(i){return document.getElementById(i)};
+$("info").textContent=DATA.meta.video+" ("+DATA.meta.w+" by "+DATA.meta.h+"), "+DATA.tracks.length+" boxes found";
+$("nstop").textContent=DATA.stops.length;
+var dl=$("nums");ROSTER.forEach(function(p){var o=document.createElement("option");o.value=p.n;o.label=p.name;dl.appendChild(o)});
+function drawGroups(){
+  var h="";DATA.colours.forEach(function(c,g){
+    var n=DATA.tracks.filter(function(t){return t.g===g}).length;
+    h+='<div class="grp'+(S.ks.indexOf(g)>=0?' sel':'')+'" data-g="'+g+'"><div><span class="sw" style="background:rgb('+c.join(",")+')"></span> Group '+(g+1)+' <span class="mute">('+n+' boxes)</span></div>'+
+       (DATA.samples[g]||[]).map(function(s){return '<img src="'+s+'">'}).join("")+'</div>'});
+  $("groups").innerHTML=h}
+$("groups").onclick=function(e){var g=e.target.closest(".grp");if(!g)return;var gi=+g.dataset.g,at=S.ks.indexOf(gi);if(at>=0)S.ks.splice(at,1);else S.ks.push(gi);save();drawGroups();drawRows();exp()};
+function drawRows(){
+  var f=$("filter").value,h="",n=0,named=0;
+  DATA.tracks.forEach(function(tr){
+    var k=isK(tr),v=S.num[tr.id];if(k&&v&&v!=="x")named++;
+    if(f==="k"&&!(k&&!v))return;if(f==="ka"&&!k)return;
+    n++;if(n>150)return;
+    h+='<div class="row'+(v?' done':'')+'" data-id="'+tr.id+'">'+
+      tr.thumbs.map(function(s){return '<img src="'+s+'">'}).join("")+
+      '<div class="meta"><b>'+mmss(tr.t0)+' to '+mmss(tr.t1)+'</b><div class="mute">'+Math.round(tr.t1-tr.t0)+' seconds</div>'+
+      '<select class="g" style="margin-top:6px"><option value="k"'+(k?' selected':'')+'>Kings</option><option value="o"'+(!k?' selected':'')+'>Not Kings</option></select></div>'+
+      '<input class="num" type="text" inputmode="numeric" list="nums" placeholder="#" value="'+(v||"")+'"></div>'});
+  $("rows").innerHTML=h||'<p class="mute">Nothing to show here. Pick your team colours above, or change the filter.</p>';
+  $("count").textContent=named+" Kings boxes named, "+n+" showing"+(n>150?" (first 150)":"")}
+$("rows").onchange=function(e){var r=e.target.closest(".row");if(!r)return;var id=+r.dataset.id;
+  if(e.target.classList.contains("num")){var v=e.target.value.trim().toLowerCase();if(v===""||v==="x"||/^\d{1,3}$/.test(v)){if(v)S.num[id]=v;else delete S.num[id]}else{e.target.value="";return}save();exp();$("count").textContent=$("count").textContent}
+  else if(e.target.classList.contains("g")){var tr=DATA.tracks[id-1];if(e.target.value==="k")S.grp[id]=S.ks.length?S.ks[0]:0;else{var o=-1;for(var q=0;q<DATA.colours.length;q++)if(S.ks.indexOf(q)<0){o=q;break}S.grp[id]=o}save();drawRows();exp()}}
+$("rows").onclick=function(e){if(e.target.tagName==="IMG"){$("zoom").querySelector("img").src=e.target.src;$("zoom").style.display="flex"}}
+$("zoom").onclick=function(){$("zoom").style.display="none"};
+$("filter").onchange=drawRows;
+$("clearall").onclick=function(){if(confirm("Erase all numbers you typed here?")){S.num={};S.grp={};save();drawRows();exp()}};
+$("off").value=S.off||0;$("off").oninput=function(){S.off=parseFloat($("off").value)||0;save();exp()};
+$("inclstop").onchange=exp;
+function exp(){
+  var by={};DATA.tracks.forEach(function(tr){var v=S.num[tr.id];if(!isK(tr)||!v||v==="x")return;(by[v]=by[v]||[]).push([tr.t0,tr.t1])});
+  var off=parseFloat($("off").value)||0,ev=[],rows=[];
+  Object.keys(by).forEach(function(n){var a=by[n].sort(function(x,y){return x[0]-y[0]}),m=[a[0].slice()];
+    for(var i=1;i<a.length;i++){var l=m[m.length-1];if(a[i][0]-l[1]<=2)l[1]=Math.max(l[1],a[i][1]);else m.push(a[i].slice())}
+    var tot=0;m.forEach(function(s){tot+=s[1]-s[0];ev.push([s[0]+off,"on|"+n]);ev.push([s[1]+off,"off|"+n])});rows.push([n,m.length,tot])});
+  if(ev.length){var first=Math.min.apply(null,ev.map(function(e){return e[0]}));ev.push([Math.max(0,first),"go|"])}
+  if($("inclstop").checked&&ev.length)DATA.stops.forEach(function(s){ev.push([s[0]+off,"stop|"]);ev.push([s[1]+off,"go|"])});
+  ev=ev.filter(function(e){return e[0]>=0});ev.sort(function(a,b){return a[0]-b[0]});
+  $("out").value=ev.map(function(e){return e[0].toFixed(1)+"|"+e[1]}).join("\n");
+  rows.sort(function(a,b){return b[2]-a[2]});
+  $("sum").innerHTML="<tr><th>Number</th><th>Shifts</th><th>Time on ice</th></tr>"+rows.map(function(r){return"<tr><td>#"+r[0]+"</td><td>"+r[1]+"</td><td>"+mmss(r[2])+"</td></tr>"}).join("");
+  var c=$("rows").querySelectorAll(".row").length;}
+$("copy").onclick=function(){var t=$("out");t.select();var ok=false;try{ok=document.execCommand("copy")}catch(e){}
+  if(navigator.clipboard&&!ok)navigator.clipboard.writeText(t.value);$("msg").textContent="Copied"};
+$("dl").onclick=function(){var b=new Blob([$("out").value+"\n"],{type:"text/plain"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="shifts_from_analyzer.txt";a.click()};
+drawGroups();drawRows();exp();
+</script></body></html>

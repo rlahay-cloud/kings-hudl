@@ -90,3 +90,7 @@ Open **Coach’s Corner**, then **Game setup**, and pick the game. Tap **+ New g
 To add another camera, paste its YouTube link under **Extra camera angles**, tap **Match**, pause the main video and the angle on the same moment (a puck drop works well), and tap **Match**. Clips then show a camera picker, and the angle opens at the matching moment. Setup is saved as `games/sync_DATE.txt` and needs the helper updated (paste `worker/worker.js` into Cloudflare again).
 
 Games that have no Streamn file still show up: once a played game has review marks in Game analysis, the site makes the game itself (opponent from Game setup, then the schedule). Its score, shots, faceoffs, plus/minus and players come from the marks. Until a goal is marked it is listed as not scored yet and is left out of the record and player stats, so a half-marked game does not show as a tie.
+
+## Game analyzer (version 1, early)
+
+The `analyzer` folder holds a helper that watches a wide panorama game video, finds and follows the skaters, and makes a review page where you type each jersey number once. It then writes shifts lines you paste into Coach’s Corner, Shifts, under **Add shifts from the game analyzer**. It runs on a free Google Colab graphics card, not on your computer, and it cannot read jersey numbers or find shots yet. See `analyzer/README.md`.

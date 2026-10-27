@@ -1843,6 +1843,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     h += '<div class="seg" style="margin-top:12px"><button class="btn" id="shfSave" style="width:100%">Save for everyone</button></div><p class="note" id="shfSaved" aria-live="polite">Everything is saved on this device as you tap.</p><div class="seg"><button id="shfPull">Refresh other coaches</button></div><p class="note" id="shfSync" aria-live="polite"></p>';
     h += '<h2>Shifts so far<small>tap a player to see each shift</small></h2><div class="card scroll" id="shfRes"></div>';
     h += '<details class="card" style="margin-top:12px"><summary id="shfLogSum" style="cursor:pointer">All taps</summary><div id="shfLog" style="margin-top:8px"></div></details>';
+    h += '<details class="card" style="margin-top:12px"><summary style="cursor:pointer">Add shifts from the game analyzer</summary><p class="note" style="margin-top:8px">Paste the lines from the analyzer review page. They are added to your taps and the lines are in video seconds, so type the offset on the review page first if its video starts at a different moment than this one. Undo last tap takes the whole paste back in one go.</p><textarea id="shfImp" rows="6" style="width:100%" placeholder="40.0|go|&#10;40.0|on|17&#10;75.0|off|17"></textarea><div class="seg" style="margin-top:8px"><button id="shfImpBtn">Add these lines</button></div><p class="note" id="shfImpNote" aria-live="polite"></p></details>';
     h += '</div></div>';
     return h;
   }
@@ -1999,6 +2000,21 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       if (!ev.length) return; var gp = ev[ev.length - 1].grp; ev.pop();
       if (gp) while (ev.length && ev[ev.length - 1].grp === gp) ev.pop();
       persist(); refresh();
+    });
+    $("shfImpBtn").addEventListener("click", function () {
+      var note = $("shfImpNote"), lines = $("shfImp").value.split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean), add = [], bad = 0, gp = Date.now();
+      lines.forEach(function (l) {
+        var m = /^(\d{1,6}(?:\.\d{1,2})?)\|(on|off|stop|go)\|(\d{0,3})$/.exec(l);
+        if (!m || ((m[2] === "on" || m[2] === "off") && m[3] === "") || ((m[2] === "stop" || m[2] === "go") && m[3] !== "")) { bad++; return; }
+        add.push({t: parseFloat(m[1]), k: m[2], n: m[3] === "" ? null : parseInt(m[3], 10), grp: gp});
+      });
+      if (bad) { note.textContent = bad + " line" + (bad === 1 ? " is" : "s are") + " not in the right form, so nothing was added. Each line looks like 40.0|on|17 or 55.2|stop|."; return; }
+      if (!add.length) { note.textContent = "Paste some lines first."; return; }
+      var have = {}; ev.forEach(function (e) { have[e.t + "|" + e.k + "|" + e.n] = 1; });
+      var fresh = add.filter(function (e) { return !have[e.t + "|" + e.k + "|" + e.n]; });
+      fresh.forEach(function (e) { ev.push(e); });
+      persist(); refresh(); $("shfImp").value = "";
+      note.textContent = "Added " + fresh.length + " line" + (fresh.length === 1 ? "" : "s") + (add.length > fresh.length ? " (" + (add.length - fresh.length) + " were already there)" : "") + ". Tap Save for everyone when it looks right.";
     });
     $("shfAddBtn").addEventListener("click", function () { var n = parseInt($("shfAdd").value, 10); if (isNaN(n) || n < 0 || n > 999) return; if (extra.indexOf(n) < 0) extra.push(n); $("shfAdd").value = ""; persist(); refresh(); });
     $("shfRes").addEventListener("click", function (e) {
