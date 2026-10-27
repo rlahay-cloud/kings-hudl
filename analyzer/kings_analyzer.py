@@ -278,7 +278,7 @@ def build(video, outdir, rink, k=4, log=print, read_nums=False, min_len=3.0, thu
     if os.path.exists(sbp):
         try:
             import scoreboard as sbm
-            board = sbm.analyze(sbp)
+            board = sbm.analyze(sbp, step)
             if board["stops"]:
                 stops = [[a, b] for a, b, _ in board["stops"]]
                 log("Using %d stoppages read from the scoreboard clock" % len(stops))
@@ -397,7 +397,7 @@ def main():
     ap.add_argument("video")
     ap.add_argument("outdir")
     ap.add_argument("--rink", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "rinks", "ingredion_rink1.json"))
-    ap.add_argument("--step", type=float, default=0.5)
+    ap.add_argument("--step", type=float, default=None)
     ap.add_argument("--start", type=float, default=0.0)
     ap.add_argument("--end", type=float, default=None)
     ap.add_argument("--imgsz", type=int, default=1280)
@@ -407,14 +407,15 @@ def main():
     a = ap.parse_args()
     if a.cmd == "scoreboard":
         import scoreboard
-        scoreboard.read_series(a.video, a.rink, a.outdir, step=1.0, start=a.start, end=a.end)
+        scoreboard.read_series(a.video, a.rink, a.outdir, step=a.step or 1.0, start=a.start, end=a.end)
     elif a.cmd == "detect":
-        detect(a.video, a.outdir, a.rink, a.step, a.start, a.end, a.imgsz, limit=a.limit, model_path=a.model)
+        detect(a.video, a.outdir, a.rink, a.step or 0.5, a.start, a.end, a.imgsz, limit=a.limit, model_path=a.model)
     elif a.cmd == "analyze":
         import onepass
-        onepass.run(a.video, a.outdir, a.rink, step=1.0, start=a.start, end=a.end, imgsz=a.imgsz,
+        onepass.run(a.video, a.outdir, a.rink, step=a.step or 1.0, start=a.start, end=a.end, imgsz=a.imgsz,
                     model_path=a.model, limit=a.limit)
-        build(a.video, a.outdir, a.rink)
+        print("Building the review page...", flush=True)
+        build(a.video, a.outdir, a.rink, read_nums=a.numbers)
     else:
         build(a.video, a.outdir, a.rink, read_nums=a.numbers)
 

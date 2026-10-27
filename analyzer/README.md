@@ -2,20 +2,25 @@
 
 This reads a wide panorama game video and gives you data to paste into Kings HUDL: faceoffs with zone and win percent, time on ice, goals, penalties and stoppages. It is a helper. You confirm a few things by tapping.
 
-## How to run it (no Claude needed)
+## How to run it
 
-1. Open the notebook: [Kings_Analyzer in Colab](https://colab.research.google.com/github/rlahay-cloud/kings-hudl/blob/main/analyzer/Kings_Analyzer.ipynb). Use Chrome.
-2. Click Runtime, Change runtime type, pick T4 GPU, Save.
-3. Click the folder icon on the left and drag your game video in. Wait for the upload to finish.
-4. Press Play on steps 1, 2, 3, 4 in order. Step 4 does the whole game in one go and downloads `review.html`.
-5. Open `review.html` on your computer and work down the page.
-6. Paste the results into Kings HUDL (below).
+**On your Windows computer (recommended, no uploads, no Google):**
 
-To test first, set START 0 and END 300 in step 3. That does 5 minutes.
+1. On GitHub, open the kings-hudl repository, click Code, then Download ZIP. Unzip it.
+2. Open the `analyzer` folder, then `windows`. Double click `Install_Kings_Analyzer.bat` and wait for DONE (10 to 25 minutes, needs internet, first time only).
+3. Double click the **Kings Analyzer** shortcut that appears on your desktop. Choose the game video, pick the 5 minute test, press Start, and note the minutes left it shows. Multiply by the game length to plan the full run.
+4. The whole game can take a few hours with no graphics card. It keeps the computer awake, so leave it plugged in, overnight is fine. Results save in Documents\KingsAnalyzer and a stopped run carries on if you untick Start over.
+5. When it finishes, the review page opens. Choose the same video there when it asks.
+
+Details are in `windows/README_WINDOWS.txt`.
+
+**In Google Colab (needs a Google sign in and an upload):** open the notebook [Kings_Analyzer in Colab](https://colab.research.google.com/github/rlahay-cloud/kings-hudl/blob/main/analyzer/Kings_Analyzer.ipynb), set the runtime to T4 GPU, drag the video in, and press Play on steps 1 to 4.
+
+To test first in Colab, set END_SECONDS to 300 in step 3.
 
 ## The review app (review.html)
 
-Open `review.html` in Chrome, then choose the game video (it stays on your computer). The video sits beside a timeline that shows activity, stoppages, line changes, faceoffs, period starts and shots. Click the timeline to jump. Space plays and pauses, arrows move 1 second, Shift and arrows move 5 seconds.
+Open `review.html` in Chrome (the Windows app does this for you), then choose the game video (it stays on your computer). The video sits beside a timeline that shows activity, stoppages, line changes, faceoffs, period starts and shots. Click the timeline to jump. Space plays and pauses, arrows move 1 second, Shift and arrows move 5 seconds.
 
 Tabs on the right:
 
