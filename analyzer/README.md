@@ -21,7 +21,7 @@ This finds the skaters in a wide panorama video, follows them, and helps you mak
 
 ## How to run it
 
-Use the Colab notebook `Kings_Analyzer.ipynb` ([open it in Colab](https://colab.research.google.com/github/rlahay-cloud/kings-hudl/blob/main/analyzer/Kings_Analyzer.ipynb)) (a free Google graphics card makes a game take about an hour). Put the game in Google Drive in a folder called `KingsHUDL games`, press the Play buttons from top to bottom, then open `review.html` from your Drive.
+Use the Colab notebook `Kings_Analyzer.ipynb` ([open it in Colab](https://colab.research.google.com/github/rlahay-cloud/kings-hudl/blob/main/analyzer/Kings_Analyzer.ipynb)) (a free Google graphics card makes a game take about an hour). Open the notebook, drag the game video into the Files panel on the left, press the Play buttons from top to bottom, then open the `review.html` it downloads. Google Drive is optional.
 
 On a computer without a graphics card the same steps work but take many hours. Command line version:
 
