@@ -2336,9 +2336,17 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   // Which penalties are on at a moment in the video, and so whether a goal was at even strength, on the power play or short handed.
   function penStart(c) { return c.from != null ? c.from : c.sec; }
   function penSpan(c) { var d = c.until - penStart(c); return (c.from != null && c.from !== c.sec ? "called " + hms(c.sec) + ", " : "") + "penalty time " + hms(penStart(c)) + " to " + hms(c.until) + " (" + Math.floor(d / 60) + ":" + ("0" + d % 60).slice(-2) + " of video)"; }
+  // A penalty with no end time is assumed over after this much video, or when the other team scores (a minor ends on a goal).
+  var ASSUME_PEN_SEC = 240;
+  function penEnd(list, p) {
+    if (p.until != null) return p.until;
+    var s0 = penStart(p), end = s0 + ASSUME_PEN_SEC, opp = p.tag === "Penalty" ? "Against: Goal" : "For: Goal";
+    list.forEach(function (g) { if (g.tag === opp && g.sec >= s0 && g.sec < end) end = g.sec; });
+    return end;
+  }
   function goalSit(list, c) {
     var u = 0, th = 0;
-    list.forEach(function (p) { if ((p.tag === "Penalty" || p.tag === "Away Penalty") && p.until != null && penStart(p) <= c.sec && c.sec <= p.until) { if (p.tag === "Penalty") u++; else th++; } });
+    list.forEach(function (p) { if ((p.tag === "Penalty" || p.tag === "Away Penalty") && penStart(p) <= c.sec && c.sec <= penEnd(list, p)) { if (p.tag === "Penalty") u++; else th++; } });
     if (c.tag === "For: Goal") return th > u ? "PP" : u > th ? "SH" : "";
     if (c.tag === "Against: Goal") return u > th ? "PP" : th > u ? "SH" : "";
     return "";
@@ -2371,7 +2379,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       "<tr><td>Zone entries</td>" + RV_MOVES.map(function (m) { return "<td>" + s.en[m] + "</td>"; }).join("") + "<td>" + en + "</td><td>" + pct(s.en.Carry + s.en.Pass, en) + "</td></tr>" +
       "<tr><td>Zone exits</td>" + RV_MOVES.map(function (m) { return "<td>" + s.ex[m] + "</td>"; }).join("") + "<td>" + ex + "</td><td>" + pct(s.ex.Carry + s.ex.Pass, ex) + "</td></tr></tbody></table></div>" +
       "<p class='note'>Controlled means the puck was carried or passed, not dumped or turned over.</p>" +
-      (list.some(function (c) { return (c.tag === "Penalty" || c.tag === "Away Penalty") && c.until == null; }) ? "<p class='note'>Some penalties have no end time yet, so goals during them are counted as even strength. Tap a penalty and use Penalty time ends now.</p>" : "");
+      (list.some(function (c) { return (c.tag === "Penalty" || c.tag === "Away Penalty") && c.until == null; }) ? "<p class='note'>Some penalties have no end time yet. They are assumed to last up to 4 minutes of video, or until the other team scores. Tap a penalty and use Penalty time ends now to set it exactly.</p>" : "");
   }
   function reviewBlock(date) {
     var l = allReview(date); if (!l.length) return "";
@@ -2669,7 +2677,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       $("rvCount").textContent = view.length + (view.length === 1 ? " event" : " events");
       $("rvList").innerHTML = view.length ? view.map(function (c, i) {
         var g = itemGroup(c);
-        return '<div class="ev" data-i="' + i + '"><button class="tm" style="background:none;border:0;color:var(--accent);font-family:var(--display);font-weight:700;font-size:18px;min-width:70px;text-align:left;padding:0">' + hms(mark(c)) + '</button><span class="lb"><i class="dot" style="background:' + (g ? g.c : "#93a1bd") + '"></i><b>' + esc(itemLabel(c)) + "</b>" + (c.src === "rv" ? " P" + (c.p || 1) : "") + (c.src === "rv" && /: Goal$/.test(c.tag) && goalSit(allReview(date), c) ? ' <span class="pill W">' + goalSit(allReview(date), c) + "</span>" : "") + (c.src === "rv" && c.infr ? ": " + esc(c.infr) : "") + (c.src === "rv" && c.until != null ? ' <span class="mut">' + penSpan(c) + "</span>" : "") + (c.lists && c.lists.length ? c.lists.map(function (n) { return ' <span class="pill">' + esc(n) + "</span>"; }).join("") : "") + (c.src === "rv" && (c.tag === "Penalty" || c.tag === "Away Penalty") && c.until == null ? ' <span class="mut" style="color:#e5484d">no end time yet</span>' : "") + whoHtml(c) + (c.x != null ? ' <span class="mut">spot</span>' : "") + (c.label ? " " + esc(c.label) : "") + "</span></div>";
+        return '<div class="ev" data-i="' + i + '"><button class="tm" style="background:none;border:0;color:var(--accent);font-family:var(--display);font-weight:700;font-size:18px;min-width:70px;text-align:left;padding:0">' + hms(mark(c)) + '</button><span class="lb"><i class="dot" style="background:' + (g ? g.c : "#93a1bd") + '"></i><b>' + esc(itemLabel(c)) + "</b>" + (c.src === "rv" ? " P" + (c.p || 1) : "") + (c.src === "rv" && /: Goal$/.test(c.tag) && goalSit(allReview(date), c) ? ' <span class="pill W">' + goalSit(allReview(date), c) + "</span>" : "") + (c.src === "rv" && c.infr ? ": " + esc(c.infr) : "") + (c.src === "rv" && c.until != null ? ' <span class="mut">' + penSpan(c) + "</span>" : "") + (c.lists && c.lists.length ? c.lists.map(function (n) { return ' <span class="pill">' + esc(n) + "</span>"; }).join("") : "") + (c.src === "rv" && (c.tag === "Penalty" || c.tag === "Away Penalty") && c.until == null ? ' <span class="mut" style="color:#e5484d">no end time yet (assumed up to 4 min)</span>' : "") + whoHtml(c) + (c.x != null ? ' <span class="mut">spot</span>' : "") + (c.label ? " " + esc(c.label) : "") + "</span></div>";
       }).join("") : '<p class="note">Nothing marked yet.</p>';
       $("rvSum").innerHTML = RV.length ? reviewSummaryHtml(RV) : '<div class="card empty"><p class="note">Review numbers appear here as you mark.</p></div>';
     }
@@ -3048,7 +3056,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
           var m = /^(For|Against): (Goal|Shot on goal|Missed shot|Blocked shot)$/.exec(c.tag); if (!m) return;
           var us = m[1] === "For", a = c.assists || [], sc = c.players.filter(function (n) { return a.indexOf(n) < 0; })[0];
           var rl = allReview(d), pu = 0, pt = 0;
-          rl.forEach(function (q) { if ((q.tag === "Penalty" || q.tag === "Away Penalty") && q.until != null && penStart(q) <= c.sec && c.sec <= q.until) { if (q.tag === "Penalty") pu++; else pt++; } });
+          rl.forEach(function (q) { if ((q.tag === "Penalty" || q.tag === "Away Penalty") && penStart(q) <= c.sec && c.sec <= penEnd(rl, q)) { if (q.tag === "Penalty") pu++; else pt++; } });
           var sit = pu === pt ? "E" : (us ? (pt > pu ? "PP" : "SH") : (pu > pt ? "PP" : "SH"));
           out.push({d: d, sit: sit, x: c.x, y: c.y, n: us && sc !== undefined ? sc : null, r: m[2] === "Goal" ? "G" : m[2] === "Shot on goal" ? "S" : m[2] === "Missed shot" ? "M" : "B", t: us ? "H" : "A", c: c.coach});
         });
@@ -3192,13 +3200,15 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var iceOf = function (c, home) { var l = (c.ice || []).slice(); if (home) c.players.forEach(function (n) { if (l.indexOf(n) < 0) l.push(n); }); return l; };
     var gm = fG.concat(aG);
     if (gm.some(function (c) { return (c.ice || []).length; })) {
-      var pmv = {}, miss = 0;
-      fG.forEach(function (c) { var l = iceOf(c, true); if (!(c.ice || []).length) miss++; l.forEach(function (n) { pmv[n] = (pmv[n] || 0) + 1; }); });
-      aG.forEach(function (c) { var l = iceOf(c, false); if (!l.length) miss++; l.forEach(function (n) { pmv[n] = (pmv[n] || 0) - 1; }); });
+      var pmv = {}, miss = 0, skipPen = 0;
+      // no plus/minus on power play or short handed goals
+      fG.forEach(function (c) { if (goalSit(R, c)) { skipPen++; return; } var l = iceOf(c, true); if (!(c.ice || []).length) miss++; l.forEach(function (n) { pmv[n] = (pmv[n] || 0) + 1; }); });
+      aG.forEach(function (c) { if (goalSit(R, c)) { skipPen++; return; } var l = iceOf(c, false); if (!l.length) miss++; l.forEach(function (n) { pmv[n] = (pmv[n] || 0) - 1; }); });
       Object.keys(pmv).forEach(function (k) { k = +k; if (!g.players.some(function (p) { return p.n === k; })) { g.players.push({n: k, g: 0, a: 0, p: 0, pm: 0, pim: 0, sog: 0}); g.dnp = g.dnp.filter(function (n) { return n !== k; }); } });
       var diffs = [];
       g.players.forEach(function (p) { var v = pmv[p.n] || 0; if (v !== p.pm) diffs.push("#" + p.n + " scoreboard " + pmText(p.pm) + ", video review " + pmText(v)); p.pm = v; });
       if (diffs.length) note("Plus/minus changed for: " + diffs.join("; ") + ".");
+      if (skipPen) note("Plus/minus: " + skipPen + " goal" + (skipPen === 1 ? " was" : "s were") + " on a power play or penalty kill, so no plus/minus was given for " + (skipPen === 1 ? "it" : "them") + ".");
       if (miss) note("Plus/minus: " + miss + " of " + gm.length + " goals have no one marked on the ice yet, so the plus/minus may be off.");
     }
     // shots on goal (goals count as shots on goal)
