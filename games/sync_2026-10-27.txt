@@ -1,2 +1,9 @@
+P|1|14.8
+E|1|928.5
+P|2|985.7
+E|2|1936.5
+P|3|1998.1
+E|3|3003.1
 G|Kanata Blazers|H|19:30|Spencerville
 L|10,10,12
+A|AWAY CAM|https://youtu.be/RdBxIGO5yo4?si=1mHg9y0VXY1Mn051|-10.6
