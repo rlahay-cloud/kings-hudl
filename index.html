@@ -1003,7 +1003,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   // ---------- Game setup: period starts and extra camera angles ----------
   // Every saved time stays in main-video seconds. This sheet only translates: period starts, and how far each extra camera is from the main video.
   var SYK = "kh-sync-v1", camSel = {}, lastPlayed = null;
-  function emptySync() { return {p: {}, e: {}, L: [10, 10, 12], a: []}; }
+  function emptySync() { return {p: {}, e: {}, L: [10, 10, 12], a: [], x: null}; }
   function parseSync(text) {
     var o = emptySync();
     String(text || "").split(/\r?\n/).forEach(function (l) {
@@ -1011,6 +1011,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       if ((k === "P" || k === "E") && /^[1-5]$/.test(a[1] || "") && !isNaN(parseFloat(a[2]))) o[k.toLowerCase()][+a[1]] = parseFloat(a[2]);
       else if (k === "L") { var v = (a[1] || "").split(",").map(Number).filter(function (x) { return x > 0 && x < 100; }); if (v.length) o.L = v; }
       else if (k === "G" && a[1]) o.g = {opp: a[1], home: a[2] !== "A", time: (a[3] || "").trim(), arena: (a[4] || "").trim()};
+      else if (k === "X") o.x = (a[1] || "").split(",").map(Number).filter(function (n) { return n >= 0 && n < 1000 && !isNaN(n) && (a[1] || "") !== ""; });
       else if (k === "A" && a[1] && ytId(a[2]) && !isNaN(parseFloat(a[3]))) o.a.push({name: a[1], url: a[2], off: parseFloat(a[3])});
     });
     return o;
@@ -1020,9 +1021,12 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     [1, 2, 3, 4, 5].forEach(function (k) { if (o.p[k] !== undefined) out.push("P|" + k + "|" + (+o.p[k]).toFixed(1)); if (o.e[k] !== undefined) out.push("E|" + k + "|" + (+o.e[k]).toFixed(1)); });
     if (o.g && o.g.opp) out.push("G|" + String(o.g.opp).replace(/[|\r\n]+/g, " ").slice(0, 40) + "|" + (o.g.home === false ? "A" : "H") + "|" + (o.g.time || "") + "|" + String(o.g.arena || "").replace(/[|\r\n]+/g, " ").slice(0, 40));
     if (o.L && o.L.length) out.push("L|" + o.L.join(","));
+    if (Array.isArray(o.x)) out.push("X|" + o.x.join(","));
     o.a.forEach(function (x) { out.push("A|" + String(x.name).replace(/[|\r\n]+/g, " ").slice(0, 30) + "|" + x.url + "|" + (+x.off).toFixed(1)); });
     return out.join("\n") + "\n";
   }
+  // Lineup from Game setup: the numbers that did NOT dress for a game. Null when the lineup was never set for that game.
+  function lineupOut(date) { var sy = syncOf(date); return sy && Array.isArray(sy.x) ? sy.x : null; }
   function syncOf(date) { var l = lget(SYK)[date]; if (l && l.pending && l.v) return l.v; return (D.sync && D.sync[date]) || null; }
   // "P2 4:12" is real time since the period started (stoppages included). Between periods it says Intermission.
   function pTime(date, sec) {
@@ -2182,6 +2186,38 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   function vSetupNew() {
     return "<h2>Coach’s Corner</h2>" + coachSubTabs("setup") + '<p class="note" style="margin:12px 0 0">Make a game that is not in the site yet, so you can load its video, set periods and add angles. Games from Streamn join it automatically when their file arrives for the same date.</p>' + gameFormHtml(todayStr(), true);
   }
+  var lnX = null;
+  function lineupHtml(date) {
+    var lo = lineupOut(date), nums = everyoneNums(), set = Array.isArray(lo);
+    return '<div class="card" id="lnCard" data-date="' + date + '" style="margin-top:12px"><h3 style="margin-top:0">Lineup</h3><p class="note" style="margin-top:0">Tap a number that did <b>not</b> dress for this game. It turns off. Those numbers are left out of the choices in Game analysis, and the player does not get a game played.</p>' +
+      '<div class="pick" id="lnChips" role="group" aria-label="Who is in the lineup">' + nums.map(function (n) { var nm = D.roster[n] ? " " + String(D.roster[n]).split(" ")[0] : ""; return '<button type="button" class="chip pk" data-ln="' + n + '" aria-pressed="' + (!set || lo.indexOf(n) < 0) + '">' + n + esc(nm) + "</button>"; }).join("") + "</div>" +
+      '<div class="seg" style="margin-top:10px"><button class="btn" id="lnSave">Save lineup for everyone</button></div><p class="note" id="lnNote" aria-live="polite">' + (set ? (lo.length ? lo.length + " not in the lineup." : "Everyone is in the lineup.") : "Not set for this game yet. Everyone shows as in.") + "</p></div>";
+  }
+  function bindLineup(date) {
+    var card = $("lnCard"); if (!card) return;
+    var base = syncOf(date); lnX = Array.isArray(base && base.x) ? base.x.slice() : null;
+    function keepL() { var o = JSON.parse(JSON.stringify(syncOf(date) || emptySync())); o.x = lnX; var l = lget(SYK); l[date] = {v: o, pending: true}; lset(SYK, l); }
+    $("lnChips").addEventListener("click", function (e) {
+      var b = e.target.closest("button[data-ln]"); if (!b) return;
+      var n = +b.getAttribute("data-ln"); lnX = lnX || [];
+      var i = lnX.indexOf(n); if (i >= 0) lnX.splice(i, 1); else lnX.push(n);
+      lnX.sort(function (a, b2) { return a - b2; });
+      b.setAttribute("aria-pressed", String(lnX.indexOf(n) < 0)); keepL();
+      $("lnNote").textContent = (lnX.length ? lnX.length + " not in the lineup." : "Everyone is in the lineup.") + " Press Save lineup for everyone.";
+    });
+    $("lnSave").addEventListener("click", function () {
+      var sv = $("lnNote"); if (lnX === null) lnX = []; keepL();
+      if (!(D.cfg && D.cfg.submitUrl)) { sv.textContent = "Saved on this device only (no helper is set up)."; return; }
+      var o = JSON.parse(JSON.stringify(syncOf(date) || emptySync())); o.x = lnX;
+      sv.textContent = "Sending...";
+      fetch(workerUrl(), {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({kind: "sync", date: date, passcode: coachCfg().pass, text: fmtSync(o)})})
+        .then(function (r) { return r.json().catch(function () { return {ok: false, error: "Bad reply"}; }); })
+        .then(function (j) {
+          if (j.ok) { D.sync[date] = JSON.parse(JSON.stringify(o)); var l = lget(SYK); delete l[date]; lset(SYK, l); D.games.forEach(function (g) { if (g.date === date) applyReview(g); }); }
+          sv.textContent = j.ok ? "Saved for everyone. Every device shows it in a minute or two." : "Not saved for everyone: " + (j.error || "unknown problem") + ". It is kept on this device. Press Save again to retry.";
+        }).catch(function () { sv.textContent = "No connection. Kept on this device. Press Save again to retry."; });
+    });
+  }
   function vSetup(dateParam) {
     if (dateParam === "new") return vSetupNew();
     var dates = dateChoices(), date = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : (D.games.length ? D.games[D.games.length - 1].date : dates[0]);
@@ -2190,6 +2226,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var h = "<h2>Coach’s Corner</h2>" + coachSubTabs("setup");
     h += '<div class="card" style="margin-top:12px"><div class="fld"><label for="stDate">Game</label>' + dateSelect("stDate", dates, date) + '</div><div class="seg"><button onclick="location.hash=\'#/coach/setup/new\'">+ New game</button></div></div>';
     h += gameFormHtml(date, false);
+    h += lineupHtml(date);
     if (!ytId(url)) return h + '<div class="card" style="margin-top:12px"><p class="note" style="margin:0">Add the game video link above and save. Then periods and extra camera angles show here.</p></div>';
     h += '<div class="card" style="margin-top:12px">';
     h += '<p class="note" style="margin-bottom:0">Play the main video. At each puck drop tap <b>Starts now</b> for that period, and <b>Ends now</b> at the horn. Times then show as period time, like P2 4:12, next to the video time. Nothing already saved changes. Extra camera angles are added further down.</p></div>';
@@ -2211,13 +2248,14 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   function bindSetup(param) {
     if (param === "new") { bindGameForm(true); return; }
     if ($("gfSave")) bindGameForm(false);
+    if ($("lnCard")) bindLineup($("stDate").value);
     if (!$("stYt")) { if ($("stDate")) $("stDate").addEventListener("change", function () { location.hash = "#/coach/setup/" + $("stDate").value; }); return; }
     var date = $("stDate").value, id = ytId(D.videos[date] || lget(VK)[date] || ""), pl = null, ready = false, pl2 = null, ready2 = false, matchIdx = -1;
     $("stDate").addEventListener("change", function () { location.hash = "#/coach/setup/" + $("stDate").value; });
     var cur = JSON.parse(JSON.stringify(syncOf(date) || emptySync()));
     function now() { try { return ready ? pl.getCurrentTime() || 0 : 0; } catch (e) { return 0; } }
     function now2() { try { return ready2 ? pl2.getCurrentTime() || 0 : 0; } catch (e) { return 0; } }
-    function keep() { var l = lget(SYK); l[date] = {v: cur, pending: true}; lset(SYK, l); }
+    function keep() { if (lnX !== null) cur.x = lnX.slice(); var l = lget(SYK); l[date] = {v: cur, pending: true}; lset(SYK, l); }
     $("stLen").value = cur.L.join(",");
     $("stLen").addEventListener("input", function () { var v = $("stLen").value.split(",").map(function (x) { return parseInt(x, 10); }).filter(function (x) { return x > 0 && x < 100; }).slice(0, 5); if (v.length) { cur.L = v; keep(); drawPeriods(); } });
     function drawPeriods() {
@@ -2462,8 +2500,8 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     });
     render();
   }
-  function reviewPick(c) {
-    var all = everyoneNums(), isG = {};
+  function reviewPick(c, date) {
+    var lo = date ? lineupOut(date) : null, all = everyoneNums().filter(function (n) { return !lo || lo.indexOf(n) < 0 || c.players.indexOf(n) >= 0 || (c.ice || []).indexOf(n) >= 0; }), isG = {};
     Object.keys(D.goalieNums).forEach(function (k) { isG[k] = 1; });
     D.games.forEach(function (g) { g.goalies.forEach(function (x) { isG[x.n] = 1; }); g.players.forEach(function (p) { delete isG[p.n]; }); });
     var goalies = all.filter(function (n) { return isG[n]; }), skaters = all.filter(function (n) { return !isG[n]; });
@@ -2655,7 +2693,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       }).join("") + '<div class="tlover"><div class="tlhead" id="rvHead"></div></div></div><p class="note" style="margin:6px 0 0" id="rvTime">Tap the timeline to jump. Tap a mark to select it.</p>' +
         (st.tz.z > 1 ? '<p class="note" style="margin:2px 0 0">Zoomed to ' + hms(Math.floor(W.s)) + " to " + hms(Math.floor(W.s + W.len)) + ". Scroll the mouse wheel over the timeline to zoom.</p>" : "");
     }
-    function pickHtml(c) { return c.src === "rv" ? reviewPick(c) : playerPick(c); }
+    function pickHtml(c) { return c.src === "rv" ? reviewPick(c, date) : playerPick(c); }
     function drawSel() {
       var c = st.sel, box = $("rvSel");
       if (!c) { box.innerHTML = '<p class="note" style="margin:0">Mark something, or tap a mark on the timeline, to add players to it.</p>'; return; }
@@ -3173,6 +3211,13 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     g.hs = o.hs; g.as = o.as; g.hShots = o.hShots; g.aShots = o.aShots; g.goals = o.goals; g.players = o.players; g.goalies = o.goalies; g.dnp = o.dnp;
     g.fo = o.fo; g.notes = []; g.adjusted = false;
     var R = D.sample ? [] : allReview(g.date);
+    var applyOut = function () {
+      var lo = lineupOut(g.date); if (!lo) return;
+      if (g.setup) rosterNums().forEach(function (n) { if (lo.indexOf(n) < 0 && !g.players.some(function (p) { return p.n === n; })) g.players.push({n: n, g: 0, a: 0, p: 0, pm: 0, pim: 0, sog: 0}); });
+      g.players = g.players.filter(function (p) { return lo.indexOf(p.n) < 0; });
+      g.goalies = g.goalies.filter(function (x) { return lo.indexOf(x.n) < 0; });
+      lo.forEach(function (n) { if (g.dnp.indexOf(n) < 0 && (D.roster[n] !== undefined || D.goalieNums[n] === undefined)) g.dnp.push(n); });
+    };
     if (g.setup) {
       g.pending = !R.some(function (c) { return /Goal$/.test(c.tag); }); g.period = g.pending ? "Not scored yet" : "Final";
       // who played: everyone named in the marks, plus everyone with a tracked shift
@@ -3181,7 +3226,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       try { computeShifts(getShifts(g.date)).rows.forEach(function (r) { add(r.n); }); } catch (e) {}
       Object.keys(goalie).forEach(function (n) { if (!g.goalies.some(function (x) { return x.n === +n; })) g.goalies.push({n: +n, sa: 0, ga: 0, toi: 0}); });
     }
-    if (!R.length) { g.result = g.hs > g.as ? "W" : g.hs < g.as ? "L" : "T"; return; }
+    if (!R.length) { applyOut(); g.result = g.hs > g.as ? "W" : g.hs < g.as ? "L" : "T"; return; }
     var by = function (t) { return R.filter(function (c) { return c.tag === t; }).sort(function (a, b) { return a.sec - b.sec; }); };
     var fG = by("For: Goal"), aG = by("Against: Goal"), fS = by("For: Shot on goal"), aS = by("Against: Shot on goal");
     var scorerOf = function (c) { var a = c.assists || []; var l = c.players.filter(function (n) { return a.indexOf(n) < 0; }); return l.length ? l[0] : null; };
@@ -3255,6 +3300,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     // penalties: the scoreboard only lists them as timestamps, so just compare counts
     var pr = by("Penalty").length, ev = (D.events[g.date] || []).filter(function (e) { return /^Penalty/i.test(e.label); }).length;
     if (pr && ev && pr !== ev) note("Our penalties: the scoreboard timeline has " + ev + ", video review has " + pr + ". Penalty minutes stay as the scoreboard has them.");
+    applyOut();
     g.result = g.hs > g.as ? "W" : g.hs < g.as ? "L" : "T";
   }
   // Games without a Streamn file: once a played game has review marks, it becomes a game here so it counts everywhere.
