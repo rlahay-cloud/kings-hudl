@@ -465,11 +465,11 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       var who = g.goalies.filter(function (x) { return x.sa || x.ga || x.toi; });
       who.forEach(function (x) {
         var a = m[x.n] || (m[x.n] = {n: x.n, gp: 0, sa: 0, ga: 0, toi: 0, svSa: 0, svGa: 0, gaaGa: 0, gaaToi: 0, partial: false, log: []});
-        a.gp++; a.sa += x.sa; a.ga += x.ga; a.toi += x.toi; a.log.push({game: g, s: x});
+        var t = x.toi > 0 ? x.toi : (who.length === 1 ? 32 * 60 : 0);
+        a.gp++; a.sa += x.sa; a.ga += x.ga; a.toi += t; a.log.push({game: g, s: x});
         // save % only from games where their shots were counted (a goal always counts as a shot)
         if (x.sa >= x.ga && x.sa > 0) { a.svSa += x.sa; a.svGa += x.ga; } else if (x.sa || x.ga) a.partial = true;
         // GAA only from games where the minutes are known (a lone goalie played the whole 32 minutes)
-        var t = x.toi > 0 ? x.toi : (who.length === 1 ? 32 * 60 : 0);
         if (t > 0) { a.gaaGa += x.ga; a.gaaToi += t; } else if (x.ga) a.partial = true;
       });
     });
