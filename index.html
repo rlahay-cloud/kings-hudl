@@ -462,12 +462,18 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var m = {};
     D.games.forEach(function (g) {
       if (g.pending) return;
-      g.goalies.forEach(function (x) {
-        var a = m[x.n] || (m[x.n] = {n: x.n, gp: 0, sa: 0, ga: 0, toi: 0, log: []});
+      var who = g.goalies.filter(function (x) { return x.sa || x.ga || x.toi; });
+      who.forEach(function (x) {
+        var a = m[x.n] || (m[x.n] = {n: x.n, gp: 0, sa: 0, ga: 0, toi: 0, svSa: 0, svGa: 0, gaaGa: 0, gaaToi: 0, partial: false, log: []});
         a.gp++; a.sa += x.sa; a.ga += x.ga; a.toi += x.toi; a.log.push({game: g, s: x});
+        // save % only from games where their shots were counted (a goal always counts as a shot)
+        if (x.sa >= x.ga && x.sa > 0) { a.svSa += x.sa; a.svGa += x.ga; } else if (x.sa || x.ga) a.partial = true;
+        // GAA only from games where the minutes are known (a lone goalie played the whole 32 minutes)
+        var t = x.toi > 0 ? x.toi : (who.length === 1 ? 32 * 60 : 0);
+        if (t > 0) { a.gaaGa += x.ga; a.gaaToi += t; } else if (x.ga) a.partial = true;
       });
     });
-    return Object.keys(m).map(function (k) { var a = m[k]; a.sv = svp(a.sa, a.ga); a.gaa = a.toi > 0 ? a.ga * 32 * 60 / a.toi : null; return a; });
+    return Object.keys(m).map(function (k) { var a = m[k]; a.sv = svp(a.svSa, a.svGa); a.gaa = a.gaaToi > 0 ? a.gaaGa * 32 * 60 / a.gaaToi : null; return a; });
   }
   function team() {
     var G = D.games.filter(function (g) { return !g.pending; }), t = {gp: G.length, w: 0, l: 0, t: 0};
@@ -716,7 +722,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var x = aggGoalies().filter(function (a) { return a.n === n; })[0];
     var labels = x.log.map(function (l) { return fmtDate(l.game.date); });
     var h = '<a class="back" href="#/players">&larr; All players</a><div class="phead">' + avatar(n, "lg") + "<h2 style='margin:18px 0 10px'>" + esc(label(n)) + "<small>Goalie, " + x.gp + (x.gp === 1 ? " game" : " games") + "</small></h2></div>";
-    h += '<div class="kpis">' + kpi(svText(x.sv), "Save %") + kpi(x.gaa === null ? "-" : x.gaa.toFixed(2), "GAA") + kpi(x.sa, "Shots against") + kpi(x.sa - x.ga, "Saves") + kpi(x.ga, "Goals against") + kpi(Math.floor(x.toi / 60) + " min", "Time in net") + "</div>";
+    h += '<div class="kpis">' + kpi(svText(x.sv), "Save %") + kpi(x.gaa === null ? "-" : x.gaa.toFixed(2), "GAA") + kpi(x.sa, "Shots against") + kpi(x.sa - x.ga, "Saves") + kpi(x.ga, "Goals against") + kpi(Math.floor(x.toi / 60) + " min", "Time in net") + "</div>" + (x.partial ? '<p class="note">Save % and GAA skip games where the shots against or the minutes in net were not recorded.</p>' : "");
     h += "<h2>Game by game</h2><div class='card'><h3>Save percentage</h3>" + lineChart([{name: "SV%", c: "var(--accent)", v: x.log.map(function (l) { return svp(l.s.sa, l.s.ga); })}], labels, {min: 0.5, max: 1, fmt: function (v) { return svText(v); }}) + "</div>";
     h += "<div class='card scroll' style='margin-top:12px'><table><thead><tr><th>Game</th><th></th><th>SA</th><th>GA</th><th>SV%</th></tr></thead><tbody>" +
       x.log.slice().reverse().map(function (l) {
