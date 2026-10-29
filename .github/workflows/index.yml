@@ -5,6 +5,9 @@ on:
     paths: ["games/**"]
 permissions:
   contents: write
+concurrency:
+  group: games-index
+  cancel-in-progress: false
 jobs:
   index:
     runs-on: ubuntu-latest
@@ -19,4 +22,4 @@ jobs:
           git config user.name "kings-hudl-bot"
           git config user.email "actions@users.noreply.github.com"
           git add games/index.json
-          git diff --cached --quiet || (git commit -m "Update games index" && git push)
+          git diff --cached --quiet || (git commit -m "Update games index" && git pull --rebase origin main && git push)
