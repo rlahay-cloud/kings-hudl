@@ -568,11 +568,11 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   // GameSheet's own standings page, shown inside Kings HUDL so it is always live.
   function gsUrl(q) { return "https://gamesheetstats.com/seasons/15454/standings?configuration%5Bcompact-view%5D=compact&filter%5Bdivision%5D=83415&filter%5Bquery%5D=" + encodeURIComponent(q || "") + "&filter%5Bview%5D=divisions"; }
   // GameSheet team page ids (the number in gamesheetstats.com/seasons/15454/teams/<id>/preview). Add a team here to show its own page.
-  var GS_TEAMS = [{name: "Cumberland Jr Grads", id: 533170}, {name: "Kanata Blazers", id: 533169}];
+  var GS_TEAMS = [{name: "Cumberland Jr Grads", id: 533170}, {name: "Kanata Blazers", id: 533169}, {name: "Gloucester Rangers", id: 533166}];
   function gsTeamUrl(id) { return "https://gamesheetstats.com/seasons/15454/teams/" + id + "/preview?configuration%5Bcompact-view%5D=compact&filter%5Bdivision%5D=83415&filter%5Bview%5D=divisions"; }
   function gsEmbed(q, title, sub, h, teamName) {
     var t = teamName ? GS_TEAMS.filter(function (x) { return sameTeam(x.name, teamName); })[0] : null, u = t ? gsTeamUrl(t.id) : gsUrl(q);
-    return "<h2>" + esc(title) + "<small>" + esc(sub) + "</small></h2><div class='card' style='padding:0;overflow:hidden'><iframe src='" + esc(u) + "' title='" + esc(title) + "' loading='lazy' referrerpolicy='no-referrer' style='width:100%;height:" + (h || 380) + "px;border:0;display:block;background:#fff'></iframe></div>" +
+    return "<h2>" + esc(title) + "<small>" + esc(sub) + "</small></h2><div class='card' style='padding:0;overflow:hidden'><iframe src='" + esc(u) + "' title='" + esc(title) + "' loading='lazy' referrerpolicy='no-referrer' style='width:100%;height:" + (t ? 1100 : (h || 380)) + "px;border:0;display:block;background:#fff'></iframe></div>" +
       "<p class='note'>Live from GameSheet. If the box above stays blank, <a href='" + esc(u) + "' target='_blank' rel='noopener'>open it on GameSheet</a>." + (teamName && !t ? " This team's own page has not been added yet, so it shows the division list." : "") + "</p>";
   }
   function oppQuery(name) { var w = String(name || "").replace(/[^A-Za-z0-9 ]/g, " ").split(/\s+/).filter(Boolean).sort(function (a, b) { return b.length - a.length; }); return w[0] || ""; }
