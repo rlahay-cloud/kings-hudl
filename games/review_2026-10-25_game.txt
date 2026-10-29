@@ -32,7 +32,47 @@
 0:20:51|For: Shot on goal|13|0.358,0.322,2,f
 0:21:11|Against: Goal|2|0.120,0.498,2,f
 0:21:44|Faceoff: NZ Win|17|,,2,f
+0:23:33|Faceoff: DZ Loss|38|,,2,f
+0:24:01|Against: Shot on goal|2|0.217,0.101,2,f
+0:24:23|Faceoff: DZ Loss|97|,,2,f
 0:24:46|For: Goal|10 a72 i97 i18 i13|0.845,0.682,2,f
+0:25:16|Faceoff: NZ Win|97|,,2,f
+0:25:45|Against: Shot on goal|2|0.283,0.899,2,f
+0:26:06|For: Shot on goal|97|0.923,0.616,2,f
+0:26:19|For: Shot on goal|11|0.798,0.156,2,f
+0:26:49|For: Shot on goal|86|0.925,0.675,2,f
+0:27:01|For: Shot on goal|13|0.466,0.906,2,f
+0:27:26|Faceoff: OZ Loss|17|,,2,f
+0:27:39|Faceoff: OZ Win|17|,,2,f
+0:28:30|Faceoff: NZ Loss|38|,,2,f
+0:30:18|Faceoff: NZ Win|38|,,3,f
+0:30:38|Faceoff: NZ Loss|38|,,3,f
+0:30:53|For: Shot on goal|38|0.933,0.594,3,f
+0:30:54|Away Penalty||,,3,f
+0:31:27|Faceoff: OZ Win|97|,,3,f
 0:32:26|For: Goal|72 a97 a13|0.912,0.443,3,f
+0:33:49|Faceoff: NZ Win|17|,,3,f
+0:34:01|For: Shot on goal|88|0.900,0.436,3,f
+0:34:27|Faceoff: OZ Loss|17|,,3,f
+0:34:58|Against: Shot on goal|2|0.127,0.373,3,f
+0:35:18|Faceoff: DZ Loss|38|,,3,f
+0:35:57|Against: Shot on goal|2|0.177,0.800,3,f
 0:36:30|For: Goal|91 a19|0.844,0.509,3,f
+0:37:33|Faceoff: NZ Win|97|,,3,f
+0:37:58|For: Shot on goal|13|0.845,0.513,3,f
+0:38:09|For: Shot on goal|13|0.945,0.689,3,f
+0:38:35|Faceoff: OZ Win|17|,,3,f
+0:38:49|For: Shot on goal|17|0.878,0.329,3,f
+0:39:03|For: Shot on goal|88|0.922,0.432,3,f
+0:39:46|Away Penalty||,,3,f
+0:40:22|Faceoff: OZ Loss|38|,,3,f
+0:40:32|For: Shot on goal|10|0.713,0.697,3,f
+0:40:55|Faceoff: OZ Loss|38|,,3,f
+0:41:46|Faceoff: NZ Win|97|,,3,f
 0:42:48|For: Goal|97 a11 i19 i11 i72 i13|0.906,0.340,3,f
+0:43:28|Faceoff: NZ Win|17|,,3,f
+0:43:43|For: Shot on goal|88|0.830,0.318,3,f
+0:44:11|Away Penalty||,,3,f
+0:44:56|Faceoff: OZ Win||,,3,f
+0:46:40|Faceoff: NZ Win|97|,,3,f
+0:47:12|For: Shot on goal|97|0.820,0.531,3,f
