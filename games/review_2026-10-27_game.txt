@@ -25,7 +25,7 @@
 0:12:57|Faceoff: DZ Loss|38|,,1,f
 0:13:27|For: Goal|38 a10 i18 i19 i93|0.933,0.564,1,f
 0:13:56|Faceoff: NZ Loss|97|,,1,f
-0:14:01|Against: Goal|2 i72 i97 i11 i19 i13|0.087,0.469,1,f
+0:14:01|Against: Goal|33 i72 i97 i11 i19 i13|0.087,0.469,1,f
 0:14:28|Faceoff: NZ Win|97|,,1,f
 0:19:41|Against: Goal|33 i13 i72 i19 i97 i11|0.105,0.443,1,f
 0:20:53|Against: Goal|33 i72 i97 i13 i11 i19|0.084,0.542,1,f
