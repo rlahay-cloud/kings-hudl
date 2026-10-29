@@ -565,6 +565,14 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       return "<a class='card' href='#/next/" + g.date + "' style='display:block;color:inherit;text-decoration:none'><h3 style='margin:0 0 4px'>" + (i === 0 ? "Up next" : "After that") + "</h3><div style='font-family:var(--display);font-weight:700;font-size:22px'>" + days[d.getDay()] + " " + fmtDate(g.date) + ", " + h12 + ":" + mm + " " + ap + "</div><div style='margin-top:4px'>" + (g.home ? "vs " : "at ") + "<b>" + esc(g.opp) + "</b></div>" + (g.venue ? "<div class='note' style='margin:4px 0 0'>" + esc(g.venue) + (g.home ? ", home" : ", away") + "</div>" : "") + "<div class='note' style='margin:6px 0 0;color:var(--accent)'>Tap to see past games against them &rarr;</div></a>";
     }).join("") + "</div>";
   }
+  // GameSheet's own standings page, shown inside Kings HUDL so it is always live.
+  function gsUrl(q) { return "https://gamesheetstats.com/seasons/15454/standings?configuration%5Bcompact-view%5D=compact&filter%5Bdivision%5D=83415&filter%5Bquery%5D=" + encodeURIComponent(q || "") + "&filter%5Bview%5D=divisions"; }
+  function gsEmbed(q, title, sub, h) {
+    var u = gsUrl(q);
+    return "<h2>" + esc(title) + "<small>" + esc(sub) + "</small></h2><div class='card' style='padding:0;overflow:hidden'><iframe src='" + esc(u) + "' title='" + esc(title) + "' loading='lazy' referrerpolicy='no-referrer' style='width:100%;height:" + (h || 640) + "px;border:0;display:block;background:#fff'></iframe></div>" +
+      "<p class='note'>Live from GameSheet. If the box above stays blank, <a href='" + esc(u) + "' target='_blank' rel='noopener'>open it on GameSheet</a>.</p>";
+  }
+  function oppQuery(name) { var w = String(name || "").replace(/[^A-Za-z0-9 ]/g, " ").split(/\s+/).filter(Boolean).sort(function (a, b) { return b.length - a.length; }); return w[0] || ""; }
   function sameTeam(a, b) {
     var n = function (x) { return String(x || "").toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim(); }, x = n(a), y = n(b);
     if (!x || !y) return false;
@@ -576,7 +584,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (!sc) return '<a class="back" href="#/">&larr; Overview</a><div class="card empty">That game is not on the schedule.</div>';
     var meets = D.games.filter(function (g) { return sameTeam(g.away, sc.opp); }).sort(function (a, b) { return a.date < b.date ? 1 : -1; });
     var pt = sc.time.split(":"), hh = +pt[0], tm = (hh % 12 || 12) + ":" + pt[1] + (hh < 12 ? " AM" : " PM");
-    var h = '<a class="back" href="#/">&larr; Overview</a><h2>' + (sc.home ? "vs " : "at ") + esc(sc.opp) + "<small>" + fmtDate(date) + ", " + tm + (sc.venue ? ", " + esc(sc.venue) : "") + "</small></h2>";
+    var h = '<a class="back" href="#/">&larr; Overview</a><h2>' + (sc.home ? "vs " : "at ") + esc(sc.opp) + "<small>" + fmtDate(date) + ", " + tm + (sc.venue ? ", " + esc(sc.venue) : "") + "</small></h2>" + gsEmbed(oppQuery(sc.opp), sc.opp + " this season", "live from GameSheet", 300);
     if (!meets.length) return h + '<div class="card empty"><p>No games against them yet this season.</p><p class="note">Past games show here once they are in the site.</p></div>';
     var w = 0, l = 0, t = 0, gf = 0, ga = 0, sf = 0, sa = 0;
     meets.forEach(function (g) { if (g.result === "W") w++; else if (g.result === "L") l++; else t++; gf += g.hs; ga += g.as; sf += g.hShots; sa += g.aShots; });
@@ -600,6 +608,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var h = nextGamesHtml() + '<div class="kpis">' +
       kpi(t.w + "-" + t.l + "-" + t.t, "Record") + kpi(t.gf, "Goals for") + kpi(t.ga, "Goals against") +
       kpi(t.sf, "Shots for") + kpi(t.sa, "Shots against") + kpi(pct(t.sf, t.sf + t.sa), "Shot share") + "</div>";
+    h += gsEmbed("", "Division standings", "live from GameSheet", 680);
     h += "<h2>What stands out</h2><div class='card'>" + insights(P, G, t) + "</div>";
     h += "<h2>Trends</h2><div class='row g2'>" +
       "<div class='card'><h3>Shots per game</h3>" + lineChart([{name: usN(), c: "var(--accent)", v: D.games.map(function (g) { return g.hShots; })}, {name: "Opponents", c: "var(--blue)", v: D.games.map(function (g) { return g.aShots; })}], labels, {label: "Shots for and against by game", step: 5}) + "</div>" +
