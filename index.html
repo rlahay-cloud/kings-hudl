@@ -396,7 +396,8 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       return Promise.all(jobs.concat(videoJobs));
     });
     var playersP = backupP.then(function () { return getText("games/players.txt"); }).then(function (t) { applyPlayers(parsePlayers(t)); }).catch(function () {}).then(function () { try { if (localStorage.getItem(PK + "-pending") === "2") applyPlayers(JSON.parse(localStorage.getItem(PK) || "{}")); } catch (e) {} });
-    return Promise.all([backupP, videosP, gamesP, cfgP, playersP, schedP]).then(function () {
+    var standP = getText("games/standings.txt").then(function (t) { D.standings = parseStandings(t); }).catch(function () { D.standings = null; });
+    return Promise.all([backupP, videosP, gamesP, cfgP, playersP, schedP, standP]).then(function () {
       D.games.sort(function (a, b) { return a.id < b.id ? -1 : 1; });
     });
   }
@@ -565,6 +566,50 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       return "<a class='card' href='#/next/" + g.date + "' style='display:block;color:inherit;text-decoration:none'><h3 style='margin:0 0 4px'>" + (i === 0 ? "Up next" : "After that") + "</h3><div style='font-family:var(--display);font-weight:700;font-size:22px'>" + days[d.getDay()] + " " + fmtDate(g.date) + ", " + h12 + ":" + mm + " " + ap + "</div><div style='margin-top:4px'>" + (g.home ? "vs " : "at ") + "<b>" + esc(g.opp) + "</b></div>" + (g.venue ? "<div class='note' style='margin:4px 0 0'>" + esc(g.venue) + (g.home ? ", home" : ", away") + "</div>" : "") + "<div class='note' style='margin:6px 0 0;color:var(--accent)'>Tap to see past games against them &rarr;</div></a>";
     }).join("") + "</div>";
   }
+  // Division standings copied from GameSheet (games/standings.txt). Columns: GP W L T ... PTS PTS% ... GF GA DIFF STREAK PIM PPO PPG x PP% TSH x PPGA PK%
+  function parseStandings(text) {
+    var L = String(text || "").split(/\r?\n/), out = {updated: "", division: "", rows: []}, i = 0;
+    L.forEach(function (l) { var m = /^Updated:\s*(\S+)/.exec(l); if (m) out.updated = m[1]; m = /^Division:\s*(.+)$/.exec(l); if (m) out.division = m[1].trim(); });
+    while (i < L.length) {
+      if (/^\s*\d+\s*$/.test(L[i])) {
+        var j = i + 1, nm = "", st = "";
+        while (j < L.length && !L[j].trim()) j++;
+        nm = (L[j] || "").trim(); j++;
+        while (j < L.length && !L[j].trim()) j++;
+        st = (L[j] || "").trim();
+        var t = st.replace(/(Won|Lost|Tied)\s+(\d+)/, "$1_$2").split(/\s+/);
+        if (nm && t.length >= 25) {
+          out.rows.push({rank: out.rows.length + 1, name: nm, gp: +t[0], w: +t[1], l: +t[2], t: +t[3], pts: +t[8], pct: t[9], gf: +t[12], ga: +t[13], diff: t[14], strk: t[15].replace("_", " "), pim: +t[16], ppo: +t[17], ppg: +t[18], pp: t[20], tsh: +t[21], ppga: +t[23], pk: t[24]});
+          i = j;
+        }
+      }
+      i++;
+    }
+    return out.rows.length ? out : null;
+  }
+  function standingOf(name) {
+    var S = D.standings; if (!S) return null;
+    return S.rows.filter(function (r) { return sameTeam(r.name, name); })[0] || null;
+  }
+  function standingsHtml(opts) {
+    var S = D.standings; if (!S) return "";
+    var me = standingOf(D.home || "Kings");
+    var h = "<h2>Division standings<small>" + esc(S.division || "") + (S.updated ? ", as of " + esc(fmtDate(S.updated)) : "") + "</small></h2>";
+    h += "<div class='card scroll'><table><thead><tr><th>#</th><th>Team</th><th>GP</th><th>W</th><th>L</th><th>T</th><th>PTS</th><th>GF</th><th>GA</th><th>DIFF</th><th>Streak</th></tr></thead><tbody>" +
+      S.rows.map(function (r) {
+        var us = me && r.name === me.name, hl = us ? " style='background:rgba(150,110,255,.16);font-weight:700'" : "";
+        return "<tr" + hl + "><td>" + r.rank + "</td><td>" + esc(r.name) + "</td><td>" + r.gp + "</td><td>" + r.w + "</td><td>" + r.l + "</td><td>" + r.t + "</td><td><b>" + r.pts + "</b></td><td>" + r.gf + "</td><td>" + r.ga + "</td><td>" + esc(r.diff) + "</td><td>" + esc(r.strk) + "</td></tr>";
+      }).join("") + "</tbody></table></div><p class='note'>From GameSheet. Win = 2 points, tie = 1.</p>";
+    return h;
+  }
+  function theirSeasonHtml(name) {
+    var r = standingOf(name); if (!r) return "";
+    var pimPg = r.gp ? (r.pim / r.gp).toFixed(1) : "-";
+    return "<h2>" + esc(r.name) + " this season<small>#" + r.rank + " in the division</small></h2><div class='kpis'>" +
+      kpi(r.w + "-" + r.l + "-" + r.t, "Record") + kpi(r.pts, "Points") + kpi(r.gf, "Goals for") + kpi(r.ga, "Goals against") + kpi(r.diff, "Goal difference") + kpi(r.strk, "Streak") +
+      kpi(r.pp, "Power play %") + kpi(r.pk, "Penalty kill %") + kpi(pimPg, "Penalty min per game") + "</div>" +
+      "<p class='note'>From GameSheet" + (D.standings.updated ? ", as of " + esc(fmtDate(D.standings.updated)) : "") + ". Power play " + r.ppg + " for " + r.ppo + ". Penalty kill: " + r.ppga + " against in " + r.tsh + " times short.</p>";
+  }
   function sameTeam(a, b) {
     var n = function (x) { return String(x || "").toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim(); }, x = n(a), y = n(b);
     if (!x || !y) return false;
@@ -576,7 +621,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (!sc) return '<a class="back" href="#/">&larr; Overview</a><div class="card empty">That game is not on the schedule.</div>';
     var meets = D.games.filter(function (g) { return sameTeam(g.away, sc.opp); }).sort(function (a, b) { return a.date < b.date ? 1 : -1; });
     var pt = sc.time.split(":"), hh = +pt[0], tm = (hh % 12 || 12) + ":" + pt[1] + (hh < 12 ? " AM" : " PM");
-    var h = '<a class="back" href="#/">&larr; Overview</a><h2>' + (sc.home ? "vs " : "at ") + esc(sc.opp) + "<small>" + fmtDate(date) + ", " + tm + (sc.venue ? ", " + esc(sc.venue) : "") + "</small></h2>";
+    var h = '<a class="back" href="#/">&larr; Overview</a><h2>' + (sc.home ? "vs " : "at ") + esc(sc.opp) + "<small>" + fmtDate(date) + ", " + tm + (sc.venue ? ", " + esc(sc.venue) : "") + "</small></h2>" + theirSeasonHtml(sc.opp);
     if (!meets.length) return h + '<div class="card empty"><p>No games against them yet this season.</p><p class="note">Past games show here once they are in the site.</p></div>';
     var w = 0, l = 0, t = 0, gf = 0, ga = 0, sf = 0, sa = 0;
     meets.forEach(function (g) { if (g.result === "W") w++; else if (g.result === "L") l++; else t++; gf += g.hs; ga += g.as; sf += g.hShots; sa += g.aShots; });
@@ -600,6 +645,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var h = nextGamesHtml() + '<div class="kpis">' +
       kpi(t.w + "-" + t.l + "-" + t.t, "Record") + kpi(t.gf, "Goals for") + kpi(t.ga, "Goals against") +
       kpi(t.sf, "Shots for") + kpi(t.sa, "Shots against") + kpi(pct(t.sf, t.sf + t.sa), "Shot share") + "</div>";
+    h += standingsHtml();
     h += "<h2>What stands out</h2><div class='card'>" + insights(P, G, t) + "</div>";
     h += "<h2>Trends</h2><div class='row g2'>" +
       "<div class='card'><h3>Shots per game</h3>" + lineChart([{name: usN(), c: "var(--accent)", v: D.games.map(function (g) { return g.hShots; })}, {name: "Opponents", c: "var(--blue)", v: D.games.map(function (g) { return g.aShots; })}], labels, {label: "Shots for and against by game", step: 5}) + "</div>" +
