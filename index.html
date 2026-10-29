@@ -1018,6 +1018,12 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (sy.e[best] !== undefined && sec > sy.e[best] + 0.5) return "Intermission";
     return (best === 4 ? "OT" : "P" + best) + " " + mss(sec - sy.p[best]);
   }
+  // Which period a moment in the video falls in, from the start times in Game setup. Null when setup has no period times yet.
+  function periodAt(date, sec) {
+    var sy = syncOf(date); if (!sy || !sy.p || sec === undefined || sec === null) return null;
+    var best = 0; [1, 2, 3, 4].forEach(function (k) { if (sy.p[k] !== undefined && sy.p[k] <= sec + 0.5) best = k; });
+    return best || null;
+  }
   function tLabel(date, sec) { var t = pTime(date, sec); return hms(Math.floor(sec)) + (t ? "  " + t : ""); }
   function pSmall(date, sec) { var t = pTime(date, sec); return t ? '<small style="display:block;font-size:11px;color:var(--muted);font-family:var(--body,inherit);font-weight:600">' + esc(t) + "</small>" : ""; }
   var vp = {id: null, player: null};
@@ -2311,7 +2317,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     }).join("\n") + "\n";
   }
   function getMyReview(date) {
-    var l = lget(RK); if (l[date]) return l[date].slice();
+    var l = lget(RK); if (l[date]) return l[date].map(function (c) { var k = periodAt(date, c.sec); if (k) c.p = k; return c; });
     var sent = (D.review[date] || {}).game;
     return sent ? sent.map(function (x) { return {sec: x.sec, tag: x.tag, players: x.players.slice(), assists: x.assists.slice(), ice: (x.ice || []).slice(), until: x.until == null ? null : x.until, from: x.from == null ? null : x.from, lists: (x.lists || []).slice(), infr: x.infr || "", x: x.x, y: x.y, p: x.p}; }) : [];
   }
@@ -2321,6 +2327,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     Object.keys(sent).forEach(function (k) { if (k !== "game") others[k] = sent[k]; });
     var out = mergeBy(others, null, null);
     (lget(RK)[date] || sent.game || []).forEach(function (x) { var c = {}; Object.keys(x).forEach(function (k) { c[k] = x[k]; }); c.coach = GAME_LABEL; out.push(c); });
+    out.forEach(function (c) { var k = periodAt(date, c.sec); if (k) c.p = k; });
     return out.sort(function (a, b) { return a.sec - b.sec; });
   }
   var RV_SHOT_MAP = {"For: Goal": ["G", "H"], "For: Shot on goal": ["S", "H"], "Against: Goal": ["G", "A"], "Against: Shot on goal": ["S", "A"]};
@@ -2739,7 +2746,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       st.pend = {x: Math.min(1, Math.max(0, q.x / 200)), y: Math.min(1, Math.max(0, q.y / 85))}; st.zone = zoneOf(st.pend.x); drawRink();
     });
     function addEvent(c) { store(c.src).push(c); st.sel = c; st.last = c; persist(); drawAll(); $("clNote").textContent = "Saved " + itemLabel(c) + " at " + hms(mark(c)) + "."; }
-    function newRv(tag) { return {src: "rv", sec: Math.floor(cur.get()), tag: tag, players: [], assists: [], x: null, y: null, p: st.p, lists: st.auto ? [st.auto] : []}; }
+    function newRv(tag) { var ap = periodAt(date, Math.floor(cur.get())); if (ap && ap !== st.p) { st.p = ap; Array.prototype.forEach.call($("rvPer").children, function (x) { x.setAttribute("aria-pressed", String(+x.getAttribute("data-v") === ap)); }); } return {src: "rv", sec: Math.floor(cur.get()), tag: tag, players: [], assists: [], x: null, y: null, p: st.p, lists: st.auto ? [st.auto] : []}; }
     document.querySelector(".rv").addEventListener("click", function (e) {
       var b = e.target.closest("button.rvb"); if (!b || !cur) return;
       if (b.hasAttribute("data-fo")) {
