@@ -852,7 +852,6 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     h += '<div class="card"><div class="score"><div class="t">' + esc(g.home) + '</div><div class="s">' + g.hs + '</div><div class="s mut">-</div><div class="s">' + g.as + '</div><div class="t">' + esc(g.away) + "</div></div>" +
       cmpRow(g.hShots, "Shots", g.aShots, g.hShots, g.aShots) +
       (g.fo ? '<div class="cmp"><b class="l">' + esc(g.fo) + '</b><span class="c">Faceoffs won</span><b></b></div>' : "") + "</div>";
-    h += gsEmbed(oppQuery(g.away), g.away + " this season", "live from GameSheet", 420, g.away);
     var goalsH = !g.goals.length ? "" : "<h2>Goals</h2><div class='card'>" + g.goals.map(function (x) {
       return '<div class="ev ' + (x.home ? "goal" : "pen") + '"><span class="t" style="font-family:var(--display);font-weight:700;font-size:18px;min-width:90px">' + (x.nc ? "P" + esc(x.per) + " video " + hms(x.vsec) : "P" + esc(x.per) + " " + Math.floor(x.sec / 60) + ":" + ("0" + x.sec % 60).slice(-2)) + '</span><span class="lb">' + (x.sit ? '<span class="pill W">' + x.sit + "</span> " : "") +
         (x.home ? (x.scorer !== null ? esc(label(x.scorer)) + (x.assists.length ? ' <span class="mut">from ' + x.assists.map(function (n) { return esc(label(n)); }).join(", ") + "</span>" : ' <span class="mut">unassisted</span>') : esc(g.home)) : esc(g.away)) + "</span></div>";
