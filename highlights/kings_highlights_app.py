@@ -60,6 +60,8 @@ class App(tk.Tk):
         self.off.insert(0, "0")
         self.off.pack(side="left")
         tk.Label(f3, text="  (use a minus, like -12, if the clips start too late)").pack(side="left")
+        self.saves = tk.BooleanVar(value=True)
+        ttk.Checkbutton(self, text="Include saves (shots against), as short clips", variable=self.saves).pack(anchor="w", padx=12)
         f4 = tk.Frame(self)
         f4.pack(fill="x", **pad)
         self.b_test = ttk.Button(f4, text="Test the first clip", command=lambda: self.go(True))
@@ -115,13 +117,13 @@ class App(tk.Tk):
         self.b_test.config(state="disabled")
         self.b_all.config(state="disabled")
         keep_awake(True)
-        threading.Thread(target=self.work, args=(date, off, test, out), daemon=True).start()
+        threading.Thread(target=self.work, args=(date, off, test, out, self.saves.get()), daemon=True).start()
 
-    def work(self, date, off, test, out):
+    def work(self, date, off, test, out, saves=True):
         try:
             import highlights
             highlights.make_video(self.video, date, out, off, test, None,
-                                  log=lambda t: self.q.put(("line", t)),
+                                  log=lambda t: self.q.put(("line", t)), saves=saves,
                                   progress=lambda i, n: self.q.put(("bar", 100.0 * i / n)))
             self.q.put(("done", out))
         except Exception as e:

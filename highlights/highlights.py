@@ -26,6 +26,7 @@ RAW = "https://raw.githubusercontent.com/%s/main/games/" % REPO
 LEAD_GOAL, TAIL_GOAL = 10.0, 5.0
 LEAD_CLIP, TAIL_CLIP = 2.0, 2.0
 LEAD_POINT, TAIL_POINT = 5.0, 8.0
+LEAD_SAVE, TAIL_SAVE = 4.0, 3.0
 MAX_WIDTH = 1920
 
 
@@ -92,6 +93,10 @@ def collect(files):
             if len(a) < 4:
                 continue
             sec = hms(a[0])
+            if sec is not None and a[1].strip() == "Against: Shot on goal":
+                main, _ = players_text(a[2])
+                items.append({"sec": float(sec), "end": None, "label": "Save" + (" #" + main[0] if main else ""), "kind": "save"})
+                continue
             if sec is not None and a[1].strip() == "For: Goal":
                 main, assists = players_text(a[2])
                 scorer = [n for n in main if n not in assists]
@@ -133,6 +138,8 @@ def segments(items, offset=0.0, video_len=None):
     for it in items:
         if it["kind"] == "goal":
             s, e = it["sec"] - LEAD_GOAL, it["sec"] + TAIL_GOAL
+        elif it["kind"] == "save":
+            s, e = it["sec"] - LEAD_SAVE, it["sec"] + TAIL_SAVE
         elif it["end"]:
             s, e = it["sec"] - LEAD_CLIP, it["end"] + TAIL_CLIP
         else:
@@ -215,9 +222,9 @@ def cut_one(ffmpeg, video, seg, out, caption, font, log):
         raise RuntimeError("The cutting program stopped: " + r.stderr.strip()[-300:])
 
 
-def make_video(video, date, out, offset=0.0, test=False, local_dir=None, log=print, progress=None):
+def make_video(video, date, out, offset=0.0, test=False, local_dir=None, log=print, progress=None, saves=True):
     files = fetch_game_files(date, local_dir)
-    items = collect(files)
+    items = [i for i in collect(files) if saves or i["kind"] != "save"]
     if not items:
         raise RuntimeError("Kings HUDL has no goals or highlight clips for %s yet." % date)
     ffmpeg = find_ffmpeg(log)
@@ -264,12 +271,13 @@ def main():
     ap.add_argument("video", help="The full game video file")
     ap.add_argument("--offset", type=float, default=0.0, help="Seconds to add to every Kings HUDL time")
     ap.add_argument("--test", action="store_true", help="Only make the first clip, to check the timing")
+    ap.add_argument("--no-saves", action="store_true", help="Leave out the saves (shots against)")
     ap.add_argument("--out", default=None)
     ap.add_argument("--local-dir", default=None, help="Read the game files from a folder instead of GitHub")
     a = ap.parse_args()
     out = a.out or os.path.join(os.path.expanduser("~"), "Documents", "KingsHighlights",
                                 "Kings_highlights_%s%s.mp4" % (a.date, "_test" if a.test else ""))
-    make_video(a.video, a.date, out, a.offset, a.test, a.local_dir)
+    make_video(a.video, a.date, out, a.offset, a.test, a.local_dir, saves=not a.no_saves)
 
 
 if __name__ == "__main__":
