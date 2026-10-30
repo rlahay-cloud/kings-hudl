@@ -652,8 +652,10 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     return [["Blk", v(T.blk)], ["Ctrl Ex%", ctlEx], ["SOG", v(T.sog)], ["Pen", v(T.pen)], ["GF on", v(T.gf)], ["GA on", v(T.ga)]];
   }
   // Ice time totals per player across every game that has shifts.
+  // Ice time stats are hidden for now. Set SHOW_ICE to true to bring them back. Shift tracking in Coach's Corner keeps working.
+  var SHOW_ICE = false;
   function iceTotals() {
-    var m = {};
+    var m = {}; if (!SHOW_ICE) return m;
     iceDates().forEach(function (d) { computeShifts(getShifts(d)).rows.forEach(function (r) { var q = m[r.n] = m[r.n] || {games: 0, shifts: 0, toi: 0}; q.games++; q.shifts += r.count; q.toi += r.toi; }); });
     return m;
   }
@@ -1837,12 +1839,14 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   }
   function iceDates() { var s = {}; Object.keys(D.shifts).concat(Object.keys(lget(SHK))).forEach(function (d) { if (getShifts(d).length) s[d] = 1; }); return Object.keys(s).sort(); }
   function shiftsBlock(g) {
+    if (!SHOW_ICE) return "";
     var ev = getShifts(g.date); if (!ev.length) return "";
     var c = computeShifts(ev); if (!c.rows.length) return "";
     return "<h2>Ice time<small>stoppages not counted</small></h2><div class='card scroll'><table><thead><tr><th>Player</th><th>Shifts</th><th>Ice time</th><th>Avg shift</th><th>Longest</th><th>Shortest</th></tr></thead><tbody>" +
       c.rows.map(function (r) { return '<tr class="click" onclick="location.hash=\'#/player/' + r.n + '\'"><td>' + esc(label(r.n)) + "</td><td>" + r.count + "</td><td><b>" + mss(r.toi) + "</b></td><td>" + mss(r.avg) + "</td><td>" + mss(r.max) + "</td><td>" + mss(r.min) + "</td></tr>"; }).join("") + "</tbody></table></div>";
   }
   function playerIceHtml(n) {
+    if (!SHOW_ICE) return "";
     var games = [];
     iceDates().forEach(function (d) { var r = computeShifts(getShifts(d)).rows.filter(function (x) { return x.n === n; })[0]; if (r) games.push({date: d, r: r}); });
     if (!games.length) return "";
