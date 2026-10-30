@@ -267,7 +267,7 @@ def main():
     ap.add_argument("--out", default=None)
     ap.add_argument("--local-dir", default=None, help="Read the game files from a folder instead of GitHub")
     a = ap.parse_args()
-    out = a.out or os.path.join(os.path.expanduser("~"), "Documents", "KingsAnalyzer", "Highlights",
+    out = a.out or os.path.join(os.path.expanduser("~"), "Documents", "KingsHighlights",
                                 "Kings_highlights_%s%s.mp4" % (a.date, "_test" if a.test else ""))
     make_video(a.video, a.date, out, a.offset, a.test, a.local_dir)
 
