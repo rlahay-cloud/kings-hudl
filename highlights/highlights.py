@@ -84,6 +84,15 @@ def players_text(field):
     return main, assists
 
 
+def in_highlight_list(field):
+    """True when a clip or mark sits in a playlist whose name starts with Highlight."""
+    return any(p.strip().lower().startswith("highlight") for p in (field or "").split(";"))
+
+
+def short_tag(tag):
+    return re.sub(r"^(For|Against): ", "", tag).strip() or "Highlight"
+
+
 def collect(files):
     """Turns the files into a list of {sec, end, label, kind}."""
     items = []
@@ -96,6 +105,10 @@ def collect(files):
             if sec is not None and a[1].strip() == "Against: Shot on goal":
                 main, _ = players_text(a[2])
                 items.append({"sec": float(sec), "end": None, "label": "Save" + (" #" + main[0] if main else ""), "kind": "save"})
+                continue
+            if sec is not None and len(a) > 4 and in_highlight_list(a[4]) and a[1].strip() not in ("For: Goal", "Against: Shot on goal"):
+                main, _ = players_text(a[2])
+                items.append({"sec": float(sec), "end": None, "label": short_tag(a[1]) + (" #" + main[0] if main else ""), "kind": "clip"})
                 continue
             if sec is not None and a[1].strip() == "For: Goal":
                 main, assists = players_text(a[2])
@@ -113,14 +126,18 @@ def collect(files):
                 continue
             sec = hms(a[0])
             tag = a[1].strip()
-            if sec is None or tag not in ("Goal", "Highlight"):
+            listed = len(a) > 5 and in_highlight_list(a[5])
+            if sec is None or (tag not in ("Goal", "Highlight") and not listed):
                 continue
             end = None
             lab = a[3].strip()
             if len(a) > 4 and re.match(r"^\d{1,7}$", a[4].strip()):
                 end = float(a[4].strip())
             main, assists = players_text(a[2])
-            if tag == "Goal":
+            if tag not in ("Goal", "Highlight"):
+                items.append({"sec": float(sec), "end": end if end and end > sec else None,
+                              "label": lab or short_tag(tag), "kind": "clip"})
+            elif tag == "Goal":
                 scorer = [n for n in main if n not in assists]
                 label = "Goal" + (" #" + scorer[0] if scorer else "")
                 if assists:
