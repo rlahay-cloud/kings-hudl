@@ -2401,7 +2401,12 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   function penEnd(list, p) {
     if (p.until != null) return p.until;
     var s0 = penStart(p), end = s0 + ASSUME_PEN_SEC, opp = p.tag === "Penalty" ? "Against: Goal" : "For: Goal";
-    list.forEach(function (g) { if (g.tag === opp && g.sec >= s0 && g.sec < end) end = g.sec; });
+    // a minor ends on a goal only when the other team has no penalty running (matching minors are 4 on 4, no power play)
+    list.forEach(function (g) {
+      if (g.tag !== opp || g.sec < s0 || g.sec >= end) return;
+      var other = list.some(function (q) { return (q.tag === "Penalty" || q.tag === "Away Penalty") && q.tag !== p.tag && penStart(q) <= g.sec && g.sec <= (q.until != null ? q.until : penStart(q) + ASSUME_PEN_SEC); });
+      if (!other) end = g.sec;
+    });
     return end;
   }
   function goalSit(list, c) {
@@ -2457,7 +2462,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     return "Coach notes";
   }
   function geName(tag, date) {
-    var m = /^(For|Against): (.*)$/.exec(tag); if (m) return (m[1] === "For" ? usN() : themN(date)) + ": " + m[2];
+    var m = /^(For|Against): (.*)$/.exec(tag); if (m) return (m[1] === "For" ? usN() : (themN(date).split(/\s+/).pop() || "Opponent")) + ": " + m[2];
     return tag.replace(/^Special: /, "").replace(/^Note: /, "");
   }
   var GE = {items: [], url: "", game: ""};
@@ -2467,7 +2472,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     GE = {items: list, url: D.videos[g.date] || lget(VK)[g.date] || "", game: fmtDate(g.date) + " vs " + g.away, date: g.date};
     var h = "<h2>Game events</h2>";
     var nums = {}; list.forEach(function (c) { c.players.forEach(function (n) { nums[n] = 1; }); });
-    h += '<div class="card"><div class="fld"><label for="geCat">Show</label><select id="geCat"><option value="">All events</option>' + GE_CATS.filter(function (k) { return list.some(function (c) { return c.cat === k; }); }).map(function (k) { return "<option>" + k + "</option>"; }).join("") + "</select></div>" +
+    h += '<div class="card"><div class="fld"><label for="geCat">Show</label><select id="geCat"><option value="key">Goals and penalties</option><option value="">All events</option>' + GE_CATS.filter(function (k) { return list.some(function (c) { return c.cat === k; }); }).map(function (k) { return "<option>" + k + "</option>"; }).join("") + "</select></div>" +
       '<div class="fld"><label for="geSort">Sort by</label><select id="geSort"><option value="time">Time in game</option><option value="type">Type of event</option><option value="player">Player number</option></select></div>' +
       '<div class="fld"><label for="gePl">Player</label><select id="gePl"><option value="">Everyone</option>' + Object.keys(nums).map(Number).sort(function (a, b) { return a - b; }).map(function (n) { return '<option value="' + n + '">' + esc(label(n)) + "</option>"; }).join("") + "</select></div>" +
       '<p class="note" id="geCount"></p><div id="geList"></div></div>';
@@ -2478,7 +2483,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var hasVid = !!ytId(GE.url);
     function render() {
       var cat = $("geCat").value, pl = $("gePl").value, sort = $("geSort").value;
-      var f = GE.items.filter(function (c) { return (!cat || c.cat === cat) && (!pl || c.players.indexOf(+pl) >= 0); });
+      var f = GE.items.filter(function (c) { return (!cat || (cat === "key" ? (c.cat === "Goals" || c.cat === "Penalties") : c.cat === cat)) && (!pl || c.players.indexOf(+pl) >= 0); });
       f = f.slice().sort(function (a, b) {
         if (sort === "type") return GE_CATS.indexOf(a.cat) - GE_CATS.indexOf(b.cat) || (a.tag < b.tag ? -1 : a.tag > b.tag ? 1 : 0) || a.sec - b.sec;
         if (sort === "player") { var pa = a.players.length ? a.players[0] : 9999, pb = b.players.length ? b.players[0] : 9999; return pa - pb || a.sec - b.sec; }
