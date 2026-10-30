@@ -1,4 +1,3 @@
-0:02:55|Faceoff: NZ Loss||,,1,f
 0:02:55|Faceoff: NZ Loss|97|,,1,f
 0:03:30|Against: Shot on goal||0.283,0.682,1,f
 0:03:59|For: Shot on goal||0.852,0.546,1,f
