@@ -23,21 +23,22 @@ def locate(cfg, x, y):
     xr = _interp(ln["blue_right"], y)
     xc = ln["centre_x"]
     w = cfg["width"]
+    x0 = cfg.get("x0", 0.0)
     if x < xl:
         zone, side = "E", "L"
-        u = 0.375 * max(0.0, x) / max(1.0, xl)
+        u = 0.375 * max(0.0, x - x0) / max(1.0, xl - x0)
     elif x > xr:
         zone, side = "E", "R"
         u = 0.625 + 0.375 * (x - xr) / max(1.0, w - xr)
     else:
         zone, side = "N", ("L" if x < xc else "R")
         u = 0.375 + 0.25 * (x - xl) / max(1.0, xr - xl)
-    far, near = 957.0, float(cfg["height"]) + 120.0
+    far, near = cfg.get("far", 957.0), cfg.get("near", float(cfg["height"]) + 120.0)
     v = min(1.0, max(0.0, (y - far) / (near - far)))
     return side, zone, round(u, 3), round(v, 3)
 
 
-def _cluster_centre(pts, radius=260.0):
+def _cluster_centre(pts, radius=260.0):  # radius in frame pixels
     best, bi = -1, 0
     for i, (x, y) in enumerate(pts):
         n = sum(1 for (a, b) in pts if (a - x) ** 2 + (b - y) ** 2 <= radius ** 2)
@@ -71,7 +72,7 @@ def faceoffs(rows, board, cfg):
             pts = [((d[0] + d[2]) / 2.0, float(d[3])) for d in r["d"]]
             pts = [p for p in pts if p[1] > 0]
             if len(pts) >= 3:
-                x, y, n = _cluster_centre(pts)
+                x, y, n = _cluster_centre(pts, 260.0 * cfg.get("sx", 1.0))
                 side, zone, u, v = locate(cfg, x, y)
                 entry.update({"x": round(x), "y": round(y), "side": side, "zone": zone,
                               "u": u, "v": v, "n": n, "flag": "" if n >= 4 else "few skaters bunched"})
@@ -79,12 +80,13 @@ def faceoffs(rows, board, cfg):
     return out
 
 
-def changes(rows, labels, outdir, tracks, cfg, gap=8.0, band=110.0):
+def changes(rows, labels, outdir, tracks, cfg, gap=8.0, band=None):
     """Moments when skaters appear at, or vanish into, the bench boards. Needs bench.jsonl."""
     p = os.path.join(outdir, "bench.jsonl")
     if not os.path.exists(p):
         return []
     import onepass
+    band = (110.0 * cfg.get("sx", 1.0)) if band is None else band
     fx, fy = onepass.far_edge(np.array(cfg["ice"], dtype=float))
     bench = []
     for line in open(p):
@@ -111,7 +113,7 @@ def changes(rows, labels, outdir, tracks, cfg, gap=8.0, band=110.0):
     for gp in groups:
         thumbs = {}
         for (t, g, x, y, k) in gp:
-            near = [b for b in bench if abs(b["t"] - t) <= 2.0 and abs(b["x"] - x) < 90]
+            near = [b for b in bench if abs(b["t"] - t) <= 2.0 and abs(b["x"] - x) < 90 * cfg.get("sx", 1.0)]
             if not near:
                 continue
             b = min(near, key=lambda b: abs(b["t"] - t) + abs(b["x"] - x) / 100.0)

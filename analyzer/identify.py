@@ -35,7 +35,8 @@ def load_thumbs(outdir):
     return d
 
 
-def tracklets(tracks, E, cfg, th=None, band=110.0):
+def tracklets(tracks, E, cfg, th=None, band=None):
+    band = (110.0 * cfg.get("sx", 1.0)) if band is None else band
     fx, fy = onepass.far_edge(np.array(cfg["ice"], dtype=float))
     out = []
     for tr in tracks:

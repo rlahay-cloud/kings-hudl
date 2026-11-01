@@ -91,12 +91,13 @@ def run(video, outdir, rink_json, step=1.0, start=0.0, end=None, imgsz=1280, con
     fps = cap.get(cv2.CAP_PROP_FPS) or 24.0
     total = cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps
     end = min(end if end is not None else total, total)
-    name, poly = ka.load_rink(rink_json, W, H)
+    box = ka.content_box(cap)
+    name, poly = ka.load_rink(rink_json, W, H, box)
     y0 = max(0, int(poly[:, 1].min()) - 130)
     tiles = ka.tiles_for(W, y0, H)
-    sc = sbm.make_scaler(W, cfgall.get("width", W))
+    sc = sbm.make_scaler(W, cfgall.get("width", W), box)
     fx, fy = far_edge(poly)
-    bench_band = 230.0 * W / 4080.0
+    bench_band = 230.0 * (box[2] - box[0]) / 4080.0
 
     # Results left by an older program or a different part of the video must never be mixed in.
     mp = os.path.join(outdir, "meta.json")
@@ -128,7 +129,7 @@ def run(video, outdir, rink_json, step=1.0, start=0.0, end=None, imgsz=1280, con
         t = max(t, last + step)
         log("Carrying on from %.0f s" % t)
     json.dump({"video": os.path.basename(video), "w": W, "h": H, "fps": fps, "step": step, "rink": name,
-               "duration": total, "version": 3, "emb_dim": EMB_DIM, "start": start, "end_req": end}, open(os.path.join(outdir, "meta.json"), "w"))
+               "duration": total, "version": 3, "emb_dim": EMB_DIM, "start": start, "end_req": end, "box": list(box)}, open(os.path.join(outdir, "meta.json"), "w"))
 
     gpu = sbm._has_gpu()
     log("Loading the programs. The first time this downloads about 100 MB, which can take a minute or two...")

@@ -59,9 +59,11 @@ def read_frame(f, cfg, sc, reader):
     return rec
 
 
-def make_scaler(W, ref_w):
-    sx = W / float(ref_w)
-    return lambda b: [int(round(v * sx)) for v in b]
+def make_scaler(W, ref_w, box=None):
+    """Boxes in the rink file are for a video ref_w wide. Move them into this video, allowing for black bars."""
+    x0, y0, x1, _y1 = box or (0, 0, W, 0)
+    sx = (x1 - x0) / float(ref_w)
+    return lambda b: [int(round((x0 if i % 2 == 0 else y0) + v * sx)) for i, v in enumerate(b)]
 
 
 def read_series(video, rink_json, outdir, step=1.0, start=0.0, end=None, reader=None, log=print):
@@ -73,8 +75,8 @@ def read_series(video, rink_json, outdir, step=1.0, start=0.0, end=None, reader=
     W, H = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     meta = json.load(open(os.path.join(outdir, "meta.json"))) if os.path.exists(os.path.join(outdir, "meta.json")) else {}
     ref_w = json.load(open(rink_json)).get("width", W)
-    sx = W / float(ref_w)
-    sc = lambda b: [int(round(v * sx)) for v in b]
+    import kings_analyzer as _ka
+    sc = make_scaler(W, ref_w, _ka.content_box(cap))
     end = min(end if end is not None else total, total)
     path = os.path.join(outdir, "scoreboard.jsonl")
     t = start

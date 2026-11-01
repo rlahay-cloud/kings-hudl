@@ -19,11 +19,54 @@ TILE_W = 1600
 TILE_STRIDE = 1240
 
 
-def load_rink(path, w, h):
+def content_box(cap, samples=9):
+    """Find the picture inside black bars (letterbox). Returns (x0, y0, x1, y1) in frame pixels."""
+    W, H = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    n = cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0
+    rows, cols, got = np.zeros(H), np.zeros(W), 0
+    for i in range(samples):
+        cap.set(cv2.CAP_PROP_POS_FRAMES, int(n * (i + 1) / (samples + 1)))
+        ok, f = cap.read()
+        if not ok:
+            continue
+        g = cv2.cvtColor(f, cv2.COLOR_BGR2GRAY).astype(np.float32)
+        rows = np.maximum(rows, g.mean(axis=1))
+        cols = np.maximum(cols, g.mean(axis=0))
+        got += 1
+    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+    if not got:
+        return (0, 0, W, H)
+    ry, cx = np.where(rows > 14)[0], np.where(cols > 14)[0]
+    if len(ry) < 2 or len(cx) < 2:
+        return (0, 0, W, H)
+    box = (int(cx[0]), int(ry[0]), int(cx[-1]) + 1, int(ry[-1]) + 1)
+    if (box[2] - box[0]) * (box[3] - box[1]) < 0.4 * W * H:
+        return (0, 0, W, H)
+    return box
+
+
+def load_rink(path, w, h, box=None):
     r = json.load(open(path))
-    sx, sy = w / float(r["width"]), h / float(r["height"])
-    poly = np.array([[p[0] * sx, p[1] * sy] for p in r["ice"]], dtype=np.float32)
+    x0, y0, x1, y1 = box or (0, 0, w, h)
+    sx, sy = (x1 - x0) / float(r["width"]), (y1 - y0) / float(r["height"])
+    poly = np.array([[x0 + p[0] * sx, y0 + p[1] * sy] for p in r["ice"]], dtype=np.float32)
     return r["name"], poly
+
+
+def scale_cfg(cfg, w, h, box=None):
+    """The rink file is drawn for one video size. Return a copy in the pixels of THIS video,
+    allowing for black bars, so zones, positions and heat maps land in the right place."""
+    x0, y0, x1, y1 = box or (0, 0, w, h)
+    sx, sy = (x1 - x0) / float(cfg["width"]), (y1 - y0) / float(cfg["height"])
+    c = json.loads(json.dumps(cfg))
+    P = lambda pts: [[x0 + p[0] * sx, y0 + p[1] * sy] for p in pts]
+    c["ice"] = P(cfg["ice"])
+    ln = cfg["lines"]
+    c["lines"] = dict(ln, blue_left=P(ln["blue_left"]), blue_right=P(ln["blue_right"]), centre_x=x0 + ln["centre_x"] * sx)
+    c["far"] = y0 + 957.0 * sy
+    c["near"] = y0 + (float(cfg["height"]) + 120.0) * sy
+    c["x0"], c["width"], c["sx"] = x0, x1, sx
+    return c
 
 
 def on_ice(poly, x, y, margin=0):
@@ -74,7 +117,8 @@ def detect(video, outdir, rink, step=0.5, start=0.0, end=None, imgsz=1280, conf=
     fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
     total = cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps
     end = min(end if end is not None else total, total)
-    name, poly = load_rink(rink, W, H)
+    box = content_box(cap)
+    name, poly = load_rink(rink, W, H, box)
     y0 = max(0, int(poly[:, 1].min()) - 130)
     tiles = tiles_for(W, y0, H)
     path = os.path.join(outdir, "detections.jsonl")
@@ -90,7 +134,7 @@ def detect(video, outdir, rink, step=0.5, start=0.0, end=None, imgsz=1280, conf=
             t = max(t, last + step)
             log("Resuming at %.1f s" % t)
     meta = {"video": os.path.basename(video), "w": W, "h": H, "fps": fps, "step": step, "rink": name,
-            "duration": total}
+            "duration": total, "box": list(box)}
     json.dump(meta, open(os.path.join(outdir, "meta.json"), "w"))
     model = YOLO(model_path)
     out = open(path, "a")
@@ -287,7 +331,7 @@ def build(video, outdir, rink, k=4, log=print, read_nums=False, min_len=3.0, thu
             board = None
     log("%d pictures, %d tracks, %d suggested stoppages" % (len(rows), len(tracks), len(stops)))
     import events
-    cfg = json.load(open(rink))
+    cfg = scale_cfg(json.load(open(rink)), meta["w"], meta["h"], meta.get("box"))
     faceoff_list = events.faceoffs(rows, board, cfg) if board else []
     change_list = events.changes(rows, labels, outdir, tracks, cfg)
     log("%d faceoffs, %d line change moments" % (len(faceoff_list), len(change_list)))
