@@ -8,4 +8,4 @@ G|Cumberland Jr. Grads|H|13:30|Cardinal
 L|10,10,12
 X|
 A|Away Cam|https://youtu.be/1OJomcSjmdk|72.4
-A|Home Cam|https://youtu.be/zW8R-QcwC9k|0.0
+A|Home Cam|https://youtu.be/zW8R-QcwC9k|-6.5
