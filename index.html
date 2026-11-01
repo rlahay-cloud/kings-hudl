@@ -881,7 +881,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       }
       rows.push({sec: e.sec, start: Math.max(0, e.sec - LEAD), end: e.sec + TAIL, mark: e.sec, tag: lb, html: "", goal: /^Goal|^Try/i.test(e.label), pen: /^Penalty/i.test(e.label)});
     });
-    clips.forEach(function (c) { rows.push({sec: c.sec, start: Math.max(0, c.sec - LEAD), end: c.sec + TAIL, mark: c.sec, tag: c.tag, html: " " + esc(c.label) + whoHtml(c) + coachSpan(c), goal: c.tag === "Goal", pen: /Penalty/.test(c.tag)}); });
+    clips.forEach(function (c) { var w = clipWin(c); rows.push({sec: w.sec, start: w.start, end: w.end, mark: w.mark, tag: c.tag, html: " " + esc(c.label) + whoHtml(c) + coachSpan(c), goal: c.tag === "Goal", pen: /Penalty/.test(c.tag)}); });
     var have = rows.filter(function (r) { return r.goal; });
     allReview(g.date).filter(function (c) { return c.tag === "For: Goal"; }).forEach(function (c) {
       if (have.some(function (r) { return Math.abs(r.mark - c.sec) <= 25; })) return;
@@ -927,20 +927,22 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   // Every marked moment plays from 8 seconds before it to 2 seconds after it (about 10 seconds in all).
   var LEAD = 8, TAIL = 2;
   function leadWin(m) { return {sec: m, start: Math.max(0, m - LEAD), end: m + TAIL, mark: m}; }
+  // A highlight made in Game analysis is saved as its start and end, so the marked moment is 2 seconds before the end.
+  function clipWin(c) { return c.end ? {sec: c.end - 2, start: c.sec, end: c.end, mark: c.end - 2} : leadWin(c.sec); }
   var AUTO_HL_TAGS = ["Goal", "Goal against", "Penalty", "Away Penalty"];
   function allVideoItems() {
     var items = [];
     D.games.forEach(function (g) {
       var base = {date: g.date, game: fmtDate(g.date) + " vs " + g.away};
       allClips(g.date).forEach(function (c) {
-        var w = leadWin(c.sec); items.push({date: g.date, game: base.game, sec: w.sec, start: w.start, end: w.end, mark: w.mark, tag: c.tag, label: c.label || "", players: c.players || [], assists: c.assists || [], coach: c.coach, lists: c.lists || []});
+        var w = clipWin(c); items.push({date: g.date, game: base.game, sec: w.sec, start: w.start, end: w.end, mark: w.mark, tag: c.tag, label: c.label || "", players: c.players || [], assists: c.assists || [], coach: c.coach, lists: c.lists || []});
       });
     });
     // Highlights for dates with no game summary yet
     var known = {}; D.games.forEach(function (g) { known[g.date] = 1; });
     dateChoices().forEach(function (d) {
       if (known[d]) return;
-      allClips(d).forEach(function (c) { var w = leadWin(c.sec); items.push({date: d, game: fmtDate(d) + (oppFor(d) ? " vs " + oppFor(d) : ""), sec: w.sec, start: w.start, end: w.end, mark: w.mark, tag: c.tag, label: c.label || "", players: c.players || [], assists: c.assists || [], coach: c.coach, lists: c.lists || []}); });
+      allClips(d).forEach(function (c) { var w = clipWin(c); items.push({date: d, game: fmtDate(d) + (oppFor(d) ? " vs " + oppFor(d) : ""), sec: w.sec, start: w.start, end: w.end, mark: w.mark, tag: c.tag, label: c.label || "", players: c.players || [], assists: c.assists || [], coach: c.coach, lists: c.lists || []}); });
     });
     // Goals and penalties marked in the review become clips too, unless an older game event already covers them
     var dseen = {}; D.games.forEach(function (g) { dseen[g.date] = g; });
