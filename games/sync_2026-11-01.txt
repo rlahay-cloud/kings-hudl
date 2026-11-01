@@ -1,3 +1,10 @@
+P|1|669.0
+E|1|1504.5
+P|2|1563.1
+E|2|2441.7
+P|3|2495.4
+E|3|3372.9
 G|Cumberland Jr. Grads|H|13:30|Cardinal
 L|10,10,12
 X|
+A|Away Cam|https://youtu.be/1OJomcSjmdk|72.4
