@@ -80,7 +80,7 @@ $("title").firstChild.textContent=(DATA.meta.video||"Game")+" ";
 function now(){return V.currentTime||0}
 function seek(t){if(V.readyState>0||V.src)V.currentTime=Math.max(0,t);drawTL()}
 function kOK(t){return S.ks.indexOf(t.g)>=0&&!S.notk[t.id]}
-function oOK(t){return S.ks.indexOf(t.g)<0&&!S.notk[t.id]}
+function oOK(t){return S.ks.indexOf(t.g)<0&&(S.refs||[]).indexOf(t.g)<0&&!S.notk[t.id]}
 function stops(){var a=(DATA.stops||[]).filter(function(s,i){return !S.stopsDel[i]}).map(function(s){return[s[0],s[1]]});return a.concat(S.stopsAdd).sort(function(x,y){return x[0]-y[0]})}
 function inStop(t){return stops().some(function(s){return t>=s[0]&&t<=s[1]})}
 var PER=(B.periods||[]);
@@ -91,7 +91,11 @@ function rosterNums(){var m={};ROSTER.forEach(function(p){m[p.n]=p.name});S.extr
 function nameOf(n){var r=rosterNums().filter(function(x){return x.n===String(n)})[0];return"#"+n+(r&&r.name?" "+r.name.split(" ")[0]:"")}
 /* ---- identity ---- */
 var RES=null,ST=null;
-function solve(){RES=Identity.assign(TL,S.seed,kOK,0.12)}
+/* numbers read from the video become starting labels (your ticks always win) */
+function numSeeds(){var o={};if(S.usenum===false)return o;var ok={};rosterNums().forEach(function(p){ok[p.n]=1});
+  var c=TL.filter(function(t){return t.num&&t.num.n&&ok[String(t.num.n)]&&(t.num.votes||0)>=2&&kOK(t)}).sort(function(a,b){return b.num.votes-a.num.votes});
+  c.forEach(function(t){var n=String(t.num.n);if(c.some(function(u){return o[u.id]&&o[u.id].n===n&&u.t0<=t.t1&&t.t0<=u.t1}))return;o[t.id]={n:n,w:t.num.votes>=3?0.9:0.6}});return o}
+function solve(){var sd=numSeeds(),k;for(k in S.seed)sd[k]=S.seed[k];RES=Identity.assign(TL,sd,kOK,0.12)}
 function trackStats(){ST=Identity.stats(TL,RES?RES.lab:{},stops(),8)}
 /* ---- line changes ---- */
 var CH=DATA.changes||[];
@@ -149,13 +153,17 @@ function render(){
   $("foot").textContent=(S.ks.length?"Kings colours chosen. ":"Choose your team colours in the Roster tab. ")+(tot?Math.round(100*ok/tot)+"% of Kings ice time is labelled with confidence from the tracks you ticked. ":"")+(RES&&RES.over.length?RES.over.length+" seconds show more than 6 Kings skaters at once, so a tick is wrong somewhere.":"")}
 var PANES={},BIND={};
 function chips(list,sel,cls){return list.map(function(n){return'<span class="chip '+(sel.indexOf(String(n))>=0?cls:"")+'" data-n="'+n+'">'+n+"</span>"}).join("")}
+function numBox(){var n=TL.filter(function(t){return t.num&&t.num.n}).length;if(!n)return'<p class="mute small">No jersey numbers were read from this video. Turn on "Also try to read jersey numbers" when you run the analyzer, and use a game video where skaters are fairly close to the camera.</p>';
+  var used=Object.keys(numSeeds()).length;return'<label class="row" style="margin-top:8px"><input type="checkbox" id="unum" '+(S.usenum===false?"":"checked")+'> <b>Use jersey numbers read from the video</b></label><p class="mute small">'+n+' tracks had a number read, '+used+' of them are being used as starting labels (only numbers on your roster, seen on at least 2 pictures). Your own ticks always win.</p>'}
 /* roster */
 PANES.roster=function(){
   var g=DATA.colours.map(function(c,i){var sm=(DATA.samples[i]||[]).slice(0,3).map(function(s){return'<img class="zi" style="height:70px;border-radius:5px;margin:2px" src="'+s+'">'}).join("");
-    return'<div class="item" data-g="'+i+'"><label class="row"><input type="checkbox" class="gk" data-g="'+i+'" '+(S.ks.indexOf(i)>=0?"checked":"")+'> <span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:rgb('+c.join(",")+');border:1px solid var(--line)"></span> <b>Colour group '+(i+1)+'</b> <span class="mute small">'+TL.filter(function(t){return t.g===i}).length+' tracks</span></label><div>'+sm+"</div></div>"}).join("");
+    return'<div class="item" data-g="'+i+'"><label class="row"><input type="checkbox" class="gk" data-g="'+i+'" '+(S.ks.indexOf(i)>=0?"checked":"")+'> <span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:rgb('+c.join(",")+');border:1px solid var(--line)"></span> <b>Colour group '+(i+1)+'</b> <span class="mute small">'+TL.filter(function(t){return t.g===i}).length+' tracks</span></label><label class="row small" style="margin-top:4px"><input type="checkbox" class="gr" data-g="'+i+'" '+((S.refs||[]).indexOf(i)>=0?"checked":"")+'> These are referees or not players</label><div>'+sm+"</div></div>"}).join("");
   var r=rosterNums().map(function(p){return'<tr><td><b>#'+p.n+'</b></td><td><input type="text" class="rn" data-n="'+p.n+'" value="'+esc(p.name)+'" placeholder="name" style="width:100%"></td></tr>'}).join("");
-  return'<b>Which colours are the Kings?</b><p class="mute small">Tick every group that is your team. Referees and the other team stay unticked.</p>'+g+'<h3>Players</h3><table>'+r+'</table><div class="row" style="margin-top:8px"><input type="number" id="addn" placeholder="add #" style="width:90px"><button id="addb">Add</button></div><h3>Time offset</h3><p class="mute small">If your video starts at a different moment than the main stream, type the seconds of difference. It is added to exported times.</p><input type="number" id="offs" step="0.1" value="'+(S.off||0)+'" style="width:120px">'};
-BIND.roster=function(){document.querySelectorAll(".gk").forEach(function(c){c.onchange=function(){var g=+c.dataset.g,i=S.ks.indexOf(g);if(c.checked&&i<0)S.ks.push(g);if(!c.checked&&i>=0)S.ks.splice(i,1);save();render()}});
+  return'<b>Which colours are the Kings?</b><p class="mute small">Tick every group that is your team. Referees and the other team stay unticked.</p>'+g+numBox()+'<h3>Players</h3><table>'+r+'</table><div class="row" style="margin-top:8px"><input type="number" id="addn" placeholder="add #" style="width:90px"><button id="addb">Add</button></div><h3>Time offset</h3><p class="mute small">If your video starts at a different moment than the main stream, type the seconds of difference. It is added to exported times.</p><input type="number" id="offs" step="0.1" value="'+(S.off||0)+'" style="width:120px">'};
+BIND.roster=function(){document.querySelectorAll(".gk").forEach(function(c){c.onchange=function(){var g=+c.dataset.g,i=S.ks.indexOf(g);if(c.checked&&i<0)S.ks.push(g);if(!c.checked&&i>=0)S.ks.splice(i,1);if(c.checked){S.refs=(S.refs||[]).filter(function(x){return x!==g})}save();render()}});
+  document.querySelectorAll(".gr").forEach(function(c){c.onchange=function(){var g=+c.dataset.g;S.refs=(S.refs||[]).filter(function(x){return x!==g});if(c.checked){S.refs.push(g);var i=S.ks.indexOf(g);if(i>=0)S.ks.splice(i,1)}save();render()}});
+  $("unum")&&($("unum").onchange=function(){S.usenum=$("unum").checked;save();render()});
   document.querySelectorAll(".rn").forEach(function(i){i.onchange=function(){S.names[i.dataset.n]=i.value;save()}});
   $("addb").onclick=function(){var n=$("addn").value.replace(/\D/g,"");if(n&&S.extra.indexOf(n)<0){S.extra.push(n);save();render()}};
   $("offs").onchange=function(){S.off=parseFloat($("offs").value)||0;save()}};
@@ -252,7 +260,7 @@ PANES.heat=function(){
   (S.mode==="one"?'<h3>Which tracks are this player?</h3><p class="mute small">The app follows players in pieces (tracks). Tick every track that shows '+esc(nameOf(S.pm||"?"))+'. Green dashed ones were labelled automatically from your ticks. Ones given to someone else are dimmed.</p><div class="tk" id="tk">'+trackCards()+"</div>":"")};
 function trackCards(){var list=TL.filter(function(t){return(S.team==="K"?kOK(t):oOK(t))}).sort(function(a,b){return a.t0-b.t0});if(!S.ks.length)return'<span class="mute small">Choose your team colours in the Roster tab first.</span>';
   return list.map(function(t){var sd=S.seed[t.id],lab=RES&&RES.lab[t.id],mine=sd&&sd.n===String(S.pm)&&sd.w>=1,other=sd&&sd.n!==String(S.pm),auto=!sd&&lab&&String(lab.n)===String(S.pm)&&lab.conf>=0.5,oauto=!sd&&lab&&String(lab.n)!==String(S.pm);
-    return'<div class="tkc '+(mine?"mine":other||oauto?"other":auto?"auto":"")+'" data-id="'+t.id+'">'+(t.th||[]).slice(0,2).map(function(s){return'<img src="'+s+'">'}).join("")+'<div>'+ms(t.t0)+"-"+ms(t.t1)+" ("+Math.round(t.dur)+" s)"+(mine?" ✓":auto?" auto":"")+"</div></div>"}).join("")||'<span class="mute small">No tracks for those colours.</span>'}
+    return'<div class="tkc '+(mine?"mine":other||oauto?"other":auto?"auto":"")+'" data-id="'+t.id+'">'+(t.th||[]).slice(0,2).map(function(s){return'<img src="'+s+'">'}).join("")+'<div>'+ms(t.t0)+"-"+ms(t.t1)+" ("+Math.round(t.dur)+" s)"+(t.num&&t.num.n?" reads #"+t.num.n:"")+(mine?" ✓":auto?" auto":"")+"</div></div>"}).join("")||'<span class="mute small">No tracks for those colours.</span>'}
 BIND.heat=function(){
   function paint(){var c=$("rink");if(!c)return;rinkDraw(c);var pts,seg=[],t,note;
     if(S.mode==="team"){pts=teamPts(S.team,S.live);t=(S.team==="K"?"Kings":"Other team")+" · whole team";note=pts.length+" tracked positions"}
