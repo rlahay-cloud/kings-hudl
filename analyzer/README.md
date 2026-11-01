@@ -66,3 +66,11 @@ Hudl hockey tracks time on ice, faceoffs and win percent by zone, goals, power p
 - `meta.json`, `analysis.json`, `review.html`
 
 Command line, if you ever want it: `python kings_analyzer.py analyze VIDEO OUTDIR`
+
+## Zone time, Speed and Shift replay tabs
+
+After you tick tracks for players in the Heatmaps tab, three more tabs fill in:
+
+- **Zone time**: percent of each player's time in the defensive, middle and offensive third, plus a heat map with the zones marked.
+- **Speed**: distance, average and top speed, and sprint count for each player, then shift by shift, with a speed chart for any shift you tap. Speeds are in km/h and come from the rink position estimates, so use them to compare, not as exact numbers.
+- **Shift replay**: pick a player and a shift, press Watch, and the video plays that shift while a dot follows the player on the rink. It also writes a Clip line you can paste into Coach's Corner.

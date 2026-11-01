@@ -140,7 +140,7 @@ function thumbs(c,n){var h="";Object.keys(c.thumbs||{}).forEach(function(g){if(S
 <script>
 /* ---- tabs ---- */
 function left(){return CH.filter(function(c,i){return !(S.chg[i]||{}).done}).length}
-var TABS=[["roster","Roster",function(){return rosterNums().length}],["periods","Periods",function(){return PER.length}],["changes","Line changes",function(){return left()+" left"}],["stops","Stoppages",function(){return stops().length}],["faceoffs","Faceoffs",function(){return(DATA.faceoffs||[]).length}],["shots","Shots",function(){return S.shots.length}],["pens","Penalties",function(){return S.pens.length+penRuns().length}],["shifts","Shifts",null],["heat","Heatmaps",null],["help","Help",null]];
+var TABS=[["roster","Roster",function(){return rosterNums().length}],["periods","Periods",function(){return PER.length}],["changes","Line changes",function(){return left()+" left"}],["stops","Stoppages",function(){return stops().length}],["faceoffs","Faceoffs",function(){return(DATA.faceoffs||[]).length}],["shots","Shots",function(){return S.shots.length}],["pens","Penalties",function(){return S.pens.length+penRuns().length}],["shifts","Shifts",null],["heat","Heatmaps",null],["zones","Zone time",null],["speed","Speed",null],["replay","Shift replay",null],["help","Help",null]];
 function render(){
   $("tabs").innerHTML=TABS.map(function(t){var n=t[2]?t[2]():"";return'<button data-t="'+t[0]+'" class="'+(S.tab===t[0]?"act":"")+'">'+t[1]+(n!==""?'<span class="n">'+n+'</span>':"")+"</button>"}).join("");
   document.querySelectorAll("#tabs button").forEach(function(b){b.onclick=function(){S.tab=b.dataset.t;save();render()}});
@@ -276,4 +276,96 @@ $("bJson").onclick=function(){solve();trackStats();var sh=shifts(),out={game:DAT
 $("bCsv").onclick=function(){var sh=shifts(),rows=["player,shift,start_video_s,end_video_s,game_clock_s"];Object.keys(sh).forEach(function(n){sh[n].shifts.forEach(function(s,i){rows.push([nameOf(n).replace(/,/g," "),i+1,Math.round(s.a),Math.round(s.b),Math.round(s.clock)].join(","))})});dl("shifts.csv",rows.join("\n"),"text/csv")};
 window.addEventListener("resize",drawTL);
 render();
-</script></body></html>
+</script><script>
+/* ---- analysis: zone time, speed, shift replay (estimates from rink coordinates) ---- */
+var KMH=1.09728,MET=0.3048,JUMP=38;
+function zoneU(u){return u>0.625?"OZ":u<0.375?"DZ":"NZ"}
+function shiftSamples(s,live){var o=[];s.pts.forEach(function(p){if(live&&inStop(p[0]))return;o.push(flip(p))});return o}
+function zoneSecs(sm){var z={OZ:0,NZ:0,DZ:0};for(var i=0;i<sm.length;i++){var dt=i+1<sm.length?sm[i+1][0]-sm[i][0]:1;if(dt<=0||dt>3)dt=1;z[zoneU(sm[i][1])]+=dt}return z}
+function addZ(a,b){a.OZ+=b.OZ;a.NZ+=b.NZ;a.DZ+=b.DZ;return a}
+function zoneBar(z){var t=z.OZ+z.NZ+z.DZ||1,p=function(k){return Math.round(100*z[k]/t)};return'<div style="display:flex;height:16px;border-radius:5px;overflow:hidden;min-width:160px"><i style="width:'+p("DZ")+'%;background:#5b7fd6"></i><i style="width:'+p("NZ")+'%;background:#9aa6b4"></i><i style="width:'+p("OZ")+'%;background:#e0743c"></i></div>'}
+function zoneCells(z){var t=z.OZ+z.NZ+z.DZ||1,p=function(k){return Math.round(100*z[k]/t)+"%"};return"<td>"+p("DZ")+"</td><td>"+p("NZ")+"</td><td>"+p("OZ")+"</td><td>"+zoneBar(z)+"</td>"}
+function playerZone(n,live){var z={OZ:0,NZ:0,DZ:0},q=ST&&ST[n];if(!q)return z;q.shifts.forEach(function(s){addZ(z,zoneSecs(shiftSamples(s,live)))});return z}
+function teamZone(team,live){var z={OZ:0,NZ:0,DZ:0};TL.forEach(function(t){if(S.notk[t.id])return;if(team==="K"?!kOK(t):!oOK(t))return;addZ(z,zoneSecs(t.pts.filter(function(p){return !(live&&inStop(p[0]))}).map(flip)))});return z}
+/* speed */
+function speedSeries(sm){var raw=[];for(var i=1;i<sm.length;i++){var a=sm[i-1],b=sm[i],dt=b[0]-a[0];if(dt<=0||dt>4){raw.push(null);continue}var d=Math.hypot((b[1]-a[1])*200,(b[2]-a[2])*85),v=d/dt;raw.push(v>JUMP?null:{t:(a[0]+b[0])/2,v:v,d:d,dt:dt})}
+  var out=[];for(i=0;i<raw.length;i++){if(!raw[i])continue;var q=0,c=0;for(var j=-1;j<=1;j++){var r=raw[i+j];if(r){q+=r.v;c++}}out.push({t:raw[i].t,kmh:q/c*KMH,d:raw[i].d,dt:raw[i].dt})}return out}
+function sprintCount(sr,th){var n=0,run=0,last=null,start=0;function end(){if(run&&last-start>=2)n++;run=0}sr.forEach(function(p){if(p.kmh>=th&&(last===null||p.t-last<=3)){if(!run){run=1;start=p.t}last=p.t}else{end();if(p.kmh>=th){run=1;start=p.t;last=p.t}else last=null}});end();return n}
+function skateStats(sm,th){var sr=speedSeries(sm),d=0,tm=0,top=0;sr.forEach(function(p){d+=p.d;tm+=p.dt;if(p.kmh>top)top=p.kmh});return{sr:sr,dist:d*MET,time:tm,avg:tm?d/tm*KMH:0,top:top,sprints:sprintCount(sr,th)}}
+function fkm(x){return x>=1000?(x/1000).toFixed(2)+" km":Math.round(x)+" m"}
+function th(){return +(S.spth||18)}
+var SKC={};function skCache(n,i,live){var k=n+"|"+i+"|"+(live?1:0)+"|"+th()+"|"+(ST&&ST[n]?ST[n].shifts[i].pts.length:0);return SKC[k]||(SKC[k]=skateStats(shiftSamples(ST[n].shifts[i],live),th()))}
+function allPlayersWithTracks(){return Object.keys(ST||{}).sort(function(a,b){return a-b})}
+function playerSel(id,cur){var ns=allPlayersWithTracks();if(!ns.length)return"";return'<select id="'+id+'">'+ns.map(function(n){return'<option value="'+n+'"'+(String(cur)===n?" selected":"")+">"+esc(nameOf(n))+"</option>"}).join("")+"</select>"}
+function curPl(key){var ns=allPlayersWithTracks();if(!S[key]||ns.indexOf(String(S[key]))<0)S[key]=ns[0]||null;return S[key]}
+/* zone tab */
+function zoneRinkDraw(c,pts,z){rinkDraw(c);if(pts.length)heatDraw(c,pts);var x=c.getContext("2d"),W=c.width,H=c.height,t=z.OZ+z.NZ+z.DZ||1;
+  x.font="bold "+Math.round(H*.07)+"px sans-serif";x.textAlign="center";x.fillStyle="rgba(20,20,20,.85)";[["DZ",0.19],["NZ",0.5],["OZ",0.81]].forEach(function(a){x.fillText(a[0]+" "+Math.round(100*z[a[0]]/t)+"%",a[1]*W,H*.08)});
+  x.font=Math.round(H*.045)+"px sans-serif";x.fillText("Kings defend this end",0.19*W,H*.97);x.fillText("Kings attack this end",0.81*W,H*.97)}
+PANES.zones=function(){var ns=allPlayersWithTracks();if(!ns.length)return'<p class="mute">No players have tracks yet. Tick tracks for players in the Heatmaps tab first, then come back.</p>';
+  var zt=teamZone("K",S.live),rows=ns.map(function(n){var z=playerZone(n,S.live);return{n:n,z:z,t:z.OZ+z.NZ+z.DZ}}).sort(function(a,b){return b.t-a.t});
+  var pl=curPl("zp");
+  return'<p class="mute small">How much time each player spent in each third of the ice. Kings always attack to the right on this picture. DZ is the Kings end, NZ the middle, OZ the other team\'s end. Based on where the player was tracked, so it is an estimate.</p>'+
+  '<div class="row"><label><input type="checkbox" id="zLive" '+(S.live?"checked":"")+'> live play only</label></div>'+
+  "<table><tr><th>Player</th><th>DZ</th><th>NZ</th><th>OZ</th><th>Split</th><th>Tracked</th></tr>"+
+  '<tr><td><b>Whole team</b></td>'+zoneCells(zt)+"<td>"+ms((zt.OZ+zt.NZ+zt.DZ))+" skater time</td></tr>"+
+  rows.map(function(r){return'<tr class="cl" data-n="'+r.n+'"><td>'+esc(nameOf(r.n))+"</td>"+zoneCells(r.z)+"<td>"+ms(r.t)+"</td></tr>"}).join("")+"</table>"+
+  '<h3>Heat map and zones</h3><div class="row">'+playerSel("zPl",pl)+'<label><input type="checkbox" id="zTeam" '+(S.zteam?"checked":"")+'> whole team instead</label></div><div style="margin-top:8px"><canvas id="zrink" width="1200" height="510" style="border:1px solid var(--line);border-radius:8px;background:#fff"></canvas></div><div class="row" style="margin-top:8px"><button id="zDl">Download image</button></div>'};
+BIND.zones=function(){if(!$("zrink")){return}
+  function paint(){var pts,z;if(S.zteam){pts=teamPts("K",S.live);z=teamZone("K",S.live)}else{pts=playerPts(S.zp,"all",S.live).pts;z=playerZone(S.zp,S.live)}zoneRinkDraw($("zrink"),pts,z)}
+  paint();$("zLive").onchange=function(){S.live=$("zLive").checked;save();render()};$("zPl").onchange=function(){S.zp=$("zPl").value;save();paint()};$("zTeam").onchange=function(){S.zteam=$("zTeam").checked;save();paint()};
+  $("zDl").onclick=function(){var a=document.createElement("a");a.href=$("zrink").toDataURL("image/png");a.download="zone_heatmap.png";a.click()};
+  document.querySelectorAll("tr.cl").forEach(function(r){r.onclick=function(){S.zp=r.dataset.n;S.zteam=false;save();render()}})};
+/* speed tab */
+function chartDraw(c,sr,t0,t1,th){var W=c.clientWidth||600,H=200;c.width=W*2;c.height=H*2;var x=c.getContext("2d");x.scale(2,2);x.fillStyle="#141b24";x.fillRect(0,0,W,H);
+  var mx=Math.max(30,Math.ceil(Math.max.apply(null,sr.map(function(p){return p.kmh}).concat([th+2]))/5)*5),L=34,R=8,T=8,B=20,X=function(t){return L+(t-t0)/Math.max(1,t1-t0)*(W-L-R)},Y=function(v){return H-B-v/mx*(H-T-B)};
+  x.font="11px sans-serif";x.fillStyle="#8d9bab";x.strokeStyle="rgba(255,255,255,.08)";x.textAlign="right";for(var v=0;v<=mx;v+=5){x.beginPath();x.moveTo(L,Y(v));x.lineTo(W-R,Y(v));x.stroke();if(v%10===0)x.fillText(v,L-4,Y(v)+4)}
+  x.textAlign="center";var step=Math.max(5,Math.round((t1-t0)/6/5)*5);for(var t=0;t<=t1-t0;t+=step)x.fillText(ms(t),X(t0+t),H-5);
+  x.strokeStyle="#f5c04a";x.setLineDash([4,4]);x.beginPath();x.moveTo(L,Y(th));x.lineTo(W-R,Y(th));x.stroke();x.setLineDash([]);
+  x.strokeStyle="#4da3ff";x.lineWidth=2;x.lineJoin="round";x.beginPath();var lp=null;sr.forEach(function(p){if(lp===null||p.t-lp>3)x.moveTo(X(p.t),Y(p.kmh));else x.lineTo(X(p.t),Y(p.kmh));lp=p.t});x.stroke();
+  x.fillStyle="#8d9bab";x.save();x.translate(9,H/2);x.rotate(-Math.PI/2);x.textAlign="center";x.fillText("km/h",0,0);x.restore()}
+PANES.speed=function(){var ns=allPlayersWithTracks();if(!ns.length)return'<p class="mute">No players have tracks yet. Tick tracks for players in the Heatmaps tab first, then come back.</p>';
+  var pl=curPl("sp"),q=ST[pl],i=Math.min(+S.ssh||0,q.shifts.length-1);S.ssh=i;
+  var rows=ns.map(function(n){var d=0,tm=0,top=0,sp=0;ST[n].shifts.forEach(function(s,k){var a=skCache(n,k,S.live);d+=a.dist;tm+=a.time;sp+=a.sprints;if(a.top>top)top=a.top});return{n:n,d:d,avg:tm?d/tm*3.6:0,top:top,sp:sp,sh:ST[n].shifts.length}}).sort(function(a,b){return b.d-a.d});
+  var ss=q.shifts.map(function(s,k){var a=skCache(pl,k,S.live);return'<tr class="cl sk" data-k="'+k+'" '+(k===i?'style="background:var(--card2)"':"")+"><td>"+(k+1)+"</td><td>"+ms(s.a)+"</td><td>"+ms(s.clock)+"</td><td>"+fkm(a.dist)+"</td><td>"+a.avg.toFixed(1)+"</td><td>"+a.top.toFixed(1)+"</td><td>"+a.sprints+"</td></tr>"}).join("");
+  return'<p class="mute small">Distance and speed are estimated from the rink position of each player, once a second. They are rough: the camera moves, so treat them as a way to compare players and shifts, not as exact numbers. Speeds are smoothed over about three seconds, so short bursts read a little low.</p>'+
+  '<div class="row"><label><input type="checkbox" id="kLive" '+(S.live?"checked":"")+'> live play only</label><label>Sprint is faster than <select id="kTh">'+[12,15,18,22,25].map(function(v){return'<option value="'+v+'"'+(th()===v?" selected":"")+">"+v+" km/h</option>"}).join("")+"</select> for 2 s or more</label></div>"+
+  "<table><tr><th>Player</th><th>Shifts</th><th>Distance</th><th>Avg km/h</th><th>Top km/h</th><th>Sprints</th></tr>"+rows.map(function(r){return'<tr class="cl" data-n="'+r.n+'"'+(String(r.n)===String(pl)?' style="background:var(--card2)"':"")+"><td>"+esc(nameOf(r.n))+"</td><td>"+r.sh+"</td><td>"+fkm(r.d)+"</td><td>"+r.avg.toFixed(1)+"</td><td><b>"+r.top.toFixed(1)+"</b></td><td>"+r.sp+"</td></tr>"}).join("")+"</table>"+
+  "<h3>"+esc(nameOf(pl))+" shift by shift</h3><table><tr><th>#</th><th>Video</th><th>Clock</th><th>Distance</th><th>Avg</th><th>Top</th><th>Sprints</th></tr>"+ss+'</table><p class="mute small">Tap a shift to chart it.</p>'+
+  '<b>Speed through shift '+(i+1)+'</b><canvas id="skc" style="height:200px;border-radius:8px;margin-top:6px"></canvas><div class="row" style="margin-top:8px"><button id="skW" class="pri">Watch this shift</button></div>'};
+BIND.speed=function(){if(!$("skc"))return;var pl=S.sp,s=ST[pl].shifts[S.ssh],a=skCache(pl,S.ssh,S.live);chartDraw($("skc"),a.sr,s.a,s.b,th());
+  $("kLive").onchange=function(){S.live=$("kLive").checked;save();render()};$("kTh").onchange=function(){S.spth=+$("kTh").value;save();render()};
+  document.querySelectorAll("tr.cl:not(.sk)").forEach(function(r){r.onclick=function(){S.sp=r.dataset.n;S.ssh=0;save();render()}});
+  document.querySelectorAll("tr.sk").forEach(function(r){r.onclick=function(){S.ssh=+r.dataset.k;save();render()}});
+  $("skW").onclick=function(){S.rp=pl;S.rs=S.ssh;S.tab="replay";save();render();watchShift()}};
+/* replay tab */
+var RPLAY=null;
+function replayShift(){var pl=curPl("rp");if(!pl)return null;var q=ST[pl];S.rs=Math.min(+S.rs||0,q.shifts.length-1);return{n:pl,i:S.rs,s:q.shifts[S.rs],q:q}}
+function watchShift(){var r=replayShift();if(!r)return;RPLAY={end:r.s.b+1};seek(Math.max(0,r.s.a-1.5));try{V.play()}catch(e){}}
+PANES.replay=function(){var ns=allPlayersWithTracks();if(!ns.length)return'<p class="mute">No players have tracks yet. Tick tracks for players in the Heatmaps tab first, then come back.</p>';
+  var r=replayShift(),pl=r.n,opts=r.q.shifts.map(function(s,k){return'<option value="'+k+'"'+(k===r.i?" selected":"")+">Shift "+(k+1)+" ("+ms(s.a)+", "+Math.round(s.clock)+" s)</option>"}).join("");
+  var a=r.s.a,start=Math.max(0,a-3)+(S.off||0),end=Math.round(r.s.b+2+(S.off||0)),line=hms(start)+"|Clip|"+pl+"|Shift "+(r.i+1)+"|"+end;
+  return'<p class="mute small">Watch one shift in the video while a dot follows the player on the rink. The video is on the left, so choose a player and shift here and press Watch.</p>'+
+  '<div class="row">'+playerSel("rPl",pl)+'<select id="rSh">'+opts+'</select><button id="rPrev">Previous</button><button id="rNext">Next</button><button id="rWatch" class="pri">Watch this shift</button></div>'+
+  '<div style="margin-top:8px"><canvas id="rrink" width="1200" height="510" style="border:1px solid var(--line);border-radius:8px;background:#fff"></canvas></div>'+
+  '<div class="row small" style="margin-top:6px"><b id="rInfo"></b></div>'+
+  '<h3>Make a clip for Kings HUDL</h3><p class="mute small">Paste this into the Clips box on the Coach\'s Corner for this game. It starts three seconds before the shift and ends two seconds after.</p><textarea readonly id="rLine" style="min-height:48px">'+line+'</textarea><button id="rCopy">Copy</button>'};
+function replayPaint(){var c=$("rrink");if(!c)return;var r=replayShift();if(!r)return;var sm=shiftSamples(r.s,false),t=now();rinkDraw(c);var x=c.getContext("2d"),W=c.width,H=c.height;
+  var seg=[];var cur=[];sm.forEach(function(p){if(cur.length&&p[0]-cur[cur.length-1][0]>4){seg.push(cur);cur=[]}cur.push(p)});if(cur.length)seg.push(cur);
+  x.lineJoin="round";x.lineCap="round";x.lineWidth=3;x.strokeStyle="rgba(120,130,145,.55)";seg.forEach(function(s){x.beginPath();s.forEach(function(p,i){i?x.lineTo(p[1]*W,p[2]*H):x.moveTo(p[1]*W,p[2]*H)});x.stroke()});
+  x.strokeStyle="#e0743c";x.lineWidth=5;seg.forEach(function(s){x.beginPath();var on=false;s.forEach(function(p){if(p[0]>t)return;on?x.lineTo(p[1]*W,p[2]*H):x.moveTo(p[1]*W,p[2]*H);on=true});x.stroke()});
+  if(sm.length){x.fillStyle="#2f9e5b";x.beginPath();x.arc(sm[0][1]*W,sm[0][2]*H,8,0,7);x.fill()}
+  var pos=null;for(var i=1;i<sm.length;i++){if(sm[i][0]>=t&&sm[i-1][0]<=t&&sm[i][0]-sm[i-1][0]<=4){var f=(t-sm[i-1][0])/Math.max(.01,sm[i][0]-sm[i-1][0]);pos=[sm[i-1][1]+(sm[i][1]-sm[i-1][1])*f,sm[i-1][2]+(sm[i][2]-sm[i-1][2])*f];break}}
+  var sr=speedSeries(sm),kmh=null,best=1e9;sr.forEach(function(p){var d=Math.abs(p.t-t);if(d<best){best=d;kmh=p.kmh}});
+  if(pos){x.fillStyle="#fff";x.beginPath();x.arc(pos[0]*W,pos[1]*H,15,0,7);x.fill();x.fillStyle="#d6403a";x.beginPath();x.arc(pos[0]*W,pos[1]*H,11,0,7);x.fill()}
+  var inS=t>=r.s.a&&t<=r.s.b;$("rInfo").textContent=nameOf(r.n)+" · shift "+(r.i+1)+" · "+(inS?"shift time "+ms(t-r.s.a):t<r.s.a?"starts in "+ms(r.s.a-t):"shift over")+(pos&&best<=3?" · "+zoneU(pos[0])+" · about "+kmh.toFixed(0)+" km/h":"")}
+BIND.replay=function(){if(!$("rrink"))return;replayPaint();
+  $("rPl").onchange=function(){S.rp=$("rPl").value;S.rs=0;save();render()};$("rSh").onchange=function(){S.rs=+$("rSh").value;save();render()};
+  $("rPrev").onclick=function(){S.rs=Math.max(0,S.rs-1);save();render();watchShift()};$("rNext").onclick=function(){var r=replayShift();S.rs=Math.min(r.q.shifts.length-1,S.rs+1);save();render();watchShift()};
+  $("rWatch").onclick=watchShift;$("rCopy").onclick=function(){$("rLine").select();try{document.execCommand("copy")}catch(e){}}};
+function replayTick(){if(S.tab==="replay"&&$("rrink"))replayPaint();if(RPLAY&&now()>=RPLAY.end){V.pause();RPLAY=null}}
+V.addEventListener("seeked",function(){if(S.tab==="replay")replayPaint()});V.addEventListener("pause",function(){RPLAY=RPLAY&&now()>=RPLAY.end?null:RPLAY});
+(function loop(){replayTick();requestAnimationFrame(loop)})();
+render();
+</script>
+</body></html>
