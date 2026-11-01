@@ -1210,12 +1210,27 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   function coachCfg() { var c = lget(CS); return {name: c.name || "", pass: c.pass || ""}; }
   function mySlug() { return slugify(coachCfg().name) || "team"; }
   // My own marks are kept on this device. Everyone's sent files come from the games folder.
+  // Marks kept on this device win only while they have changes not sent yet (or were sent in the last 15 minutes,
+  // while the site catches up). After that the shared file is the truth, so edits made anywhere else show up here too.
+  var DKY = "kh-dirty-v1";
+  function markDirty(k, date) { var d = lget(DKY); d[k + "|" + date] = 1; lset(DKY, d); }
+  function markSent(k, date) { var d = lget(DKY); d[k + "|" + date] = Date.now(); lset(DKY, d); }
+  function mineOf(store, k, date) {
+    var v = lget(DKY)[k + "|" + date], l = lget(store)[date];
+    if (v === undefined && l) {
+      // marks from before this rule: if a shared file exists, the shared file wins. Keep a copy of the old ones just in case.
+      var rem = k === "c" ? (D.clips[date] || {})[mySlug()] : k === "e" ? (D.clips[date] || {}).game : (D.review[date] || {}).game;
+      if (rem) { var bk = lget("kh-backup-v1"); bk[k + "|" + date] = l; lset("kh-backup-v1", bk); var d = lget(DKY); d[k + "|" + date] = 0; lset(DKY, d); v = 0; }
+    }
+    if (v === undefined || v === 1 || Date.now() - v < 15 * 60 * 1000) return l;
+    return null;
+  }
   function getMyClips(date, ev) {
-    var l = lget(ev ? EK : CK); if (l[date]) return l[date].map(function (c) { c.tag = normTag(c.tag); return c; });
+    var l = {}; l[date] = mineOf(ev ? EK : CK, ev ? "e" : "c", date); if (l[date]) return l[date].map(function (c) { c.tag = normTag(c.tag); return c; });
     var sent = (D.clips[date] || {})[ev ? "game" : mySlug()];
     return sent ? sent.map(function (x) { return {sec: x.sec, end: x.end || 0, tag: normTag(x.tag), players: (x.players || []).slice(), assists: (x.assists || []).slice(), label: x.label || "", lists: (x.lists || []).slice()}; }) : [];
   }
-  function putClips(date, list, ev) { var k = ev ? EK : CK, l = lget(k); l[date] = list; lset(k, l); }
+  function putClips(date, list, ev) { var k = ev ? EK : CK, l = lget(k); l[date] = list; lset(k, l); markDirty(ev ? "e" : "c", date); }
   function getMyShots(date) { var l = lget(SK); return l[date] ? l[date].slice() : []; }
   function putShots(date, list) { var l = lget(SK); l[date] = list; lset(SK, l); }
   function mergeBy(sent, mine, key) {
@@ -1228,9 +1243,9 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     return key ? out.sort(function (a, b) { return a[key] - b[key]; }) : out;
   }
   function allClips(date) {
-    var sent = D.clips[date] || {}, others = {}, le = lget(EK);
+    var sent = D.clips[date] || {}, others = {}, le = {}; le[date] = mineOf(EK, "e", date);
     Object.keys(sent).forEach(function (k) { if (k !== "game") others[k] = sent[k]; });
-    var out = mergeBy(others, lget(CK)[date], null);
+    var out = mergeBy(others, mineOf(CK, "c", date), null);
     (le[date] || sent.game || []).forEach(function (x) { var c = {}; Object.keys(x).forEach(function (k) { c[k] = x[k]; }); c.tag = normTag(c.tag); c.coach = GAME_LABEL; out.push(c); });
     return out.sort(function (a, b) { return a.sec - b.sec; });
   }
@@ -1261,7 +1276,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var url = /^https?:\/\//.test(cfg.submitUrl) ? cfg.submitUrl : "https://" + cfg.submitUrl;
     return fetch(url, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({passcode: c.pass, coach: asGame ? "game" : c.name, date: date, kind: kind, text: text})})
       .then(function (r) { return r.json().catch(function () { return {ok: false, error: "Bad reply"}; }); })
-      .then(function (j) { noteEl.textContent = j.ok ? "Sent to Kings HUDL. Thank you!" : "Not sent: " + (j.error || "unknown problem") + "."; })
+      .then(function (j) { if (j.ok) markSent(kind === "review" ? "r" : asGame ? "e" : "c", date); noteEl.textContent = j.ok ? "Sent to Kings HUDL. Thank you!" : "Not sent: " + (j.error || "unknown problem") + "."; })
       .catch(function () { noteEl.textContent = "Not sent, no connection. Your marks are saved on this phone. Try again later."; });
   }
   function coachCard(ev) {
@@ -2374,16 +2389,16 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     }).join("\n") + "\n";
   }
   function getMyReview(date) {
-    var l = lget(RK); if (l[date]) return l[date].map(function (c) { var k = periodAt(date, c.sec); if (k) c.p = k; return c; });
+    var l = {}; l[date] = mineOf(RK, "r", date); if (l[date]) return l[date].map(function (c) { var k = periodAt(date, c.sec); if (k) c.p = k; return c; });
     var sent = (D.review[date] || {}).game;
     return sent ? sent.map(function (x) { return {sec: x.sec, tag: x.tag, players: x.players.slice(), assists: x.assists.slice(), ice: (x.ice || []).slice(), until: x.until == null ? null : x.until, from: x.from == null ? null : x.from, lists: (x.lists || []).slice(), infr: x.infr || "", x: x.x, y: x.y, p: x.p}; }) : [];
   }
-  function putReview(date, list) { var l = lget(RK); l[date] = list; lset(RK, l); }
+  function putReview(date, list) { var l = lget(RK); l[date] = list; lset(RK, l); markDirty("r", date); }
   function allReview(date) {
     var sent = D.review[date] || {}, others = {};
     Object.keys(sent).forEach(function (k) { if (k !== "game") others[k] = sent[k]; });
     var out = mergeBy(others, null, null);
-    (lget(RK)[date] || sent.game || []).forEach(function (x) { var c = {}; Object.keys(x).forEach(function (k) { c[k] = x[k]; }); c.coach = GAME_LABEL; out.push(c); });
+    (mineOf(RK, "r", date) || sent.game || []).forEach(function (x) { var c = {}; Object.keys(x).forEach(function (k) { c[k] = x[k]; }); c.coach = GAME_LABEL; out.push(c); });
     out.forEach(function (c) { var k = periodAt(date, c.sec); if (k) c.p = k; });
     return out.sort(function (a, b) { return a.sec - b.sec; });
   }
