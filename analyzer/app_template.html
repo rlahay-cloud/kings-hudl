@@ -129,7 +129,7 @@ var RES=null,ST=null;
 function numSeeds(){var o={};if(S.usenum===false)return o;var ok={};rosterNums().forEach(function(p){ok[p.n]=1});
   var c=TL.filter(function(t){return t.num&&t.num.n&&ok[String(t.num.n)]&&(t.num.votes||0)>=2&&kOK(t)}).sort(function(a,b){return b.num.votes-a.num.votes});
   c.forEach(function(t){var n=String(t.num.n);if(c.some(function(u){return o[u.id]&&o[u.id].n===n&&u.t0<=t.t1&&t.t0<=u.t1}))return;o[t.id]={n:n,w:t.num.votes>=3?0.9:0.6}});return o}
-function solve(){buildTeams();var sd=numSeeds(),k;for(k in S.seed)sd[k]=S.seed[k];RES=Identity.assign(TL,sd,kOK,0.12)}
+function solve(){buildTeams();var sd=numSeeds(),k;if(S.rsOn!==false)for(k in (S.rs||{}))sd[k]=S.rs[k];for(k in S.seed)sd[k]=S.seed[k];RES=Identity.assign(TL,sd,kOK,0.12)}
 function trackStats(){ST=Identity.stats(TL,RES?RES.lab:{},stops(),8)}
 /* ---- line changes ---- */
 var CH=DATA.changes||[];
@@ -197,6 +197,36 @@ function teamBox(){var tm=S.tm||{},list=TL.filter(function(t){return t.th&&t.th.
 function learnedExport(){var me=(DATA.meta.video||"game")+"|",mine={},items=[];
   TL.forEach(function(t){var c=(S.tm||{})[t.id];if(c)mine[me+t.id]={k:me+t.id,c:c,e:t.e,d:Math.round(t.dur)};var sd=S.seed[t.id];if(sd&&sd.w>=1&&sd.n)mine[me+"p"+t.id]={k:me+"p"+t.id,c:"P",n:String(sd.n),e:t.e,d:Math.round(t.dur)}});
   LEARNED.forEach(function(x){if(!mine[x.k])items.push(x)});Object.keys(mine).forEach(function(k){items.push(mine[k])});return items}
+/* ---- label players from the marks you made in Kings HUDL ---- */
+var LKDATES=null,RAW="https://raw.githubusercontent.com/rlahay-cloud/kings-hudl/main/games/";
+function loadLkDates(){fetch(RAW+"index.json",{cache:"no-store"}).then(function(r){return r.json()}).then(function(a){LKDATES=a.map(function(n){var m=/^review_(\d{4}-\d{2}-\d{2})_game\.txt$/.exec(n);return m?m[1]:null}).filter(Boolean).sort().reverse();if(S.tab==="roster")render()}).catch(function(){LKDATES=[];if(S.tab==="roster")render()})}
+function linkBox(){var inf=S.lkInfo||"";
+  return'<h3>Label players from your Kings HUDL marks</h3><p class="mute small">Your shots and goals in Kings HUDL say who shot and where on the rink. This lines them up with the video and gives each of those skaters a name, so you do not have to tick them. It also works out the time offset and which way the Kings attack.</p>'+
+  '<div class="row">'+(LKDATES&&LKDATES.length?'<select id="lkDate">'+LKDATES.map(function(d){return"<option>"+d+"</option>"}).join("")+'</select><button id="lkGo" class="pri">Use these marks</button>':'<span class="mute small">'+(LKDATES?"No Kings HUDL games found (or no internet).":"Loading your games...")+"</span>")+(Object.keys(S.rs||{}).length?'<label class="small"><input type="checkbox" id="lkOn" '+(S.rsOn===false?"":"checked")+'> use them</label><button id="lkClr">Clear</button>':"")+'</div>'+(inf?'<p class="small" style="margin:6px 0 0"><b>'+esc(inf)+"</b></p>":"")}
+function parseMarks(text){var out=[];String(text).split(/\r?\n/).forEach(function(l){var a=l.split("|");if(a.length<4)return;var m=/^(\d+):(\d{2}):(\d{2})$/.exec(a[0].trim());if(!m)return;var sec=+m[1]*3600+ +m[2]*60+ +m[3],tag=a[1],pl=(a[2].match(/a?\d+/gi)||[]).filter(function(x){return !/^[ai]/i.test(x)}).map(Number),loc=a[3].split(",");
+  var x=loc[0]===""?null:parseFloat(loc[0]),y=loc[1]===""?null:parseFloat(loc[1]),per=parseInt(loc[2])||1;out.push({sec:sec,tag:tag,n:pl[0],x:x,y:y,per:per})});return out}
+function linkMarks(date){S.lkInfo="Reading your marks...";render();
+  fetch(RAW+"review_"+date+"_game.txt",{cache:"no-store"}).then(function(r){if(!r.ok)throw 0;return r.text()}).then(function(t){
+    var M=parseMarks(t).filter(function(m){return /^For: (Goal|Shot on goal)$/.test(m.tag)&&m.n&&m.x!=null&&m.y!=null});
+    var K=TL.filter(function(t){return teamOf(t)==="K"&&!S.notk[t.id]});
+    if(!M.length||!K.length){S.lkInfo=!M.length?"No shots with a player and a spot found in that game.":"Choose the Kings colours first (above), then try again.";save();render();return}
+    var FT=[200,85];
+    function ptsNear(tv){var o=[];K.forEach(function(t){if(t.t1<tv-3||t.t0>tv+3)return;t.pts.forEach(function(p){if(Math.abs(p[0]-tv)<=2.5)o.push({id:t.id,t:p[0],u:p[1],v:p[2]})})});return o}
+    function dist(c,m,atkR,vf){var u=atkR?c.u:1-c.u,v=atkR?c.v:1-c.v;if(vf)v=1-v;return Math.hypot((u-m.x)*FT[0],(v-m.y)*FT[1])}
+    var best={score:-1};
+    for(var off=-40;off<=40;off+=1){var cand=M.map(function(m){return ptsNear(m.sec-off)});
+      [0,1].forEach(function(vf){var per={},tot=0,choice={};
+        M.forEach(function(m,i){var p=m.per;per[p]=per[p]||[0,0];[1,0].forEach(function(ar,j){var b=0;cand[i].forEach(function(c){var d=dist(c,m,ar,vf);if(d<20)b=Math.max(b,1-d/20)});per[p][j]+=b})});
+        Object.keys(per).forEach(function(p){choice[p]=per[p][0]>=per[p][1]?"R":"L";tot+=Math.max(per[p][0],per[p][1])});
+        if(tot>best.score)best={score:tot,off:off,vf:vf,choice:choice}})}
+    if(best.score<Math.max(2,M.length*0.25)){S.lkInfo="Could not line your marks up with this video ("+M.length+" shots tried). Check that you chose the right game and the Kings colours.";save();render();return}
+    var rs={},votes={},hit=0;
+    M.forEach(function(m){var ar=best.choice[m.per]==="R",c=ptsNear(m.sec-best.off).map(function(c){return{id:c.id,d:dist(c,m,ar,best.vf)}}).sort(function(a,b){return a.d-b.d});
+      if(!c.length||c[0].d>16)return;var second=c.filter(function(x){return x.id!==c[0].id})[0];if(second&&second.d<c[0].d+5)return;hit++;(votes[c[0].id]=votes[c[0].id]||{})[m.n]=((votes[c[0].id]||{})[m.n]||0)+1});
+    Object.keys(votes).forEach(function(id){var v=votes[id],ks=Object.keys(v).sort(function(a,b){return v[b]-v[a]});if(ks.length>1&&v[ks[0]]===v[ks[1]])return;rs[id]={n:ks[0],w:0.7}});
+    S.rs=rs;if(!S.off)S.off=best.off;Object.keys(best.choice).forEach(function(p){if(!S.atk[p])S.atk[p]=best.choice[p]});
+    S.lkInfo="Lined up "+Math.round(100*best.score/M.length)+"% of "+M.length+" shots (about "+best.off+" s between your marks and this video). Named "+Object.keys(rs).length+" tracks from "+hit+" clear shots. The Kings attack "+Object.keys(best.choice).map(function(p){return"period "+p+": "+(best.choice[p]==="R"?"right":"left")}).join(", ")+".";
+    save();render()}).catch(function(){S.lkInfo="Could not read that game from Kings HUDL.";save();render()})}
 function numBox(){var n=TL.filter(function(t){return t.num&&t.num.n}).length;if(!n)return'<p class="mute small">No jersey numbers were read from this video. Turn on "Also try to read jersey numbers" when you run the analyzer, and use a game video where skaters are fairly close to the camera.</p>';
   var used=Object.keys(numSeeds()).length;return'<label class="row" style="margin-top:8px"><input type="checkbox" id="unum" '+(S.usenum===false?"":"checked")+'> <b>Use jersey numbers read from the video</b></label><p class="mute small">'+n+' tracks had a number read, '+used+' of them are being used as starting labels (only numbers on your roster, seen on at least 2 pictures). Your own ticks always win.</p>'}
 /* roster */
@@ -204,8 +234,12 @@ PANES.roster=function(){
   var g=DATA.colours.map(function(c,i){var sm=(DATA.samples[i]||[]).slice(0,3).map(function(s){return'<img class="zi" style="height:70px;border-radius:5px;margin:2px" src="'+s+'">'}).join("");
     return'<div class="item" data-g="'+i+'"><label class="row"><input type="checkbox" class="gk" data-g="'+i+'" '+(S.ks.indexOf(i)>=0?"checked":"")+'> <span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:rgb('+c.join(",")+');border:1px solid var(--line)"></span> <b>Colour group '+(i+1)+'</b> <span class="mute small">'+TL.filter(function(t){return t.g===i}).length+' tracks</span></label><label class="row small" style="margin-top:4px"><input type="checkbox" class="gr" data-g="'+i+'" '+((S.refs||[]).indexOf(i)>=0?"checked":"")+'> These are referees or not players</label><div>'+sm+"</div></div>"}).join("");
   var r=rosterNums().map(function(p){return'<tr><td><b>#'+p.n+'</b></td><td><input type="text" class="rn" data-n="'+p.n+'" value="'+esc(p.name)+'" placeholder="name" style="width:100%"></td></tr>'}).join("");
-  return'<b>Which colours are the Kings?</b><p class="mute small">Tick every group that is your team. Referees and the other team stay unticked.</p>'+g+teamBox()+numBox()+'<h3>Players</h3><table>'+r+'</table><div class="row" style="margin-top:8px"><input type="number" id="addn" placeholder="add #" style="width:90px"><button id="addb">Add</button></div><h3>Time offset</h3><p class="mute small">If your video starts at a different moment than the main stream, type the seconds of difference. It is added to exported times.</p><input type="number" id="offs" step="0.1" value="'+(S.off||0)+'" style="width:120px">'};
+  return'<b>Which colours are the Kings?</b><p class="mute small">Tick every group that is your team. Referees and the other team stay unticked.</p>'+g+teamBox()+linkBox()+numBox()+'<h3>Players</h3><table>'+r+'</table><div class="row" style="margin-top:8px"><input type="number" id="addn" placeholder="add #" style="width:90px"><button id="addb">Add</button></div><h3>Time offset</h3><p class="mute small">If your video starts at a different moment than the main stream, type the seconds of difference. It is added to exported times.</p><input type="number" id="offs" step="0.1" value="'+(S.off||0)+'" style="width:120px">'};
 BIND.roster=function(){
+  $("lkGo")&&($("lkGo").onclick=function(){linkMarks($("lkDate").value)});
+  $("lkOn")&&($("lkOn").onchange=function(){S.rsOn=$("lkOn").checked;save();render()});
+  $("lkClr")&&($("lkClr").onclick=function(){S.rs={};S.lkInfo="";save();render()});
+  if(!LKDATES&&!window.LKLOAD){window.LKLOAD=1;loadLkDates()}
   document.querySelectorAll(".tmb").forEach(function(b){b.onclick=function(){var id=b.closest(".tkc").dataset.t;S.tm=S.tm||{};S.tm[id]=b.dataset.c;save();render()}});
   $("tmOn")&&($("tmOn").onchange=function(){S.tmOn=$("tmOn").checked;save();render()});
   $("tmMore")&&($("tmMore").onclick=function(){S.tmN=(S.tmN||12)+12;save();render()});
