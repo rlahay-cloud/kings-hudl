@@ -14,12 +14,26 @@ import threading
 import time
 import tkinter as tk
 import webbrowser
+import localserver
 from tkinter import filedialog, messagebox, ttk
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ANALYZER = os.environ.get("KINGS_ANALYZER_SCRIPT") or os.path.join(os.path.dirname(HERE), "kings_analyzer.py")
 RINK = os.path.join(os.path.dirname(HERE), "rinks", "ingredion_rink1.json")
 MODELS = os.path.join(HERE, "models")
+LEARNED = os.path.join(os.path.dirname(HERE), "learned.json")
+PORT_IN_USE = None
+
+
+def page_url(p):
+    """Show review pages through the little helper when we can (it lets the page save learned.json by itself)."""
+    try:
+        rel = os.path.relpath(p, DOCS)
+        if PORT_IN_USE and not rel.startswith(".."):
+            return "http://127.0.0.1:%d/%s" % (PORT_IN_USE, rel.replace("\\", "/"))
+    except Exception:
+        pass
+    return "file:///" + p.replace("\\", "/")
 DOCS = os.path.join(os.path.expanduser("~"), "Documents", "KingsAnalyzer")
 PROG = re.compile(r"^(\d+) of (\d+) seconds of video done\. ([\d.]+) s of work per second of video\. About (\d+) minutes left")
 
@@ -264,7 +278,7 @@ class App(tk.Tk):
             self.fresh.set(True)
             self.say("Done. Opening the review page. Choose the game video there when it asks.")
             self.add_log("Review page: " + page)
-            webbrowser.open("file:///" + page.replace("\\", "/"))
+            webbrowser.open(page_url(page))
             try:
                 os.startfile(self.outdir)
             except Exception:
@@ -277,7 +291,7 @@ class App(tk.Tk):
         p = filedialog.askopenfilename(title="Choose a review.html from an earlier run", initialdir=DOCS,
                                        filetypes=[("Review page", "review.html"), ("Web page", "*.html")])
         if p:
-            webbrowser.open("file:///" + p.replace("\\", "/"))
+            webbrowser.open(page_url(p))
 
     def on_close(self):
         if self.running and not messagebox.askyesno("Kings Analyzer", "It is still working. Stop it and close?"):
@@ -289,6 +303,7 @@ class App(tk.Tk):
 
 if __name__ == "__main__":
     try:
+        PORT_IN_USE = localserver.start(DOCS, LEARNED)
         App().mainloop()
     except Exception:
         import traceback

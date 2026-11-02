@@ -70,7 +70,14 @@ var $=function(i){return document.getElementById(i)};
 var KEY="kh-app-"+(DATA.meta.video||"x");
 var S={ks:[],seed:{},notk:{},chg:{},atk:{},fo:{},fon:{},shots:[],pens:[],stopsAdd:[],stopsDel:{},extra:[],names:{},off:0,pm:null,src:"tracks",team:"K",mode:"one",range:"all",live:true,path:true,tab:"roster",pend:null};
 try{var sv=JSON.parse(localStorage.getItem(KEY)||"null");if(sv)for(var k in sv)S[k]=sv[k]}catch(e){}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S));$("saved").textContent="Saved in this browser "+new Date().toLocaleTimeString()}catch(e){}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));$("saved").textContent="Saved in this browser "+new Date().toLocaleTimeString()}catch(e){}if(AUTO)queueLearn()}
+/* when this page is opened from Kings Analyzer, what you tag is saved for next time on its own */
+var AUTO=/^https?:/.test(location.protocol),LTIMER=null,LSTAT="";
+function queueLearn(){clearTimeout(LTIMER);LTIMER=setTimeout(function(){var items;try{items=learnedExport()}catch(e){return}
+  var mine=items.filter(function(x){return x.k.indexOf((DATA.meta.video||"game")+"|")===0});if(!mine.length)return;
+  fetch("/learned",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({version:1,items:mine})}).then(function(r){return r.json()}).then(function(j){
+    LSTAT=j.ok?"Saved for next time ("+j.n+" skaters remembered).":"Could not save for next time.";var e=document.getElementById("tmAuto");if(e)e.textContent=LSTAT}).catch(function(){LSTAT="Could not save for next time."})},1500)}
+if(AUTO)fetch("/learned").then(function(r){return r.json()}).then(function(j){var have={};LEARNED.forEach(function(x){have[x.k]=1});var add=0;(j.items||[]).forEach(function(x){if(!have[x.k]){LEARNED.push(x);add++}});if(add){learnedVecs();render()}}).catch(function(){});
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
 function ms(t){t=Math.max(0,Math.round(t));return Math.floor(t/60)+":"+("0"+t%60).slice(-2)}
 function hms(t){t=Math.max(0,Math.round(t));return Math.floor(t/3600)+":"+("0"+Math.floor(t%3600/60)).slice(-2)+":"+("0"+t%60).slice(-2)}
@@ -186,7 +193,7 @@ function teamBox(){var tm=S.tm||{},list=TL.filter(function(t){return t.th&&t.th.
   return'<h3>Fix the teams</h3><p class="mute small">If the colour groups mix the two teams, tag a few skaters here. Kings, other team or referee. '+info+' Result now: '+cnt.K+' Kings tracks, '+cnt.O+' other team, '+cnt.R+' referees.</p>'+
   '<label class="row small"><input type="checkbox" id="tmOn" '+(S.tmOn===false?"":"checked")+'> Sort the rest by look</label>'+
   '<div class="tk" style="margin-top:6px">'+shown.map(function(t){return'<div class="tkc" style="cursor:default" data-t="'+t.id+'">'+t.th.slice(0,1).map(function(x){return'<img src="'+x+'">'}).join("")+'<div>'+ms(t.t0)+" now: <b>"+({K:"Kings",O:"Other",R:"Ref"})[teamOf(t)]+'</b></div><div class="row" style="gap:4px;margin-top:3px"><button class="tmb" data-c="K">Kings</button><button class="tmb" data-c="O">Other</button><button class="tmb" data-c="R">Ref</button></div></div>'}).join("")+'</div>'+
-  '<div class="row" style="margin-top:6px"><button id="tmMore">Show more</button><button id="tmSave" class="pri">Save what I taught it</button><button id="tmLoad">Add a learned file</button><input type="file" id="tmFile" accept=".json" style="display:none">'+(Object.keys(tm).length?'<button id="tmClr">Clear my tags</button>':"")+'</div>'}
+  '<div class="row" style="margin-top:6px"><button id="tmMore">Show more</button>'+(AUTO?'<span class="mute small" id="tmAuto">'+(LSTAT||"What you tag here is saved for the next game automatically.")+"</span>":'<button id="tmSave" class="pri">Save what I taught it</button><button id="tmLoad">Add a learned file</button><input type="file" id="tmFile" accept=".json" style="display:none">')+(Object.keys(tm).length?'<button id="tmClr">Clear my tags</button>':"")+'</div>'}
 function learnedExport(){var me=(DATA.meta.video||"game")+"|",mine={},items=[];
   TL.forEach(function(t){var c=(S.tm||{})[t.id];if(c)mine[me+t.id]={k:me+t.id,c:c,e:t.e,d:Math.round(t.dur)};var sd=S.seed[t.id];if(sd&&sd.w>=1&&sd.n)mine[me+"p"+t.id]={k:me+"p"+t.id,c:"P",n:String(sd.n),e:t.e,d:Math.round(t.dur)}});
   LEARNED.forEach(function(x){if(!mine[x.k])items.push(x)});Object.keys(mine).forEach(function(k){items.push(mine[k])});return items}
