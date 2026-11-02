@@ -62,7 +62,7 @@
 0:43:59|Faceoff: NZ Win|38|,,3,f
 0:45:42|Faceoff: NZ Loss|17|,,3,f
 0:45:52|Against: Shot on goal|2|0.117,0.263,3,f
-0:45:56|Against: Shot on goal|2|0.089,0.461,3,f
+0:45:52|Against: Shot on goal|2|0.122,0.340,3,f
 0:46:18|Faceoff: DZ Win|17|,,3,f
 0:47:56|Penalty|97|,,3,f,s2911
 0:48:31|Faceoff: DZ Loss|13|,,3,f
