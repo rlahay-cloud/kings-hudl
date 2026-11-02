@@ -1,7 +1,7 @@
 """Kings HUDL Highlight Video maker, its own small Windows program.
 
 Cuts the Kings goals and Highlight clips that Kings HUDL has for a game out of the full game video
-on this computer and joins them into one video. Nothing is uploaded. It is separate from the game analyzer.
+on this computer and joins them into one video. Nothing is uploaded.
 """
 import os
 import queue

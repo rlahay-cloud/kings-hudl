@@ -1,7 +1,0 @@
-ultralytics
-easyocr
-opencv-python
-scikit-learn
-scipy
-numpy
-lapx

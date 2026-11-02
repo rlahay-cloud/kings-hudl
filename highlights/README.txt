@@ -3,7 +3,6 @@ Kings Highlight Video
 Makes one highlight video for a game. It uses every Kings goal plus the clips you tagged Highlight in
 Coach's Corner, in game order, with a short caption on each. The clip list comes from Kings HUDL.
 The video is cut on this computer from your full game video. Nothing is uploaded.
-This program is separate from the Kings Game Analyzer.
 
 First time only
 1. Double click Install_Kings_Highlights.bat and wait for DONE (about 2 minutes).
