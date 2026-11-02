@@ -5,6 +5,11 @@ First time only
 2. Double click Install_Kings_Analyzer.bat and wait until it says DONE (10 to 25 minutes, needs internet).
 3. A "Kings Analyzer" shortcut appears on your desktop.
 
+Updates (no reinstalling)
+The install only happens once. Every time you start Kings Analyzer it quietly checks GitHub and brings
+itself up to date, keeping your results, learned.json and the installed parts. You can also double click
+Update_Kings_Analyzer.bat to update on demand and see what changed. No internet? It just starts as normal.
+
 Every game
 1. Double click Kings Analyzer on the desktop.
 2. Choose the game video. It stays on your computer.
