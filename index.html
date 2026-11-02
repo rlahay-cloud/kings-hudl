@@ -2620,6 +2620,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       '<h2>Events<small id="rvCount"></small></h2><div class="card" id="rvList"></div>' +
       '<details class="card" style="margin-top:12px"><summary style="cursor:pointer">Add goals and penalties from the game analyzer</summary><p class="note" style="margin-top:8px">Paste the lines from the analyzer review page. Each line is a time, a type (Goal, Goal against, Penalty, Away Penalty, or a Faceoff with its zone) and a note. They appear in the Events list below, where you can tap a time to watch it, then fix or delete it. Other types are skipped.</p><textarea id="rvImp" rows="5" style="width:100%" placeholder="0:00:48|Goal||Scoreboard changed at 1:00"></textarea><div class="seg" style="margin-top:8px"><button id="rvImpBtn">Add these lines</button></div><p class="note" id="rvImpNote" aria-live="polite"></p></details>' +
       '<div class="seg" style="margin-top:12px"><button class="btn" id="rvUndo">Undo last</button><button class="btn" id="rvClear">Delete all of mine for this game</button></div>' +
+      (function () { mineOf(CK, "c", date); mineOf(EK, "e", date); mineOf(RK, "r", date); var bk = lget("kh-backup-v1"), n = ["c", "e", "r"].reduce(function (t, k) { return t + ((bk[k + "|" + date] || []).length); }, 0); return n ? '<div class="card" style="margin-top:10px"><p class="note" style="margin:0 0 6px">' + n + ' marks that were on this device before the last update are saved here. Missing something? Bring them back, then check the list and tap Share.</p><div class="seg"><button class="btn" id="rvBk">Bring back my earlier marks</button></div></div>' : ""; })() +
       '<div class="seg" style="margin-top:12px"><button class="btn" id="rvSend" style="width:100%">Share to Kings HUDL</button></div><p class="note" id="rvShare" aria-live="polite"></p>';
     return h;
   }
@@ -2918,6 +2919,18 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       if (!view.length) return;
       var c = st.last && view.indexOf(st.last) >= 0 ? st.last : view[view.length - 1];
       var l = store(c.src); l.splice(l.indexOf(c), 1); st.sel = null; st.last = null; persist(); drawAll();
+    });
+    if ($("rvBk")) $("rvBk").addEventListener("click", function () {
+      var bk = lget("kh-backup-v1"), add = 0;
+      [["c", HL, "hl", false], ["e", EV, "ev", true], ["r", RV, "rv", true]].forEach(function (j) {
+        (bk[j[0] + "|" + date] || []).forEach(function (c) {
+          if (j[1].some(function (o) { return o.tag === c.tag && Math.abs(o.sec - c.sec) <= 3; })) return;
+          var o = {}; Object.keys(c).forEach(function (k) { o[k] = c[k]; }); o.src = j[2]; j[1].push(o); add++;
+        });
+        delete bk[j[0] + "|" + date];
+      });
+      lset("kh-backup-v1", bk); persist(); drawAll(); $("rvBk").parentNode.parentNode.remove();
+      $("rvShare").textContent = "Brought back " + add + " marks. Check them, then tap Share to Kings HUDL.";
     });
     $("rvClear").addEventListener("click", function () {
       if (!view.length) { $("rvShare").textContent = "Nothing to delete."; return; }
