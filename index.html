@@ -628,7 +628,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     return h;
   }
   function byV(a, b) { return b.v - a.v; }
-  function kpi(v, l) { return '<div class="kpi"><b>' + v + "</b><span>" + l + "</span></div>"; }
+  function kpi(v, l, foc) { return '<div class="kpi"' + (foc ? ' data-foc="' + foc + '" role="button" tabindex="0" title="Tap to watch these shots" style="cursor:pointer"' : "") + "><b>" + v + "</b><span>" + l + "</span></div>"; }
 
   function gameTable(list) {
     if (!list.length) return '<div class="card note">No games yet.</div>';
@@ -3016,7 +3016,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       '<div class="kpis" id="mpKpi"></div>' + '<div class="seg" role="group" aria-label="Zoom the rink"><button id="mpZin">Zoom in</button><button id="mpZout">Zoom out</button><button id="mpZreset">Reset view</button></div>' + fullRink() +
       '<div class="leg"><span><i style="background:#a974ff;border-radius:50%"></i>' + esc(usN()) + ' goal</span><span><i style="background:#e5484d;border-radius:50%"></i>Opponent goal</span><span><i style="border:2px solid #1e5fd0;border-radius:50%"></i>' + esc(usN()) + ' shot</span><span><i style="border:2px dashed #e5484d;border-radius:50%"></i>Opponent shot</span></div>' +
       '<div id="mpZones"></div>' +
-      '<h2 style="margin-top:18px">Video clips for these shots<small id="mpCnt"></small></h2><p class="note" style="margin-top:0">Tap a shot on the map, or a time below, to watch it here. It follows the filters above.</p>' + playCard() + '<div id="mpClips"></div>' +
+      '<h2 id="mpClipsHead" style="margin-top:18px">Video clips for these shots<small id="mpCnt"></small></h2><div id="mpFoc"></div><p class="note" style="margin-top:0">Tap a shot on the map, or a time below, to watch it here. It follows the filters above.</p>' + playCard() + '<div id="mpClips"></div>' +
       '<p class="note">We attack the net on the right. Older shots marked on one end only are placed on the correct end. Only shots on goal and goals are shown.</p>' +
       (ds.length ? "" : '<p class="note">No shots marked yet. Coaches can add shots in Coach’s Corner.</p>') + "</div>";
   }
@@ -3077,7 +3077,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   }
   function rgb(c, m) { return "rgb(" + c.map(function (v) { return Math.max(0, Math.min(255, Math.round(v * m))); }).join(",") + ")"; }
   // Flat rink with the real zone shapes (slot wedge, side wedges, rings around the net). Circles grow with shots and change colour with shooting %.
-  function zoneRink(Z, who, maxN) {
+  function zoneRink(Z, who, maxN, side) {
     var NX = 189, NY = 42.5, R = Math.PI / 180, c40 = Math.cos(40 * R) * 25, s40 = Math.sin(40 * R) * 25;
     function fillFor(i) { var n = Z[i].n; return "rgba(150,110,255," + (n ? (0.10 + 0.42 * n / maxN).toFixed(2) : 0.03) + ")"; }
     var dash = 'stroke="#7a6f9a" stroke-width=".35" stroke-dasharray="1.2 .9"';
@@ -3108,8 +3108,9 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     Z.forEach(function (z, i) {
       var r = z.n ? 2.2 + 5.6 * Math.sqrt(z.n / maxN) : 1.4, c = isoRamp(z.sog ? z.g / z.sog : 0), x = spots[i][0], y = spots[i][1];
       shadows += '<circle cx="' + x.toFixed(1) + '" cy="' + (y + .7).toFixed(1) + '" r="' + r.toFixed(1) + '" fill="rgba(20,30,60,.25)"/>';
-      circles += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="' + r.toFixed(1) + '" fill="' + (z.n ? rgb(c, 1) : "rgba(120,130,150,.45)") + '" stroke="#fff" stroke-width=".8"/>';
+      circles += (z.n && side ? '<g data-foc="' + side + ":Z:" + i + '" style="cursor:pointer">' : "") + '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="' + r.toFixed(1) + '" fill="' + (z.n ? rgb(c, 1) : "rgba(120,130,150,.45)") + '" stroke="#fff" stroke-width=".8"/>';
       if (z.n) circles += '<text x="' + x.toFixed(1) + '" y="' + (y + 1.5).toFixed(1) + '" text-anchor="middle" class="zrN">' + z.n + "</text>";
+      if (z.n && side) circles += "</g>";
       var t = short[i] + (z.n ? " " + (z.sog ? Math.round(z.g * 100 / z.sog) + "%" : "-") : ""), w = t.length * 1.42 + 2.4, ty = y + r + 4.8, rx = x - w / 2;
       if (i === 3) { pills += '<text transform="translate(197.2 ' + (NY + 24) + ') rotate(-90)" text-anchor="middle" class="zrL zrV">' + t + "</text>"; return; }
       pills += '<rect x="' + rx.toFixed(1) + '" y="' + (ty - 2.7).toFixed(1) + '" width="' + w.toFixed(1) + '" height="3.7" rx="1.85" fill="rgba(255,255,255,.9)" stroke="rgba(70,85,110,.35)" stroke-width=".2"/>' +
@@ -3128,15 +3129,15 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var pct = function (a, b) { return b ? Math.round(a * 100 / b) + "%" : "-"; };
     var avg = function (a) { return a.length ? Math.round(a.reduce(function (x, y) { return x + y; }, 0) / a.length) + " ft" : "-"; };
     var k = "<div style='display:grid;gap:10px;grid-template-columns:" + (sides.length > 1 ? "1fr 1fr" : "1fr") + ";margin-top:16px'>" + sides.map(function (s) {
-      return "<div><h3 style='margin:0 0 6px;text-align:center'>" + name[s] + "</h3><div class='kpis' style='grid-template-columns:1fr;margin-top:0'>" + kpi(Z[s][0].n, "Shots on goal from the slot") + kpi(pct(Z[s][0].n, tot[s]), "Share from the slot") + kpi(avg(dist[s]), "Average distance") + "</div></div>";
+      return "<div><h3 style='margin:0 0 6px;text-align:center'>" + name[s] + "</h3><div class='kpis' style='grid-template-columns:1fr;margin-top:0'>" + kpi(Z[s][0].n, "Shots on goal from the slot", Z[s][0].n ? s + ":Z:0" : "") + kpi(pct(Z[s][0].n, tot[s]), "Share from the slot") + kpi(avg(dist[s]), "Average distance") + "</div></div>";
     }).join("") + "</div>";
     var maxN = Math.max.apply(null, sides.map(function (s) { return Math.max.apply(null, Z[s].map(function (z) { return z.n; })); }));
-    var iso = "<div class='card' style='margin-top:12px'><div class='isowrap'>" + sides.map(function (s) { return "<div><h3 style='margin:0 0 4px;text-align:center'>" + name[s] + " shooting at the net on the right</h3>" + zoneRink(Z[s], name[s], maxN) + "</div>"; }).join("") + "</div>" +
+    var iso = "<div class='card' style='margin-top:12px'><div class='isowrap'>" + sides.map(function (s) { return "<div><h3 style='margin:0 0 4px;text-align:center'>" + name[s] + " shooting at the net on the right</h3>" + zoneRink(Z[s], name[s], maxN, s) + "</div>"; }).join("") + "</div>" +
       "<div class='isoleg'><span>Bigger circle = more shots</span><span class='ramp'></span><span>Colour: shooting % (blue low, purple, pink 40% or more)</span></div></div>";
     var h = "<h2>Shot zones<small>shots on goal and goals by area</small></h2>" + k + iso +
       "<div class='card scroll' style='margin-top:12px'><table><thead><tr><th rowspan='2'>Zone</th>" + sides.map(function (s) { return "<th colspan='3' style='text-align:center'>" + name[s] + "</th>"; }).join("") + "</tr><tr>" + sides.map(function () { return "<th>SOG</th><th>Goals</th><th>Shoot %</th>"; }).join("") + "</tr></thead><tbody>" +
       SHOT_ZONES.map(function (zn, i) {
-        return "<tr><td title='" + esc(zn[1]) + "'><b>" + zn[0] + "</b></td>" + sides.map(function (s) { var z = Z[s][i]; return "<td>" + z.sog + "</td><td>" + z.g + "</td><td>" + pct(z.g, z.sog) + "</td>"; }).join("") + "</tr>";
+        return "<tr><td title='" + esc(zn[1]) + "'><b>" + zn[0] + "</b></td>" + sides.map(function (s) { var z = Z[s][i]; return "<td" + (z.sog ? ' data-foc="' + s + ":Z:" + i + '" style="cursor:pointer;color:var(--accent);font-weight:700"' : "") + ">" + z.sog + "</td><td" + (z.g ? ' data-foc="' + s + ":ZG:" + i + '" style="cursor:pointer;color:var(--accent);font-weight:700"' : "") + ">" + z.g + "</td><td>" + pct(z.g, z.sog) + "</td>"; }).join("") + "</tr>";
       }).join("") + "</tbody></table></div>" +
       "<p class='note'>Only shots on goal and goals are counted. Shooting % is goals divided by shots on goal. Percentages move a lot with only a few shots, so read them next to the shot counts. The slot is the high danger area. Power play and penalty kill filters only use shots marked in Game analysis, because those have a time.</p>";
     return h;
@@ -3162,7 +3163,18 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       });
       return out;
     }
-    var data = all().filter(function (s0) { return s0.r === "G" || s0.r === "S"; }), lastT = null;
+    var data = all().filter(function (s0) { return s0.r === "G" || s0.r === "S"; }), lastT = null, FOC = null;
+    function foc(s0) {
+      if (!FOC) return true;
+      if (s0.t !== FOC.side) return false;
+      if (FOC.kind === "G" || FOC.kind === "ZG") if (s0.r !== "G") return false;
+      if ((FOC.kind === "Z" || FOC.kind === "ZG") && shotZone(s0) !== FOC.z) return false;
+      return true;
+    }
+    function focName() {
+      var who = FOC.side === "H" ? usN() : ($("mpGame").value ? themN($("mpGame").value) : "Opponents");
+      return who + (FOC.kind === "G" ? " goals" : FOC.kind === "S" ? " shots on goal" : FOC.kind === "ZG" ? " goals, " + SHOT_ZONES[FOC.z][0] : " shots on goal, " + SHOT_ZONES[FOC.z][0]);
+    }
     function draw() {
       var g = $("mpGame").value, pl = $("mpPl").value, r = $("mpRes").value, t = $("mpTeam").value, co = $("mpCoach").value, heat = $("mpHeat").checked, sit = $("mpSit").value;
       if (t !== lastT) {
@@ -3173,13 +3185,14 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       }
       var f = data.filter(function (s0) { return (!g || s0.d === g) && (!pl || s0.n === +pl) && (!r || s0.r === r) && (!t || s0.t === t) && (!co || s0.c === co) && (!sit || s0.sit === sit); });
       var h = '<defs><radialGradient id="heat"><stop offset="0" stop-color="#8a4dff" stop-opacity=".42"/><stop offset="1" stop-color="#8a4dff" stop-opacity="0"/></radialGradient></defs>', m = "";
-      var clipItems = f.filter(function (s0) { return s0.sec != null; }).sort(function (a, b) { return a.d < b.d ? -1 : a.d > b.d ? 1 : a.sec - b.sec; }).map(function (s0) {
+      var fs = FOC ? f.filter(function (s0) { return foc(s0); }) : f;
+      var clipItems = fs.filter(function (s0) { return s0.sec != null; }).sort(function (a, b) { return a.d < b.d ? -1 : a.d > b.d ? 1 : a.sec - b.sec; }).map(function (s0) {
         s0.k = null; var them = s0.t === "A", who = them ? themN(s0.d) : usN();
         return {date: s0.d, game: fmtDate(s0.d) + (oppFor(s0.d) ? " vs " + oppFor(s0.d) : ""), sec: s0.sec, start: Math.max(0, s0.sec - LEAD), end: s0.sec + TAIL, mark: s0.sec, tag: s0.r === "G" ? (them ? "Goal against" : "Goal") : "Shot on goal", disp: who + (s0.r === "G" ? " goal" : " shot on goal"), players: s0.n != null ? [s0.n] : [], s0: s0};
       });
       clipItems.forEach(function (it, i) { it.s0.k = i; });
       f.forEach(function (s0) {
-        var x = s0.x * 200, y = s0.y * 85, them = s0.t === "A", dk = s0.k != null ? ' data-k="' + s0.k + '" style="cursor:pointer"' : "";
+        var x = s0.x * 200, y = s0.y * 85, them = s0.t === "A", dk = (s0.k != null ? ' data-k="' + s0.k + '" style="cursor:pointer"' : "") + (FOC && !foc(s0) ? ' opacity=".18"' : "");
         if (heat) h += '<circle cx="' + x + '" cy="' + y + '" r="14" fill="url(#heat)" style="pointer-events:none"/>';
         if (s0.r === "G") m += '<circle' + dk + ' cx="' + x + '" cy="' + y + '" r="2.8" fill="' + (them ? "#e5484d" : "#a974ff") + '" stroke="#fff" stroke-width=".8"/>';
         else if (s0.r === "S") m += '<circle' + dk + ' cx="' + x + '" cy="' + y + '" r="2.1" fill="none" stroke="' + (them ? "#e5484d" : "#1e5fd0") + '" stroke-width="1"' + (them ? ' stroke-dasharray="1.2 .8"' : "") + "/>";
@@ -3188,22 +3201,29 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       $("rinkFMarks").innerHTML = h + m;
       MPITEMS = clipItems; PL.length = 0;
       var hvd = {}; $("mpCnt").textContent = clipItems.length ? " (" + clipItems.length + ")" : "";
+      $("mpFoc").innerHTML = FOC ? '<div class="card" style="margin-bottom:10px"><b>Showing: ' + esc(focName()) + '</b> <button class="btn" id="mpFocX" style="margin-left:8px">Show all shots</button></div>' : "";
+      if ($("mpFocX")) $("mpFocX").addEventListener("click", function () { FOC = null; draw(); });
       $("mpClips").innerHTML = clipItems.length ? '<div class="card">' + clipItems.slice(0, 80).map(function (it) {
         if (hvd[it.date] === undefined) { var sy = syncOf(it.date); hvd[it.date] = !!ytId(D.videos[it.date] || lget(VK)[it.date] || "") || !!(sy && sy.a && sy.a.length); }
         return '<div class="ev">' + timeBtn(it, hvd[it.date]) + '<span class="lb"><b>' + esc(it.disp) + "</b>" + (it.players.length ? " #" + it.players[0] : "") + ' <span class="mut">' + esc(it.game) + "</span></span></div>";
       }).join("") + (clipItems.length > 80 ? '<p class="note">Showing the first 80. Narrow the filters to see the rest.</p>' : "") + "</div>" : '<p class="note">No shots with a video time match these filters. Shots marked in Game analysis carry a video time. Older shots from the Shot marker do not.</p>';
       var cnt = function (side) { var l = f.filter(function (s0) { return s0.t === side; }), gl = l.filter(function (s0) { return s0.r === "G"; }).length, sog = l.filter(function (s0) { return s0.r === "G" || s0.r === "S"; }).length; return {n: l.length, gl: gl, sog: sog}; };
       var us = cnt("H"), th = cnt("A"), k = "";
-      var col = function (nm, o, who) { return "<div><h3 style='margin:0 0 6px;text-align:center'>" + nm + "</h3><div class='kpis' style='grid-template-columns:1fr;margin-top:0'>" + kpi(o.sog, "Shots on goal") + kpi(o.gl, "Goals") + kpi(o.sog ? Math.round(o.gl * 100 / o.sog) + "%" : "-", "Shooting %") + "</div></div>"; };
-      k = "<div style='display:grid;gap:10px;grid-template-columns:" + (t ? "1fr" : "1fr 1fr") + ";width:100%;margin-top:16px'>" + (t !== "A" ? col(usN(), us) : "") + (t !== "H" ? col(g ? themN(g) : "Opponents", th) : "") + "</div>";
+      var col = function (nm, o, who) { return "<div><h3 style='margin:0 0 6px;text-align:center'>" + nm + "</h3><div class='kpis' style='grid-template-columns:1fr;margin-top:0'>" + kpi(o.sog, "Shots on goal", o.sog ? who + ":S" : "") + kpi(o.gl, "Goals", o.gl ? who + ":G" : "") + kpi(o.sog ? Math.round(o.gl * 100 / o.sog) + "%" : "-", "Shooting %") + "</div></div>"; };
+      k = "<div style='display:grid;gap:10px;grid-template-columns:" + (t ? "1fr" : "1fr 1fr") + ";width:100%;margin-top:16px'>" + (t !== "A" ? col(usN(), us, "H") : "") + (t !== "H" ? col(g ? themN(g) : "Opponents", th, "A") : "") + "</div>";
       $("mpKpi").innerHTML = k;
       $("mpZones").innerHTML = zonesHtml(f, t, g);
       $("cntR").textContent = t === "A" ? "" : usN() + " " + us.sog + " SOG, " + us.gl + " G"; $("cntL").textContent = t === "H" ? "" : (g ? themN(g) : "Opponents") + " " + th.sog + " SOG, " + th.gl + " G";
     }
     var zm = attachZoom($("rinkF"), 200, 85), MPITEMS = [];
+    $("mpKpi").parentNode.addEventListener("click", function (e) {
+      var t = e.target.closest && e.target.closest("[data-foc]"); if (!t) return;
+      var a = t.getAttribute("data-foc").split(":"); FOC = {side: a[0], kind: a[1], z: a[2] != null ? +a[2] : null}; draw();
+      var first = MPITEMS[0]; $("mpClipsHead").scrollIntoView({block: "start", behavior: "smooth"}); if (first && $("vpCard")) playItem(first);
+    });
     $("rinkFMarks").addEventListener("click", function (e) { var c = e.target.closest && e.target.closest("circle[data-k]"); if (c && MPITEMS[+c.getAttribute("data-k")] && $("vpCard")) playItem(MPITEMS[+c.getAttribute("data-k")]); });
     $("mpZin").addEventListener("click", function () { zm.zoom(1.6); }); $("mpZout").addEventListener("click", function () { zm.zoom(1 / 1.6); }); $("mpZreset").addEventListener("click", function () { zm.reset(); });
-    ["mpGame", "mpPl", "mpRes", "mpTeam", "mpCoach", "mpHeat", "mpSit"].forEach(function (id) { $(id).addEventListener("change", draw); });
+    ["mpGame", "mpPl", "mpRes", "mpTeam", "mpCoach", "mpHeat", "mpSit"].forEach(function (id) { $(id).addEventListener("change", function () { FOC = null; draw(); }); });
     draw();
   }
   function bindMark() {
