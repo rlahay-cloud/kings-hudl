@@ -78,3 +78,7 @@ After you tick tracks for players in the Heatmaps tab, three more tabs fill in:
 ## Fix the teams (Roster tab)
 
 If the colour groups mix the two teams, tag a few skaters in "Fix the teams": Kings, Other or Ref. After 2 Kings and 2 Other tags, every other track is sorted by how the skater looks. Your tags always win, and "Clear my tags" starts over.
+
+## It learns from your tags (learned.json)
+
+In the Roster tab, after you tag skaters in "Fix the teams" (and tick tracks for players in Heatmaps), press **Save what I taught it**. It downloads `learned.json`. Put that file in the analyzer folder (next to `kings_analyzer.py`), replacing the old one. The next game you analyse starts with the Kings and referees already recognised, even before you tag anything. Each game you save adds to it. You can also use **Add a learned file** on the review page to load one by hand.

@@ -425,6 +425,13 @@ def build(video, outdir, rink, k=4, log=print, read_nums=False, min_len=3.0, thu
     page = os.path.join(outdir, "review.html")
     use = "app_template.html" if TLs else "review_template.html"
     tpl = open(os.path.join(here, use)).read()
+    lp = os.path.join(here, "learned.json")
+    if os.path.exists(lp):
+        try:
+            data["learned"] = json.load(open(lp)).get("items", [])
+            log("Using %d skaters saved from earlier games (learned.json)" % len(data["learned"]))
+        except Exception as e:
+            log("learned.json could not be read: %s" % e)
     html = tpl.replace("/*IDENTITY*/", ident).replace("/*DATA*/null", json.dumps(data)).replace("/*ROSTER*/[]", json.dumps(roster))
     open(page, "w").write(html)
     if TLs:  # the older page, in case it is wanted

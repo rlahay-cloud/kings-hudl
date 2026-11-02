@@ -82,12 +82,28 @@ function seek(t){if(V.readyState>0||V.src)V.currentTime=Math.max(0,t);drawTL()}
 /* team of each track: your tags first, then the look of the skater learned from your tags, then the colour group */
 var TEAMS={},TMINFO={ready:false,k:0,o:0,r:0};
 function grpTeam(t){return S.ks.indexOf(t.g)>=0?"K":(S.refs||[]).indexOf(t.g)>=0?"R":"O"}
-function buildTeams(){TEAMS={};var tm=S.tm||{},P={K:null,O:null,R:null},N={K:0,O:0,R:0};
-  TL.forEach(function(t){var c=tm[t.id];if(!c||!t.v)return;N[c]++;var p=P[c]||(P[c]=new Float32Array(t.v.length));for(var i=0;i<p.length;i++)p[i]+=t.v[i]*t.dur});
-  ["K","O","R"].forEach(function(c){var p=P[c];if(!p)return;var q=0,i;for(i=0;i<p.length;i++)q+=p[i]*p[i];q=Math.sqrt(q)||1;for(i=0;i<p.length;i++)p[i]/=q});
-  var ready=S.tmOn!==false&&N.K>=2&&N.O>=2;TMINFO={ready:ready,k:N.K,o:N.O,r:N.R};
+/* what earlier games taught it: saved skaters with a team (K, O, R) or a number (P) */
+var LEARNED=(DATA.learned||[]).slice();
+function decE(e){var v=new Float32Array(e.length),q=0,i;for(i=0;i<e.length;i++){v[i]=e[i]/127;q+=v[i]*v[i]}q=Math.sqrt(q)||1;for(i=0;i<v.length;i++)v[i]/=q;return v}
+function protoOf(vs){if(!vs.length)return null;var p=new Float32Array(vs[0].v.length),i,q=0;vs.forEach(function(x){for(i=0;i<p.length;i++)p[i]+=x.v[i]*x.w});for(i=0;i<p.length;i++)q+=p[i]*p[i];q=Math.sqrt(q)||1;for(i=0;i<p.length;i++)p[i]/=q;return p}
+function cosv(a,b){var d=0;for(var i=0;i<a.length;i++)d+=a[i]*b[i];return d}
+var LV={K:[],R:[]};
+function learnedVecs(){LV={K:[],R:[]};LEARNED.forEach(function(x){if((x.c==="K"||x.c==="R")&&x.e&&x.e.length===256)LV[x.c].push({v:decE(x.e),w:Math.max(1,x.d||1)})})}
+learnedVecs();
+function buildTeams(){TEAMS={};var tm=S.tm||{},G={K:[],O:[],R:[]},N={K:0,O:0,R:0};
+  TL.forEach(function(t){var c=tm[t.id];if(!c||!t.v)return;N[c]++;G[c].push({v:t.v,w:t.dur*3})});
+  var on=S.tmOn!==false,P={K:null,O:null,R:null};
+  /* this game's tags, plus what earlier games taught about Kings and referees */
+  var kv=G.K.concat(LV.K.map(function(x){return{v:x.v,w:Math.min(x.w,20)}})),rv=G.R.concat(LV.R.map(function(x){return{v:x.v,w:Math.min(x.w,20)}}));
+  P.K=protoOf(kv);P.O=protoOf(G.O);P.R=protoOf(rv);
+  var inGame=on&&N.K>=2&&N.O>=2,fromLib=on&&!inGame&&LV.K.length>=5,thr=null;
+  if(fromLib){var L=LV.K.length,D=LV.K[0].v.length,sum=new Float32Array(D),i;LV.K.forEach(function(x){var w=Math.min(x.w,20);for(i=0;i<D;i++)sum[i]+=x.v[i]*w});
+    var sims=LV.K.map(function(x){var w=Math.min(x.w,20),q=0,o=new Float32Array(D);for(i=0;i<D;i++){o[i]=sum[i]-x.v[i]*w;q+=o[i]*o[i]}q=Math.sqrt(q)||1;var d=0;for(i=0;i<D;i++)d+=x.v[i]*o[i]/q;return d}).sort(function(a,b){return a-b});
+    thr=sims[Math.floor(sims.length*0.1)]-0.03}
+  TMINFO={ready:inGame,lib:fromLib,k:N.K,o:N.O,r:N.R,lk:LV.K.length,lr:LV.R.length};
   TL.forEach(function(t){var c=tm[t.id];if(c){TEAMS[t.id]=c;return}
-    if(ready&&t.v){var best=null,bs=-9;["K","O","R"].forEach(function(k){if(!P[k]||(k==="R"&&N.R<1))return;var d=0;for(var i=0;i<t.v.length;i++)d+=t.v[i]*P[k][i];if(d>bs){bs=d;best=k}});TEAMS[t.id]=best||grpTeam(t);return}
+    if(inGame&&t.v){var best=null,bs=-9;["K","O","R"].forEach(function(k){if(!P[k]||(k==="R"&&!(N.R||LV.R.length)))return;var d=cosv(t.v,P[k]);if(d>bs){bs=d;best=k}});TEAMS[t.id]=best||grpTeam(t);return}
+    if(fromLib&&t.v){var sk=cosv(t.v,P.K),sr=P.R&&LV.R.length>=3?cosv(t.v,P.R):-9;TEAMS[t.id]=sr>sk&&sr>0.5?"R":sk>=thr?"K":"O";return}
     TEAMS[t.id]=grpTeam(t)})}
 function teamOf(t){return TEAMS[t.id]||grpTeam(t)}
 function kOK(t){return teamOf(t)==="K"&&!S.notk[t.id]}
@@ -165,12 +181,15 @@ function render(){
 var PANES={},BIND={};
 function chips(list,sel,cls){return list.map(function(n){return'<span class="chip '+(sel.indexOf(String(n))>=0?cls:"")+'" data-n="'+n+'">'+n+"</span>"}).join("")}
 function teamBox(){var tm=S.tm||{},list=TL.filter(function(t){return t.th&&t.th.length}).sort(function(a,b){return b.dur-a.dur}),shown=list.filter(function(t){return !tm[t.id]}).slice(0,S.tmN||12);
-  var info=TMINFO.ready?"Sorting the rest by how each skater looks. You have tagged "+TMINFO.k+" Kings, "+TMINFO.o+" other team, "+TMINFO.r+" referee tracks.":"Tag at least 2 Kings and 2 other team tracks and the rest sort themselves.";
+  var info=TMINFO.ready?"Sorting the rest by how each skater looks. You have tagged "+TMINFO.k+" Kings, "+TMINFO.o+" other team, "+TMINFO.r+" referee tracks.":TMINFO.lib?"Using what earlier games taught it ("+TMINFO.lk+" saved Kings skaters). Tag at least 2 Kings and 2 other team tracks to sort by this game instead.":"Tag at least 2 Kings and 2 other team tracks and the rest sort themselves.";
   var cnt={K:0,O:0,R:0};TL.forEach(function(t){cnt[teamOf(t)]++});
   return'<h3>Fix the teams</h3><p class="mute small">If the colour groups mix the two teams, tag a few skaters here. Kings, other team or referee. '+info+' Result now: '+cnt.K+' Kings tracks, '+cnt.O+' other team, '+cnt.R+' referees.</p>'+
   '<label class="row small"><input type="checkbox" id="tmOn" '+(S.tmOn===false?"":"checked")+'> Sort the rest by look</label>'+
   '<div class="tk" style="margin-top:6px">'+shown.map(function(t){return'<div class="tkc" style="cursor:default" data-t="'+t.id+'">'+t.th.slice(0,1).map(function(x){return'<img src="'+x+'">'}).join("")+'<div>'+ms(t.t0)+" now: <b>"+({K:"Kings",O:"Other",R:"Ref"})[teamOf(t)]+'</b></div><div class="row" style="gap:4px;margin-top:3px"><button class="tmb" data-c="K">Kings</button><button class="tmb" data-c="O">Other</button><button class="tmb" data-c="R">Ref</button></div></div>'}).join("")+'</div>'+
-  '<div class="row" style="margin-top:6px"><button id="tmMore">Show more</button>'+(Object.keys(tm).length?'<button id="tmClr">Clear my tags</button>':"")+'</div>'}
+  '<div class="row" style="margin-top:6px"><button id="tmMore">Show more</button><button id="tmSave" class="pri">Save what I taught it</button><button id="tmLoad">Add a learned file</button><input type="file" id="tmFile" accept=".json" style="display:none">'+(Object.keys(tm).length?'<button id="tmClr">Clear my tags</button>':"")+'</div>'}
+function learnedExport(){var me=(DATA.meta.video||"game")+"|",mine={},items=[];
+  TL.forEach(function(t){var c=(S.tm||{})[t.id];if(c)mine[me+t.id]={k:me+t.id,c:c,e:t.e,d:Math.round(t.dur)};var sd=S.seed[t.id];if(sd&&sd.w>=1&&sd.n)mine[me+"p"+t.id]={k:me+"p"+t.id,c:"P",n:String(sd.n),e:t.e,d:Math.round(t.dur)}});
+  LEARNED.forEach(function(x){if(!mine[x.k])items.push(x)});Object.keys(mine).forEach(function(k){items.push(mine[k])});return items}
 function numBox(){var n=TL.filter(function(t){return t.num&&t.num.n}).length;if(!n)return'<p class="mute small">No jersey numbers were read from this video. Turn on "Also try to read jersey numbers" when you run the analyzer, and use a game video where skaters are fairly close to the camera.</p>';
   var used=Object.keys(numSeeds()).length;return'<label class="row" style="margin-top:8px"><input type="checkbox" id="unum" '+(S.usenum===false?"":"checked")+'> <b>Use jersey numbers read from the video</b></label><p class="mute small">'+n+' tracks had a number read, '+used+' of them are being used as starting labels (only numbers on your roster, seen on at least 2 pictures). Your own ticks always win.</p>'}
 /* roster */
@@ -183,7 +202,10 @@ BIND.roster=function(){
   document.querySelectorAll(".tmb").forEach(function(b){b.onclick=function(){var id=b.closest(".tkc").dataset.t;S.tm=S.tm||{};S.tm[id]=b.dataset.c;save();render()}});
   $("tmOn")&&($("tmOn").onchange=function(){S.tmOn=$("tmOn").checked;save();render()});
   $("tmMore")&&($("tmMore").onclick=function(){S.tmN=(S.tmN||12)+12;save();render()});
-  $("tmClr")&&($("tmClr").onclick=function(){S.tm={};save();render()});document.querySelectorAll(".gk").forEach(function(c){c.onchange=function(){var g=+c.dataset.g,i=S.ks.indexOf(g);if(c.checked&&i<0)S.ks.push(g);if(!c.checked&&i>=0)S.ks.splice(i,1);if(c.checked){S.refs=(S.refs||[]).filter(function(x){return x!==g})}save();render()}});
+  $("tmClr")&&($("tmClr").onclick=function(){S.tm={};save();render()});
+  $("tmSave")&&($("tmSave").onclick=function(){var out=learnedExport();dl("learned.json",JSON.stringify({version:1,items:out}));$("saved").textContent="Saved "+out.length+" skaters. Put learned.json in the analyzer folder."});
+  $("tmLoad")&&($("tmLoad").onclick=function(){$("tmFile").click()});
+  $("tmFile")&&($("tmFile").onchange=function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var o=JSON.parse(r.result),have={};LEARNED.forEach(function(x){have[x.k]=1});(o.items||[]).forEach(function(x){if(!have[x.k])LEARNED.push(x)});learnedVecs();render()}catch(x){alert("That file could not be read.")}};r.readAsText(f)});document.querySelectorAll(".gk").forEach(function(c){c.onchange=function(){var g=+c.dataset.g,i=S.ks.indexOf(g);if(c.checked&&i<0)S.ks.push(g);if(!c.checked&&i>=0)S.ks.splice(i,1);if(c.checked){S.refs=(S.refs||[]).filter(function(x){return x!==g})}save();render()}});
   document.querySelectorAll(".gr").forEach(function(c){c.onchange=function(){var g=+c.dataset.g;S.refs=(S.refs||[]).filter(function(x){return x!==g});if(c.checked){S.refs.push(g);var i=S.ks.indexOf(g);if(i>=0)S.ks.splice(i,1)}save();render()}});
   $("unum")&&($("unum").onchange=function(){S.usenum=$("unum").checked;save();render()});
   document.querySelectorAll(".rn").forEach(function(i){i.onchange=function(){S.names[i.dataset.n]=i.value;save()}});
