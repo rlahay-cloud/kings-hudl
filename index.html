@@ -1367,7 +1367,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   }
   function coachSubTabs(active) {
     function b(h, label, key) { return '<button onclick="location.hash=\'' + h + '\'" aria-pressed="' + (active === key) + '">' + label + "</button>"; }
-    return '<div class="seg" role="group" aria-label="Coach’s Corner sections">' + b("#/coach", "Clips", "clips") + b("#/coach/analysis", "Game analysis", "review") + b("#/coach/shots", "Shot marker", "shots") + b("#/coach/players", "Players", "players") + b("#/coach/shifts", "Shifts", "shifts") + b("#/coach/setup", "Game setup", "setup") + "</div>";
+    return '<div class="seg" role="group" aria-label="Coach’s Corner sections">' + b("#/coach", "Clips", "clips") + b("#/coach/analysis", "Game analysis", "review") + b("#/coach/players", "Players", "players") + b("#/coach/shifts", "Shifts", "shifts") + b("#/coach/setup", "Game setup", "setup") + "</div>";
   }
   function vClips(dateParam, mode) {
     var dates = dateChoices(), date = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : (D.games.length ? D.games[D.games.length - 1].date : dates[0]);
@@ -2593,10 +2593,10 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       '<div class="fld"><label>Whose play</label><div class="seg" id="rvTeam"><button data-v="For" aria-pressed="true">' + esc(usN()) + '</button><button data-v="Against" aria-pressed="false">' + esc(themN(date)) + '</button></div></div>' +
       '<p class="note" style="margin:0">Whose play applies to shots and penalties.</p></div>' +
       sect("Shot", "#3ddc97", '<div class="rvbtns">' + RV_SHOTS.map(function (t) { return '<button class="rvb" data-kind="shot" data-res="' + t + '" disabled>' + t + "</button>"; }).join("") + "</div>", "rvShotCard") +
+      sect("Faceoff", "#b4c0d6", '<p class="note" id="rvZoneNote" style="margin-top:0"></p><div class="rvbtns"><button class="rvb" data-fo="Win" disabled>Win</button><button class="rvb" data-fo="Loss" disabled>Loss</button></div>') +
       sect("Penalty", "#ff8fab", '<div class="rvbtns"><button class="rvb" data-kind="pen" id="rvPenBtn" disabled>Penalty called on ' + esc(usN()) + '</button><button class="rvb" data-kind="penstart" id="rvPenStart" disabled>Penalty time starts now</button><button class="rvb" data-kind="penend" id="rvPenEnd" disabled>Penalty time ends now</button></div><p class="note" style="margin:6px 0 0">Three taps for each penalty: Called when it happens (the infraction), Time starts when the penalty clock starts, Time ends when it is over. The last two apply to the latest penalty for the team picked above.</p>') +
       sect("Zone entry", "#2ec4b6", btns("rv", RV_MOVES.map(function (m) { return "Entry: " + m; })).replace(/>Entry: /g, ">")) +
       sect("Zone exit", "#f5c542", btns("rv", RV_MOVES.map(function (m) { return "Exit: " + m; })).replace(/>Exit: /g, ">")) +
-      sect("Faceoff", "#b4c0d6", '<p class="note" id="rvZoneNote" style="margin-top:0"></p><div class="rvbtns"><button class="rvb" data-fo="Win" disabled>Win</button><button class="rvb" data-fo="Loss" disabled>Loss</button></div>') +
       sect("Special teams", "#a974ff", btns("rv", ["Power play", "Penalty kill"])) +
       sect("Coach notes (saved with your name)", "#d2b4ff", btns("hl", HL_TAGS) + '<div class="fld" style="margin-top:8px"><label for="rvLead">Start each note this many seconds earlier</label><select id="rvLead"><option>0</option><option>5</option><option selected>8</option><option>10</option><option>15</option></select></div>') +
       "</div></div>";
@@ -3372,9 +3372,10 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     document.title = "Kings HUDL";
     var h = D.sample ? '<div class="banner">This is sample data to show how the site looks. It is not real.</div>' : "";
     if (base === "shots" && parts[1] === "mark") { location.replace("#/coach"); return; }
+    if (base === "coach" && parts[1] === "shots") { location.replace("#/coach/analysis"); return; }
     if (base === "clips") { location.replace("#/video" + (parts[1] ? "/" + parts[1] : "")); return; }
     if (base === "coach" && needLock()) h += lockView();
-    else if (base === "coach") h += parts[1] === "shots" ? vShots("mark") : parts[1] === "players" ? vCoachPlayers() : parts[1] === "shifts" ? vShifts(parts[2]) : parts[1] === "setup" ? vSetup(parts[2]) : parts[1] === "clip" ? vClipEditor(parts[2], +parts[3], +parts[4]) : (parts[1] === "analysis" || /^\d{4}-\d{2}-\d{2}$/.test(parts[1] || "")) ? vReview(parts.filter(function (x) { return /^\d{4}-\d{2}-\d{2}$/.test(x); })[0]) : vCoachClips();
+    else if (base === "coach") h += parts[1] === "players" ? vCoachPlayers() : parts[1] === "shifts" ? vShifts(parts[2]) : parts[1] === "setup" ? vSetup(parts[2]) : parts[1] === "clip" ? vClipEditor(parts[2], +parts[3], +parts[4]) : (parts[1] === "analysis" || /^\d{4}-\d{2}-\d{2}$/.test(parts[1] || "")) ? vReview(parts.filter(function (x) { return /^\d{4}-\d{2}-\d{2}$/.test(x); })[0]) : vCoachClips();
     else if (base === "shots") h += vShots();
     else if (base === "next") h += vMatchup(parts[1]);
     else if (!D.games.length) h += vEmpty();
@@ -3387,7 +3388,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     else h += vOverview();
     $("app").innerHTML = h;
     if (base === "coach" && needLock()) bindLock();
-    else if (base === "coach") { if (parts[1] === "shots") bindShots("mark"); else if (parts[1] === "players") bindPlayersEditor(); else if (parts[1] === "shifts") bindShifts(parts[2]); else if (parts[1] === "setup") bindSetup(parts[2]); else if (parts[1] === "clip") bindClipEditor(parts[2], +parts[3], +parts[4]); else if (parts[1] === "analysis" || /^\d{4}-\d{2}-\d{2}$/.test(parts[1] || "")) bindReview(); else bindCoachClips(); }
+    else if (base === "coach") { if (parts[1] === "players") bindPlayersEditor(); else if (parts[1] === "shifts") bindShifts(parts[2]); else if (parts[1] === "setup") bindSetup(parts[2]); else if (parts[1] === "clip") bindClipEditor(parts[2], +parts[3], +parts[4]); else if (parts[1] === "analysis" || /^\d{4}-\d{2}-\d{2}$/.test(parts[1] || "")) bindReview(); else bindCoachClips(); }
     if (base === "video") bindVideo();
     if (base === "player") bindPlayerClips(+parts[1]);
     if (base === "game") bindGameEvents();
