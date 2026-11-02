@@ -79,8 +79,19 @@ Identity.prep(TL);
 $("title").firstChild.textContent=(DATA.meta.video||"Game")+" ";
 function now(){return V.currentTime||0}
 function seek(t){if(V.readyState>0||V.src)V.currentTime=Math.max(0,t);drawTL()}
-function kOK(t){return S.ks.indexOf(t.g)>=0&&!S.notk[t.id]}
-function oOK(t){return S.ks.indexOf(t.g)<0&&(S.refs||[]).indexOf(t.g)<0&&!S.notk[t.id]}
+/* team of each track: your tags first, then the look of the skater learned from your tags, then the colour group */
+var TEAMS={},TMINFO={ready:false,k:0,o:0,r:0};
+function grpTeam(t){return S.ks.indexOf(t.g)>=0?"K":(S.refs||[]).indexOf(t.g)>=0?"R":"O"}
+function buildTeams(){TEAMS={};var tm=S.tm||{},P={K:null,O:null,R:null},N={K:0,O:0,R:0};
+  TL.forEach(function(t){var c=tm[t.id];if(!c||!t.v)return;N[c]++;var p=P[c]||(P[c]=new Float32Array(t.v.length));for(var i=0;i<p.length;i++)p[i]+=t.v[i]*t.dur});
+  ["K","O","R"].forEach(function(c){var p=P[c];if(!p)return;var q=0,i;for(i=0;i<p.length;i++)q+=p[i]*p[i];q=Math.sqrt(q)||1;for(i=0;i<p.length;i++)p[i]/=q});
+  var ready=S.tmOn!==false&&N.K>=2&&N.O>=2;TMINFO={ready:ready,k:N.K,o:N.O,r:N.R};
+  TL.forEach(function(t){var c=tm[t.id];if(c){TEAMS[t.id]=c;return}
+    if(ready&&t.v){var best=null,bs=-9;["K","O","R"].forEach(function(k){if(!P[k]||(k==="R"&&N.R<1))return;var d=0;for(var i=0;i<t.v.length;i++)d+=t.v[i]*P[k][i];if(d>bs){bs=d;best=k}});TEAMS[t.id]=best||grpTeam(t);return}
+    TEAMS[t.id]=grpTeam(t)})}
+function teamOf(t){return TEAMS[t.id]||grpTeam(t)}
+function kOK(t){return teamOf(t)==="K"&&!S.notk[t.id]}
+function oOK(t){return teamOf(t)==="O"&&!S.notk[t.id]}
 function stops(){var a=(DATA.stops||[]).filter(function(s,i){return !S.stopsDel[i]}).map(function(s){return[s[0],s[1]]});return a.concat(S.stopsAdd).sort(function(x,y){return x[0]-y[0]})}
 function inStop(t){return stops().some(function(s){return t>=s[0]&&t<=s[1]})}
 var PER=(B.periods||[]);
@@ -95,7 +106,7 @@ var RES=null,ST=null;
 function numSeeds(){var o={};if(S.usenum===false)return o;var ok={};rosterNums().forEach(function(p){ok[p.n]=1});
   var c=TL.filter(function(t){return t.num&&t.num.n&&ok[String(t.num.n)]&&(t.num.votes||0)>=2&&kOK(t)}).sort(function(a,b){return b.num.votes-a.num.votes});
   c.forEach(function(t){var n=String(t.num.n);if(c.some(function(u){return o[u.id]&&o[u.id].n===n&&u.t0<=t.t1&&t.t0<=u.t1}))return;o[t.id]={n:n,w:t.num.votes>=3?0.9:0.6}});return o}
-function solve(){var sd=numSeeds(),k;for(k in S.seed)sd[k]=S.seed[k];RES=Identity.assign(TL,sd,kOK,0.12)}
+function solve(){buildTeams();var sd=numSeeds(),k;for(k in S.seed)sd[k]=S.seed[k];RES=Identity.assign(TL,sd,kOK,0.12)}
 function trackStats(){ST=Identity.stats(TL,RES?RES.lab:{},stops(),8)}
 /* ---- line changes ---- */
 var CH=DATA.changes||[];
@@ -153,6 +164,13 @@ function render(){
   $("foot").textContent=(S.ks.length?"Kings colours chosen. ":"Choose your team colours in the Roster tab. ")+(tot?Math.round(100*ok/tot)+"% of Kings ice time is labelled with confidence from the tracks you ticked. ":"")+(RES&&RES.over.length?RES.over.length+" seconds show more than 6 Kings skaters at once, so a tick is wrong somewhere.":"")}
 var PANES={},BIND={};
 function chips(list,sel,cls){return list.map(function(n){return'<span class="chip '+(sel.indexOf(String(n))>=0?cls:"")+'" data-n="'+n+'">'+n+"</span>"}).join("")}
+function teamBox(){var tm=S.tm||{},list=TL.filter(function(t){return t.th&&t.th.length}).sort(function(a,b){return b.dur-a.dur}),shown=list.filter(function(t){return !tm[t.id]}).slice(0,S.tmN||12);
+  var info=TMINFO.ready?"Sorting the rest by how each skater looks. You have tagged "+TMINFO.k+" Kings, "+TMINFO.o+" other team, "+TMINFO.r+" referee tracks.":"Tag at least 2 Kings and 2 other team tracks and the rest sort themselves.";
+  var cnt={K:0,O:0,R:0};TL.forEach(function(t){cnt[teamOf(t)]++});
+  return'<h3>Fix the teams</h3><p class="mute small">If the colour groups mix the two teams, tag a few skaters here. Kings, other team or referee. '+info+' Result now: '+cnt.K+' Kings tracks, '+cnt.O+' other team, '+cnt.R+' referees.</p>'+
+  '<label class="row small"><input type="checkbox" id="tmOn" '+(S.tmOn===false?"":"checked")+'> Sort the rest by look</label>'+
+  '<div class="tk" style="margin-top:6px">'+shown.map(function(t){return'<div class="tkc" style="cursor:default" data-t="'+t.id+'">'+t.th.slice(0,1).map(function(x){return'<img src="'+x+'">'}).join("")+'<div>'+ms(t.t0)+" now: <b>"+({K:"Kings",O:"Other",R:"Ref"})[teamOf(t)]+'</b></div><div class="row" style="gap:4px;margin-top:3px"><button class="tmb" data-c="K">Kings</button><button class="tmb" data-c="O">Other</button><button class="tmb" data-c="R">Ref</button></div></div>'}).join("")+'</div>'+
+  '<div class="row" style="margin-top:6px"><button id="tmMore">Show more</button>'+(Object.keys(tm).length?'<button id="tmClr">Clear my tags</button>':"")+'</div>'}
 function numBox(){var n=TL.filter(function(t){return t.num&&t.num.n}).length;if(!n)return'<p class="mute small">No jersey numbers were read from this video. Turn on "Also try to read jersey numbers" when you run the analyzer, and use a game video where skaters are fairly close to the camera.</p>';
   var used=Object.keys(numSeeds()).length;return'<label class="row" style="margin-top:8px"><input type="checkbox" id="unum" '+(S.usenum===false?"":"checked")+'> <b>Use jersey numbers read from the video</b></label><p class="mute small">'+n+' tracks had a number read, '+used+' of them are being used as starting labels (only numbers on your roster, seen on at least 2 pictures). Your own ticks always win.</p>'}
 /* roster */
@@ -160,8 +178,12 @@ PANES.roster=function(){
   var g=DATA.colours.map(function(c,i){var sm=(DATA.samples[i]||[]).slice(0,3).map(function(s){return'<img class="zi" style="height:70px;border-radius:5px;margin:2px" src="'+s+'">'}).join("");
     return'<div class="item" data-g="'+i+'"><label class="row"><input type="checkbox" class="gk" data-g="'+i+'" '+(S.ks.indexOf(i)>=0?"checked":"")+'> <span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:rgb('+c.join(",")+');border:1px solid var(--line)"></span> <b>Colour group '+(i+1)+'</b> <span class="mute small">'+TL.filter(function(t){return t.g===i}).length+' tracks</span></label><label class="row small" style="margin-top:4px"><input type="checkbox" class="gr" data-g="'+i+'" '+((S.refs||[]).indexOf(i)>=0?"checked":"")+'> These are referees or not players</label><div>'+sm+"</div></div>"}).join("");
   var r=rosterNums().map(function(p){return'<tr><td><b>#'+p.n+'</b></td><td><input type="text" class="rn" data-n="'+p.n+'" value="'+esc(p.name)+'" placeholder="name" style="width:100%"></td></tr>'}).join("");
-  return'<b>Which colours are the Kings?</b><p class="mute small">Tick every group that is your team. Referees and the other team stay unticked.</p>'+g+numBox()+'<h3>Players</h3><table>'+r+'</table><div class="row" style="margin-top:8px"><input type="number" id="addn" placeholder="add #" style="width:90px"><button id="addb">Add</button></div><h3>Time offset</h3><p class="mute small">If your video starts at a different moment than the main stream, type the seconds of difference. It is added to exported times.</p><input type="number" id="offs" step="0.1" value="'+(S.off||0)+'" style="width:120px">'};
-BIND.roster=function(){document.querySelectorAll(".gk").forEach(function(c){c.onchange=function(){var g=+c.dataset.g,i=S.ks.indexOf(g);if(c.checked&&i<0)S.ks.push(g);if(!c.checked&&i>=0)S.ks.splice(i,1);if(c.checked){S.refs=(S.refs||[]).filter(function(x){return x!==g})}save();render()}});
+  return'<b>Which colours are the Kings?</b><p class="mute small">Tick every group that is your team. Referees and the other team stay unticked.</p>'+g+teamBox()+numBox()+'<h3>Players</h3><table>'+r+'</table><div class="row" style="margin-top:8px"><input type="number" id="addn" placeholder="add #" style="width:90px"><button id="addb">Add</button></div><h3>Time offset</h3><p class="mute small">If your video starts at a different moment than the main stream, type the seconds of difference. It is added to exported times.</p><input type="number" id="offs" step="0.1" value="'+(S.off||0)+'" style="width:120px">'};
+BIND.roster=function(){
+  document.querySelectorAll(".tmb").forEach(function(b){b.onclick=function(){var id=b.closest(".tkc").dataset.t;S.tm=S.tm||{};S.tm[id]=b.dataset.c;save();render()}});
+  $("tmOn")&&($("tmOn").onchange=function(){S.tmOn=$("tmOn").checked;save();render()});
+  $("tmMore")&&($("tmMore").onclick=function(){S.tmN=(S.tmN||12)+12;save();render()});
+  $("tmClr")&&($("tmClr").onclick=function(){S.tm={};save();render()});document.querySelectorAll(".gk").forEach(function(c){c.onchange=function(){var g=+c.dataset.g,i=S.ks.indexOf(g);if(c.checked&&i<0)S.ks.push(g);if(!c.checked&&i>=0)S.ks.splice(i,1);if(c.checked){S.refs=(S.refs||[]).filter(function(x){return x!==g})}save();render()}});
   document.querySelectorAll(".gr").forEach(function(c){c.onchange=function(){var g=+c.dataset.g;S.refs=(S.refs||[]).filter(function(x){return x!==g});if(c.checked){S.refs.push(g);var i=S.ks.indexOf(g);if(i>=0)S.ks.splice(i,1)}save();render()}});
   $("unum")&&($("unum").onchange=function(){S.usenum=$("unum").checked;save();render()});
   document.querySelectorAll(".rn").forEach(function(i){i.onchange=function(){S.names[i.dataset.n]=i.value;save()}});

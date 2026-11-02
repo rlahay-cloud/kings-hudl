@@ -74,3 +74,7 @@ After you tick tracks for players in the Heatmaps tab, three more tabs fill in:
 - **Zone time**: percent of each player's time in the defensive, middle and offensive third, plus a heat map with the zones marked.
 - **Speed**: distance, average and top speed, and sprint count for each player, then shift by shift, with a speed chart for any shift you tap. Speeds are in km/h and come from the rink position estimates, so use them to compare, not as exact numbers.
 - **Shift replay**: pick a player and a shift, press Watch, and the video plays that shift while a dot follows the player on the rink. It also writes a Clip line you can paste into Coach's Corner.
+
+## Fix the teams (Roster tab)
+
+If the colour groups mix the two teams, tag a few skaters in "Fix the teams": Kings, Other or Ref. After 2 Kings and 2 Other tags, every other track is sorted by how the skater looks. Your tags always win, and "Clear my tags" starts over.
