@@ -447,14 +447,19 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   }
 
   // ---------- aggregation ----------
+  // Penalty minutes: the scoreboard number, or 2 per penalty marked in Game analysis, whichever is higher (never both added)
+  function pimFor(date, p) {
+    var k = 0; allReview(date).forEach(function (c) { if (c.tag === "Penalty" && (c.players || []).indexOf(p.n) >= 0) k++; });
+    return Math.max(p.pim, k * 2);
+  }
   function aggPlayers() {
     var m = {};
     D.games.forEach(function (g, gi) {
       if (g.pending) return;
       g.players.forEach(function (p) {
         var a = m[p.n] || (m[p.n] = {n: p.n, gp: 0, g: 0, a: 0, p: 0, pm: 0, pim: 0, sog: 0, log: []});
-        a.gp++; a.g += p.g; a.a += p.a; a.p += p.p; a.pm += p.pm; a.pim += p.pim; a.sog += p.sog;
-        a.log.push({game: g, s: p});
+        a.gp++; a.g += p.g; a.a += p.a; a.p += p.p; var pf = pimFor(g.date, p); a.pm += p.pm; a.pim += pf; a.sog += p.sog;
+        a.log.push({game: g, s: Object.assign({}, p, {pim: pf})});
       });
     });
     return Object.keys(m).map(function (k) { var a = m[k]; a.ppg = a.gp ? a.p / a.gp : 0; a.shp = a.sog ? a.g / a.sog : null; return a; });
@@ -861,7 +866,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var hlH = highlightsBlock(g);
     h += hlH.indexOf('class="ev goal"') >= 0 ? hlH : goalsH + hlH;
     h += "<h2>Skaters</h2><div class='card scroll'><table><thead><tr><th>Player</th><th>G</th><th>A</th><th>P</th><th>+/-</th><th>SOG</th><th>PIM</th></tr></thead><tbody>" +
-      g.players.map(function (p) { return '<tr class="click" onclick="location.hash=\'#/player/' + p.n + '\'"><td>' + esc(label(p.n)) + "</td><td>" + p.g + "</td><td>" + p.a + "</td><td>" + p.p + '</td><td class="' + pmCls(p.pm) + '">' + pmText(p.pm) + "</td><td>" + p.sog + "</td><td>" + p.pim + "</td></tr>"; }).join("") + "</tbody></table></div>";
+      g.players.map(function (p) { return '<tr class="click" onclick="location.hash=\'#/player/' + p.n + '\'"><td>' + esc(label(p.n)) + "</td><td>" + p.g + "</td><td>" + p.a + "</td><td>" + p.p + '</td><td class="' + pmCls(p.pm) + '">' + pmText(p.pm) + "</td><td>" + p.sog + "</td><td>" + pimFor(g.date, p) + "</td></tr>"; }).join("") + "</tbody></table></div>";
     if (g.dnp.length) h += '<p class="note">Did not play: ' + g.dnp.map(function (n) { return esc(label(n)); }).join(", ") + "</p>";
     if (g.goalies.length) h += "<h2>Goalies</h2><div class='card scroll'><table><thead><tr><th>Goalie</th><th>SA</th><th>GA</th><th>SV%</th></tr></thead><tbody>" +
       g.goalies.map(function (x) { return "<tr><td>" + esc(label(x.n)) + "</td><td>" + x.sa + "</td><td>" + x.ga + "</td><td>" + svText(svp(x.sa, x.ga)) + "</td></tr>"; }).join("") + "</tbody></table></div>";
