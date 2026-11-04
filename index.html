@@ -3347,39 +3347,95 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     Object.keys(D.review).concat(Object.keys(lget(RK))).forEach(function (d) { if (!seen[d]) seen[d] = null; });
     Object.keys(seen).sort().reverse().forEach(function (d) {
       var g = seen[d], R = allReview(d), name = fmtDate(d) + (oppFor(d) ? " vs " + oppFor(d) : ""), url = D.videos[d] || lget(VK)[d] || "";
-      var add = function (what, c) { out.push({date: d, game: name, what: what, sec: c ? c.sec : null}); };
+      var add = function (what, c, kind) { out.push({date: d, game: name, what: what, sec: c ? c.sec : null, tag: c ? c.tag : "", kind: kind || "pick"}); };
       if (!R.length && !g) return;
-      if (R.length && !url) add("No video link for this game", null);
+      if (R.length && !url) add("No video link for this game", null, "novideo");
       R.forEach(function (c) {
         var t = c.tag;
-        if (t === "Penalty" && !(c.players || []).length) add("Penalty on us has no player", c);
-        if ((t === "Penalty" || t === "Away Penalty") && c.until == null) add((t === "Penalty" ? "Penalty on us" : "Penalty on them") + " has no end time (the site guesses 2 minutes)", c);
-        if (t === "For: Goal" && !(c.players || []).length) add("Our goal has no scorer", c);
-        if (t === "For: Goal" && !(c.ice || []).length) add("Our goal has no one on the ice picked (plus/minus)", c);
-        if (t === "Against: Goal" && !(c.ice || []).length) add("Goal against has no one on the ice picked (plus/minus)", c);
-        if (/^(For|Against): (Goal|Shot on goal|Missed shot|Blocked shot)$/.test(t) && (c.x == null || c.y == null)) add(t.replace(": ", " ") + " has no spot on the rink", c);
-        if (/^Faceoff:/.test(t) && !(c.players || []).length) add("Faceoff has no taker picked", c);
+        if (t === "Penalty" && !(c.players || []).length) add("Penalty on us has no player", c, "pick");
+        if ((t === "Penalty" || t === "Away Penalty") && c.until == null) add((t === "Penalty" ? "Penalty on us" : "Penalty on them") + " has no end time (the site guesses 2 minutes)", c, "noend");
+        if (t === "For: Goal" && !(c.players || []).length) add("Our goal has no scorer", c, "pick");
+        if (t === "For: Goal" && !(c.ice || []).length) add("Our goal has no one on the ice picked (plus/minus)", c, "pick");
+        if (t === "Against: Goal" && !(c.ice || []).length) add("Goal against has no one on the ice picked (plus/minus)", c, "pick");
+        if (/^(For|Against): (Goal|Shot on goal|Missed shot|Blocked shot)$/.test(t) && (c.x == null || c.y == null)) add(t.replace(": ", " ") + " has no spot on the rink", c, "nospot");
+        if (/^Faceoff:/.test(t) && !(c.players || []).length) add("Faceoff has no taker picked", c, "pick");
       });
       if (g && g._o && R.length) {
         var gf = R.filter(function (c) { return c.tag === "For: Goal"; }).length, ga = R.filter(function (c) { return c.tag === "Against: Goal"; }).length;
-        if ((g._o.hs || 0) !== gf || (g._o.as || 0) !== ga) out.push({date: d, game: name, what: "Scoreboard says " + (g._o.hs || 0) + " to " + (g._o.as || 0) + ", Game analysis has " + gf + " to " + ga + " goals", sec: null});
+        if ((g._o.hs || 0) !== gf || (g._o.as || 0) !== ga) out.push({date: d, game: name, what: "Scoreboard says " + (g._o.hs || 0) + " to " + (g._o.as || 0) + ", Game analysis has " + gf + " to " + ga + " goals", sec: null, tag: "", kind: "score"});
       }
     });
     return out;
   }
-  function vFixIt() {
-    var items = fixItems();
-    var h = "<h2>Coach’s Corner</h2>" + coachSubTabs("fixit");
-    if (!items.length) return h + '<div class="card" style="margin-top:12px"><p style="margin:0">Nothing to fix. Every mark has what it needs.</p></div>';
-    var by = {}, order = [];
+  function myRvMark(date, sec, tag) { return getMyReview(date).filter(function (c) { return c.sec === sec && c.tag === tag; })[0] || null; }
+  var FIX_RINK = '<svg class="fxrink" viewBox="0 0 200 85" role="img" aria-label="Rink. Tap where it happened. We attack the net on the right." style="width:100%;max-width:520px;touch-action:manipulation;cursor:crosshair"><rect width="200" height="85" rx="26" fill="#f4f8fc" stroke="#46556e"/><rect x="99.3" width="1.4" height="85" fill="#d33"/><rect x="74" width="2" height="85" fill="#2b6cd9" opacity=".8"/><rect x="124" width="2" height="85" fill="#2b6cd9" opacity=".8"/><circle cx="31" cy="20.5" r="1" fill="#d33"/><circle cx="31" cy="64.5" r="1" fill="#d33"/><circle cx="169" cy="20.5" r="1" fill="#d33"/><circle cx="169" cy="64.5" r="1" fill="#d33"/><text x="162" y="9" text-anchor="middle" font-size="5" fill="#46556e">THEIR ZONE</text><text x="37" y="9" text-anchor="middle" font-size="5" fill="#46556e">OUR ZONE</text></svg>';
+  function fixBody(it) {
+    if (it.kind === "novideo") return '<div class="fld"><label>YouTube link for this game</label><input type="url" data-fx="url" placeholder="https://youtu.be/..."></div><div class="seg"><button data-fx="saveurl">Save link</button></div>';
+    if (it.kind === "score") return '<p class="note" style="margin:0">Open the game in Game analysis to find the missing or extra goal. <a href="#/coach/analysis/' + it.date + '">Open Game analysis</a></p>';
+    var c = myRvMark(it.date, it.sec, it.tag);
+    if (!c) return '<p class="note" style="margin:0">This mark was made by another coach, so only they can change it.</p>';
+    if (it.kind === "noend") return '<div class="fld"><label>Video time when the penalty ends (watch the clip)</label><input type="text" data-fx="end" placeholder="' + hms(c.sec + 120) + '" value="' + hms(c.sec + 120) + '" inputmode="numeric" style="max-width:140px"></div><div class="seg"><button data-fx="saveend">Save end time</button></div><p class="note" style="margin:6px 0 0">It starts with a 2 minute guess. Change it to the video time you see the penalty end.</p>';
+    if (it.kind === "nospot") return '<p class="note" style="margin:0 0 6px">Tap the rink where it happened.</p>' + FIX_RINK;
+    return reviewPick(c, it.date);
+  }
+  function fixRender(box) {
+    var items = fixItems(), by = {}, order = [];
     items.forEach(function (x) { if (!by[x.date]) { by[x.date] = []; order.push(x.date); } by[x.date].push(x); });
-    h += '<p class="note" style="margin-top:12px">' + items.length + (items.length === 1 ? " thing" : " things") + " to look at. Tap one to open that game in Game analysis, then fix it and tap Share.</p>";
+    if (!items.length) { box.innerHTML = '<div class="card" style="margin-top:12px"><p style="margin:0"><b>Nothing to fix.</b> Every mark has what it needs.</p></div>'; return; }
+    var n = 0, h = '<p class="note" style="margin-top:12px">' + items.length + (items.length === 1 ? " thing" : " things") + " to fix. Tap Watch to see the clip, fix it right here, and it disappears from the list. Then tap Share for that game.</p>";
     order.forEach(function (d) {
-      h += "<h2>" + esc(by[d][0].game) + "<small>" + by[d].length + "</small></h2><div class='card'>" + by[d].map(function (x) {
-        return '<div class="ev"><span class="t" style="font-family:var(--display);font-weight:700;font-size:18px;min-width:90px">' + (x.sec != null ? hms(x.sec) : "") + '</span><span class="lb"><a href="#/coach/analysis/' + d + '">' + esc(x.what) + "</a></span></div>";
-      }).join("") + "</div>";
+      h += "<h2>" + esc(by[d][0].game) + "<small>" + by[d].length + '</small></h2><div class="seg" style="margin-bottom:8px"><button class="btn" data-fx="share" data-d="' + d + '">Share this game to Kings HUDL</button></div><p class="note" data-fxn="' + d + '" aria-live="polite"></p>';
+      by[d].forEach(function (x) {
+        h += '<div class="card fxit" data-d="' + d + '" data-s="' + (x.sec == null ? "" : x.sec) + '" data-t="' + esc(x.tag) + '" data-k="' + x.kind + '" style="margin-bottom:10px"><div class="seg" style="justify-content:space-between;align-items:center;margin-bottom:8px"><b>' + (x.sec != null ? hms(x.sec) + " " : "") + esc(x.what) + "</b>" + (x.sec != null ? '<button data-fx="watch">Watch</button>' : "") + "</div>" + fixBody(x) + "</div>";
+      });
     });
-    return h;
+    box.innerHTML = h;
+  }
+  function vFixIt() {
+    return "<h2>Coach’s Corner</h2>" + coachSubTabs("fixit") + '<div style="margin-top:12px">' + playCard() + '</div><div id="fxBox"></div>';
+  }
+  function bindFixIt() {
+    var box = $("fxBox"); if (!box) return;
+    fixRender(box);
+    function save(date, list) { putReview(date, list); }
+    function ctx(el) {
+      var card = el.closest(".fxit"); if (!card) return null;
+      var d = card.getAttribute("data-d"), sec = card.getAttribute("data-s") === "" ? null : +card.getAttribute("data-s"), tag = card.getAttribute("data-t");
+      var list = getMyReview(d), c = list.filter(function (x) { return x.sec === sec && x.tag === tag; })[0] || null;
+      return {card: card, d: d, sec: sec, tag: tag, list: list, c: c, kind: card.getAttribute("data-k")};
+    }
+    box.addEventListener("click", function (e) {
+      var pk = e.target.closest("button[data-act='pick']"), fx = e.target.closest("[data-fx]"), cx;
+      if (pk) {
+        cx = ctx(pk); if (!cx || !cx.c) return;
+        applyPick(cx.c, pk.getAttribute("data-role"), +pk.getAttribute("data-n")); save(cx.d, cx.list); fixRender(box); return;
+      }
+      if (fx && fx.getAttribute("data-fx") === "share") {
+        var d = fx.getAttribute("data-d"), note = box.querySelector('[data-fxn="' + d + '"]'), list = getMyReview(d);
+        Promise.resolve(submitFile("review", d, fmtReview(list), note, true)); return;
+      }
+      if (fx && fx.tagName === "BUTTON") {
+        cx = ctx(fx); if (!cx) return; var a = fx.getAttribute("data-fx");
+        if (a === "watch") {
+          var pen = /Penalty/.test(cx.tag), g = fmtDate(cx.d) + (oppFor(cx.d) ? " vs " + oppFor(cx.d) : "");
+          playItem({date: cx.d, game: g, sec: cx.sec, start: Math.max(0, cx.sec - 8), end: cx.sec + (pen ? 150 : 8), mark: cx.sec, tag: cx.tag, label: ""});
+        } else if (a === "saveurl") {
+          var u = cx.card.querySelector('[data-fx="url"]').value.trim(); if (!ytId(u)) { cx.card.querySelector("input").placeholder = "That does not look like a YouTube link"; return; }
+          var l = lget(VK); l[cx.d] = u; lset(VK, l); fixRender(box);
+        } else if (a === "saveend" && cx.c) {
+          var t = parseHms(cx.card.querySelector('[data-fx="end"]').value.trim());
+          if (t === null || t <= cx.c.sec) { cx.card.querySelector('[data-fx="end"]').value = ""; cx.card.querySelector('[data-fx="end"]').placeholder = "Type a time after " + hms(cx.c.sec); return; }
+          cx.c.until = t; save(cx.d, cx.list); fixRender(box);
+        }
+        return;
+      }
+      var rk = e.target.closest("svg.fxrink");
+      if (rk) {
+        cx = ctx(rk); if (!cx || !cx.c) return;
+        var r = rk.getBoundingClientRect(); cx.c.x = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)); cx.c.y = Math.max(0, Math.min(1, (e.clientY - r.top) / r.height));
+        save(cx.d, cx.list); fixRender(box);
+      }
+    });
   }
   var tabs = [["", "Overview"], ["players", "Players"], ["games", "Games"], ["shots", "Shot map"], ["team", "Team"], ["video", "Video"], ["coach", "Coach’s Corner"]];
   // Video review beats the scoreboard, but only for what was actually marked. Starts from Streamn's numbers every time.
@@ -3532,7 +3588,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     else h += vOverview();
     $("app").innerHTML = h;
     if (base === "coach" && needLock()) bindLock();
-    else if (base === "coach") { if (parts[1] === "players") bindPlayersEditor(); else if (parts[1] === "shifts") bindShifts(parts[2]); else if (parts[1] === "setup") bindSetup(parts[2]); else if (parts[1] === "clip") bindClipEditor(parts[2], +parts[3], +parts[4]); else if (parts[1] === "analysis" || /^\d{4}-\d{2}-\d{2}$/.test(parts[1] || "")) bindReview(); else if (parts[1] !== "fixit") bindCoachClips(); }
+    else if (base === "coach") { if (parts[1] === "players") bindPlayersEditor(); else if (parts[1] === "shifts") bindShifts(parts[2]); else if (parts[1] === "setup") bindSetup(parts[2]); else if (parts[1] === "clip") bindClipEditor(parts[2], +parts[3], +parts[4]); else if (parts[1] === "analysis" || /^\d{4}-\d{2}-\d{2}$/.test(parts[1] || "")) bindReview(); else if (parts[1] === "fixit") bindFixIt(); else bindCoachClips(); }
     if (base === "video") bindVideo();
     if (base === "player") bindPlayerClips(+parts[1]);
     if (base === "game") bindGameEvents();
