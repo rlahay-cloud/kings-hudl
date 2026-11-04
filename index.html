@@ -3392,11 +3392,22 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     box.innerHTML = h;
   }
   function vFixIt() {
-    return "<h2>Coach’s Corner</h2>" + coachSubTabs("fixit") + '<div style="margin-top:12px">' + playCard() + '</div><div id="fxBox"></div>';
+    return "<h2>Coach’s Corner</h2>" + coachSubTabs("fixit") + '<div id="fxStash" hidden>' + playCard() + '</div><div id="fxBox"></div>';
   }
   function bindFixIt() {
     var box = $("fxBox"); if (!box) return;
     fixRender(box);
+    var vkey = null;
+    function cardKey(card) { return card.getAttribute("data-d") + "|" + card.getAttribute("data-s") + "|" + card.getAttribute("data-t") + "|" + card.getAttribute("data-k"); }
+    var render0 = fixRender;
+    function render() {
+      var v = $("vpCard"); if (v) $("fxStash").appendChild(v);
+      render0(box);
+      if (vkey && v) {
+        var card = Array.prototype.filter.call(box.querySelectorAll(".fxit"), function (c) { return cardKey(c) === vkey; })[0];
+        if (card) { v.style.position = "static"; card.insertBefore(v, card.children[1]); } else vkey = null;
+      }
+    }
     function save(date, list) { putReview(date, list); }
     function ctx(el) {
       var card = el.closest(".fxit"); if (!card) return null;
@@ -3408,7 +3419,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       var pk = e.target.closest("button[data-act='pick']"), fx = e.target.closest("[data-fx]"), cx;
       if (pk) {
         cx = ctx(pk); if (!cx || !cx.c) return;
-        applyPick(cx.c, pk.getAttribute("data-role"), +pk.getAttribute("data-n")); save(cx.d, cx.list); fixRender(box); return;
+        applyPick(cx.c, pk.getAttribute("data-role"), +pk.getAttribute("data-n")); save(cx.d, cx.list); render(); return;
       }
       if (fx && fx.getAttribute("data-fx") === "share") {
         var d = fx.getAttribute("data-d"), note = box.querySelector('[data-fxn="' + d + '"]'), list = getMyReview(d);
@@ -3418,14 +3429,15 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
         cx = ctx(fx); if (!cx) return; var a = fx.getAttribute("data-fx");
         if (a === "watch") {
           var pen = /Penalty/.test(cx.tag), g = fmtDate(cx.d) + (oppFor(cx.d) ? " vs " + oppFor(cx.d) : "");
+          var vc = $("vpCard"); vkey = cardKey(cx.card); vc.style.position = "static"; cx.card.insertBefore(vc, cx.card.children[1]);
           playItem({date: cx.d, game: g, sec: cx.sec, start: Math.max(0, cx.sec - 8), end: cx.sec + (pen ? 150 : 8), mark: cx.sec, tag: cx.tag, label: ""});
         } else if (a === "saveurl") {
           var u = cx.card.querySelector('[data-fx="url"]').value.trim(); if (!ytId(u)) { cx.card.querySelector("input").placeholder = "That does not look like a YouTube link"; return; }
-          var l = lget(VK); l[cx.d] = u; lset(VK, l); fixRender(box);
+          var l = lget(VK); l[cx.d] = u; lset(VK, l); render();
         } else if (a === "saveend" && cx.c) {
           var t = parseHms(cx.card.querySelector('[data-fx="end"]').value.trim());
           if (t === null || t <= cx.c.sec) { cx.card.querySelector('[data-fx="end"]').value = ""; cx.card.querySelector('[data-fx="end"]').placeholder = "Type a time after " + hms(cx.c.sec); return; }
-          cx.c.until = t; save(cx.d, cx.list); fixRender(box);
+          cx.c.until = t; save(cx.d, cx.list); render();
         }
         return;
       }
@@ -3433,7 +3445,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       if (rk) {
         cx = ctx(rk); if (!cx || !cx.c) return;
         var r = rk.getBoundingClientRect(); cx.c.x = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)); cx.c.y = Math.max(0, Math.min(1, (e.clientY - r.top) / r.height));
-        save(cx.d, cx.list); fixRender(box);
+        save(cx.d, cx.list); render();
       }
     });
   }
