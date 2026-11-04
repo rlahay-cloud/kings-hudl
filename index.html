@@ -952,8 +952,16 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       allReview(d).forEach(function (c) {
         var tag = RV_DERIVE[c.tag];
         if (!tag) { items.push({date: d, game: label, sec: c.sec, start: Math.max(0, c.sec - LEAD), end: c.sec + TAIL, mark: c.sec, tag: c.tag, disp: geName(c.tag, d), players: c.players || [], assists: c.assists || [], label: "", coach: c.coach || GAME_LABEL, lists: c.lists || [], rvAll: true}); return; }
+        var isDupPen = function (z) { return z.tag === "Penalty" || z.tag === "Away Penalty"; };
         var dup = items.filter(function (o) { return o.date === d && o.tag === tag && Math.abs(o.mark - c.sec) <= 25; })[0];
-        if (dup) { dup.lists = (dup.lists || []).concat((c.lists || []).filter(function (n) { return (dup.lists || []).indexOf(n) < 0; })); return; }
+        if (dup) {
+          dup.lists = (dup.lists || []).concat((c.lists || []).filter(function (n) { return (dup.lists || []).indexOf(n) < 0; }));
+          // the player picked in Game analysis must follow the matching clip, or the player card misses it
+          dup.players = (dup.players || []).concat((c.players || []).filter(function (n) { return (dup.players || []).indexOf(n) < 0; }));
+          if (/Goal/.test(c.tag)) dup.assists = (dup.assists || []).concat((c.assists || []).filter(function (n) { return (dup.assists || []).indexOf(n) < 0; }));
+          if (isDupPen(c) && !dup.label && c.infr) dup.label = c.infr;
+          return;
+        }
         var sit = /Goal/.test(c.tag) ? goalSit(allReview(d), c) : "";
         var isPen = tag === "Penalty" || tag === "Away Penalty";
         items.push({date: d, game: label, sec: c.sec, start: Math.max(0, c.sec - LEAD), end: isPen && c.until != null ? c.until + TAIL : c.sec + TAIL, mark: c.sec, tag: tag, label: [c.infr || "", sit === "PP" ? "Power play" : sit === "SH" ? "Short handed" : "", isPen && c.until != null ? penSpan(c) : ""].filter(Boolean).join(", "), players: c.players || [], assists: c.assists || [], coach: GAME_LABEL, lists: c.lists || []});
