@@ -3405,7 +3405,12 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       render0(box);
       if (vkey && v) {
         var card = Array.prototype.filter.call(box.querySelectorAll(".fxit"), function (c) { return cardKey(c) === vkey; })[0];
-        if (card) { v.style.position = "static"; card.insertBefore(v, card.children[1]); } else vkey = null;
+        if (card) {
+          v.style.position = "static"; card.insertBefore(v, card.children[1]);
+          // moving a video reloads it at its first start time, so rebuild it at this clip's time (paused)
+          var bx = $("vpBox"), vi = lastPlayed && cardKey(card) === vkey ? lastPlayed : null, id = vi ? ytId(D.videos[vi.date] || lget(VK)[vi.date] || "") : null;
+          bx.innerHTML = ""; if (id) ytMake(bx, id, Math.max(0, Math.floor(vi.start)), Math.ceil(clipEnd(vi)), false);
+        } else vkey = null;
       }
     }
     function save(date, list) { putReview(date, list); }
@@ -3429,7 +3434,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
         cx = ctx(fx); if (!cx) return; var a = fx.getAttribute("data-fx");
         if (a === "watch") {
           var pen = /Penalty/.test(cx.tag), g = fmtDate(cx.d) + (oppFor(cx.d) ? " vs " + oppFor(cx.d) : "");
-          var vc = $("vpCard"); vkey = cardKey(cx.card); vc.style.position = "static"; cx.card.insertBefore(vc, cx.card.children[1]);
+          var vc = $("vpCard"); vkey = cardKey(cx.card); vc.style.position = "static"; cx.card.insertBefore(vc, cx.card.children[1]); $("vpBox").innerHTML = "";
           playItem({date: cx.d, game: g, sec: cx.sec, start: Math.max(0, cx.sec - 8), end: cx.sec + (pen ? 150 : 8), mark: cx.sec, tag: cx.tag, label: ""});
         } else if (a === "saveurl") {
           var u = cx.card.querySelector('[data-fx="url"]').value.trim(); if (!ytId(u)) { cx.card.querySelector("input").placeholder = "That does not look like a YouTube link"; return; }
