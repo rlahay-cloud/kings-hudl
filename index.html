@@ -1310,6 +1310,9 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   function todayStr() { var d = new Date(), p = function (n) { return (n < 10 ? "0" : "") + n; }; return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()); }
   function dateChoices() {
     var set = {}; D.games.forEach(function (g) { set[g.date] = 1; }); set[todayStr()] = 1;
+    // scheduled games up to 3 days ahead, so a game with no marks yet can still be picked
+    var lim = new Date(Date.now() + 3 * 86400000), limS = lim.getFullYear() + "-" + ("0" + (lim.getMonth() + 1)).slice(-2) + "-" + ("0" + lim.getDate()).slice(-2);
+    (D.schedule || []).forEach(function (x) { if (x.date <= limS) set[x.date] = 1; });
     Object.keys(D.sync || {}).concat(Object.keys(lget(SYK))).forEach(function (d) { set[d] = 1; });
     Object.keys(lget(CK)).concat(Object.keys(lget(SK)), Object.keys(lget(EK)), Object.keys(lget(RK)), Object.keys(D.clips), Object.keys(D.shots), Object.keys(D.review)).forEach(function (d) { set[d] = 1; });
     return Object.keys(set).sort().reverse();
