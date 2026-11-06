@@ -1005,7 +1005,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var lists = Object.keys(items.reduce(function (m, c) { (c.lists || []).forEach(function (n) { m[n] = 1; }); return m; }, {})).sort();
     var coaches = Object.keys(items.reduce(function (m, c) { m[c.coach] = 1; return m; }, {})).sort();
     var nums = Object.keys(items.reduce(function (m, c) { c.players.forEach(function (n) { m[n] = 1; }); return m; }, {})).map(Number).sort(function (a, b) { return a - b; });
-    h += '<div class="card" id="vpCard" hidden style="position:sticky;top:96px;z-index:4"><div class="ytbox" id="vpBox"></div><p class="note" id="vpNow" style="margin:8px 0 0"></p></div>';
+    h += '<div class="card" id="vpCard" hidden style="position:sticky;top:96px;z-index:4"><div class="ytbox" id="vpBox"></div><p class="note" id="vpNow" style="margin:8px 0 0"></p>' + stepBar() + '</div>';
     h += '<div class="card" style="margin-top:12px"><div class="filters">' +
       '<div class="fld"><label for="vfGame">Game</label><select id="vfGame"><option value="">All games</option>' + games.map(function (d) { var g = D.games.filter(function (x) { return x.date === d; })[0]; return '<option value="' + d + '">' + fmtDate(d) + (oppFor(d) ? " vs " + esc(oppFor(d)) : "") + "</option>"; }).join("") + "</select></div>" +
       '<div class="fld"><label for="vfTag">Type</label><select id="vfTag"><option value="">All types</option>' + tags.map(function (t) { return "<option>" + esc(t) + "</option>"; }).join("") + "</select></div>" +
@@ -1066,6 +1066,14 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   function embedSrc(id, sec, auto, end) { return "https://www.youtube.com/embed/" + id + "?start=" + sec + (end ? "&end=" + end : "") + (auto ? "&autoplay=1" : "") + "&playsinline=1&rel=0&enablejsapi=1&origin=" + encodeURIComponent(location.origin); }
   // One video that stays put: later taps seek inside it instead of reloading it.
   var ytTimer = null;
+  // Frame by frame controls for the video in Coach's Corner (a video file or YouTube)
+  function stepBar() {
+    return '<div class="seg" role="group" aria-label="Step through the video" style="margin-top:8px"><button type="button" data-step="-1">&minus;1 sec</button><button type="button" data-step="-0.0334" aria-label="Back one frame">&#9664; Frame</button><button type="button" data-step="p">Play / Pause</button><button type="button" data-step="0.0334" aria-label="Forward one frame">Frame &#9654;</button><button type="button" data-step="1">+1 sec</button></div><p class="note" style="margin:4px 0 0">Frame steps pause the video first. Each frame is about 1/30 of a second.</p>';
+  }
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest && e.target.closest("button[data-step]"), c = window.__stepCur; if (!b || !c) return;
+    var v = b.getAttribute("data-step"); try { if (v === "p") c.toggle(); else c.step(+v); } catch (x) {}
+  });
   function ytCmd(f, func, args) { try { f.contentWindow.postMessage(JSON.stringify({event: "command", func: func, args: args || []}), "*"); } catch (e) {} }
   function ytMake(box, id, sec, end, auto) {
     box.innerHTML = '<iframe title="Game video" src="' + embedSrc(id, sec, auto, end) + '" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen style="width:100%;height:100%;border:0;border-radius:12px"></iframe>';
@@ -1079,6 +1087,17 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       ytTimer = setTimeout(function () { if (document.body.contains(f)) ytCmd(f, "pauseVideo"); }, (end - sec) * 1000 + 600);
     } else ytMake(box, id, sec, end, true);
   }
+  var vpCtl = {
+    t: 0, playing: false, ping: null,
+    frame: function () { return $("vpBox") && $("vpBox").querySelector("iframe"); },
+    step: function (d) { var f = this.frame(); if (!f) return; clearTimeout(ytTimer); ytCmd(f, "pauseVideo"); this.t = Math.max(0, this.t + d); this.playing = false; ytCmd(f, "seekTo", [this.t, true]); },
+    toggle: function () { var f = this.frame(); if (!f) return; clearTimeout(ytTimer); if (this.playing) { ytCmd(f, "pauseVideo"); this.playing = false; } else { ytCmd(f, "playVideo"); this.playing = true; } }
+  };
+  window.addEventListener("message", function (e) {
+    var f = vpCtl.frame(); if (!f || e.source !== f.contentWindow) return;
+    var d = e.data; if (typeof d === "string") { try { d = JSON.parse(d); } catch (x) { return; } }
+    if (d && d.event === "infoDelivery" && d.info) { if (typeof d.info.currentTime === "number") vpCtl.t = d.info.currentTime; if (typeof d.info.playerState === "number") vpCtl.playing = d.info.playerState === 1; }
+  });
   function playItem(it) {
     lastPlayed = it;
     var url = D.videos[it.date] || lget(VK)[it.date] || "", sy = syncOf(it.date), cams = sy ? sy.a : [], ci = camSel[it.date] >= 0 && camSel[it.date] < cams.length ? camSel[it.date] : -1, off = 0;
@@ -1092,6 +1111,8 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     $("vpBox").style.display = "";
     var st = Math.max(0, Math.floor((it.start != null ? it.start : it.sec) + off)), en = Math.max(st + 2, Math.ceil(clipEnd(it) + off));
     ytPlay($("vpBox"), id, st, en); if (ci < 0) teleAttach($("vpBox"), it);
+    vpCtl.t = st; vpCtl.playing = true; window.__stepCur = vpCtl;
+    (function hookVp() { var f = $("vpBox").querySelector("iframe"); if (!f) return; var ask = function () { try { f.contentWindow.postMessage(JSON.stringify({event: "listening", id: 2, channel: "widget"}), "*"); } catch (e) {} }; ask(); f.addEventListener("load", ask); clearInterval(vpCtl.ping); vpCtl.ping = setInterval(function () { if (!document.body.contains(f)) { clearInterval(vpCtl.ping); return; } ask(); }, 1500); })();
     $("vpNow").innerHTML = esc(now) + ' &middot; <a href="' + esc(ytLink(url, st)) + '" target="_blank" rel="noopener">Open in YouTube</a>';
     if (first) $("vpCard").scrollIntoView({block: "nearest"});
   }
@@ -1100,7 +1121,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     camSel[lastPlayed.date] = +b.getAttribute("data-cam"); playItem(lastPlayed);
   });
   var PL = [];
-  function playCard() { return '<div class="card" id="vpCard" hidden style="position:sticky;top:96px;z-index:4;margin-bottom:12px"><div class="ytbox" id="vpBox"></div><p class="note" id="vpNow" style="margin:8px 0 0"></p></div>'; }
+  function playCard() { return '<div class="card" id="vpCard" hidden style="position:sticky;top:96px;z-index:4;margin-bottom:12px"><div class="ytbox" id="vpBox"></div><p class="note" id="vpNow" style="margin:8px 0 0"></p>' + stepBar() + '</div>'; }
   function timeBtn(it, hasVideo) {
     if (!hasVideo) return '<span class="t" style="font-family:var(--display);font-weight:700;font-size:18px;min-width:70px">' + hms(it.sec) + pSmall(it.date, it.sec) + "</span>";
     PL.push(it);
@@ -1400,7 +1421,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (mark) {
       h += '<div class="card" style="margin-top:12px"><p class="note" style="margin-top:0">' + (ev ? "Basic game events: goals and penalties. No name is attached. " : "") + 'Watch the video and tap a button when it happens. That is all. Each tap saves the moment a few seconds earlier.</p>' +
         '<div class="tagbtns" id="clTags">' + (ev ? EVENT_TAGS : TAP_TAGS).map(function (t) { return '<button class="btn" data-tag="' + t + '" disabled>' + t + "</button>"; }).join("") + "</div>" +
-        '<p class="note" id="clNote" aria-live="polite">Load a video to start.</p>' +
+        '<p class="note" id="clNote" aria-live="polite">Load a video to start.</p>' + stepBar() + '' +
         '<details><summary class="note">Settings</summary><div class="fld"><label for="clLead">Save each moment this many seconds earlier</label><select id="clLead"><option>0</option><option>5</option><option selected>8</option><option>10</option><option>15</option></select></div></details></div>' +
         "<details class='card' id='clBox' style='margin-top:12px'><summary id='clSum' style='cursor:pointer;font-family:var(--display);font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:18px'></summary><div id='clList' style='margin-top:10px'></div></details>" +
         '<div class="seg" style="margin-top:12px"><button class="btn" id="clClear">Delete all of mine for this game</button></div>' +
@@ -1483,14 +1504,14 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     });
     if (mark) renderList();
     function ready(c) {
-      cur = c;
+      cur = c; window.__stepCur = c;
       if (mark) { Array.prototype.forEach.call($("clTags").children, function (b) { b.disabled = false; }); $("clNote").textContent = "Video loaded. Tap a button when something happens."; }
       else $("clNote").textContent = "Tap a time below to jump to it.";
     }
     function loadFile(file) {
       var v = document.createElement("video"); v.controls = true; v.playsInline = true; v.src = URL.createObjectURL(file);
       $("clVideo").innerHTML = ""; $("clVideo").appendChild(v);
-      ready({get: function () { return v.currentTime; }, seek: function (s) { v.currentTime = s; v.play(); }});
+      ready({get: function () { return v.currentTime; }, step: function (d) { v.pause(); v.currentTime = Math.max(0, v.currentTime + d); }, toggle: function () { if (v.paused) v.play(); else v.pause(); }, seek: function (s) { v.currentTime = s; v.play(); }});
     }
     function withYT(cb) {
       if (window.YT && window.YT.Player) return cb();
@@ -1518,7 +1539,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       $("clVideo").innerHTML = '<div class="ytbox" id="ytp"></div>';
       withYT(function () {
         var pl = new window.YT.Player("ytp", {videoId: id, width: "100%", height: "100%", playerVars: {playsinline: 1, rel: 0},
-          events: {onReady: function () { ready({get: function () { return pl.getCurrentTime(); }, seek: function (s) { pl.seekTo(s, true); pl.playVideo(); }}); }}});
+          events: {onReady: function () { ready({get: function () { return pl.getCurrentTime(); }, step: function (d) { pl.pauseVideo(); pl.seekTo(Math.max(0, pl.getCurrentTime() + d), true); }, toggle: function () { if (pl.getPlayerState() === 1) pl.pauseVideo(); else pl.playVideo(); }, seek: function (s) { pl.seekTo(s, true); pl.playVideo(); }}); }}});
       });
     }
     if (mark) $("clLoad").addEventListener("click", function () { loadYT($("clUrl").value.trim()); });
@@ -2599,7 +2620,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       '<div class="fld"><label for="rvAuto">New marks go to a playlist (optional)</label><input type="text" id="rvAuto" list="rvPlAuto" maxlength="40" placeholder="Like Breakouts to fix"><datalist id="rvPlAuto">' + allPlaylistNames().map(function (n) { return '<option value="' + esc(n) + '">'; }).join("") + "</datalist></div></div>" +
       '<div class="seg"><button id="clLoad">Load video</button></div>' +
       '<div class="fld"><label for="clFile">Or open a video file from this device</label><input type="file" id="clFile" accept="video/*"></div>' +
-      '<p class="note" id="clNote" aria-live="polite">' + (url ? "Loading the video." : "Load the game video to start.") + "</p></div>";
+      '<p class="note" id="clNote" aria-live="polite">' + (url ? "Loading the video." : "Load the game video to start.") + "</p>" + stepBar() + "</div>";
     h += '<div class="rv"><div class="rvl"><div id="clVideo" class="rvvideo"></div><div class="card rvtl" id="rvTl"></div><div class="card" id="rvSel"></div></div><div class="rvr">' +
       '<div class="card"><h3>Rink</h3><div class="cntbar" id="rvCnt"></div>' + fullRink() +
       '<p class="note" style="margin:6px 0">We attack the net on the right. Tap the rink to choose a spot and a zone, then tap what happened.</p>' +
@@ -2775,11 +2796,11 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     }
     function drawAll() { buildView(); drawTl(); drawSel(); drawRink(); drawList(); drawTeam(); }
     function enable() { Array.prototype.forEach.call(document.querySelectorAll(".rvb"), function (b) { b.disabled = false; }); }
-    function ready(c) { cur = c; enable(); $("clNote").textContent = "Video loaded. Tap a button when something happens."; drawTl(); }
+    function ready(c) { cur = c; window.__stepCur = c; enable(); $("clNote").textContent = "Video loaded. Tap a button when something happens."; drawTl(); }
     function loadFile(file) {
       var v = document.createElement("video"); v.controls = true; v.playsInline = true; v.src = URL.createObjectURL(file);
       $("clVideo").innerHTML = ""; $("clVideo").appendChild(v);
-      ready({get: function () { return v.currentTime; }, seek: function (s) { v.currentTime = Math.max(0, s); v.play(); }, dur: function () { return v.duration || 0; }});
+      ready({get: function () { return v.currentTime; }, step: function (d) { v.pause(); v.currentTime = Math.max(0, v.currentTime + d); }, toggle: function () { if (v.paused) v.play(); else v.pause(); }, seek: function (s) { v.currentTime = Math.max(0, s); v.play(); }, dur: function () { return v.duration || 0; }});
       v.addEventListener("loadedmetadata", drawTl);
     }
     function withYT(cb) {
@@ -2801,7 +2822,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       $("clVideo").innerHTML = '<div class="ytbox" id="ytp"></div>';
       withYT(function () {
         var pl = new window.YT.Player("ytp", {videoId: id, width: "100%", height: "100%", playerVars: {playsinline: 1, rel: 0},
-          events: {onReady: function () { ready({get: function () { return pl.getCurrentTime(); }, seek: function (s) { pl.seekTo(Math.max(0, s), true); pl.playVideo(); }, dur: function () { return pl.getDuration() || 0; }}); }}});
+          events: {onReady: function () { ready({get: function () { return pl.getCurrentTime(); }, step: function (d) { pl.pauseVideo(); pl.seekTo(Math.max(0, pl.getCurrentTime() + d), true); }, toggle: function () { if (pl.getPlayerState() === 1) pl.pauseVideo(); else pl.playVideo(); }, seek: function (s) { pl.seekTo(Math.max(0, s), true); pl.playVideo(); }, dur: function () { return pl.getDuration() || 0; }}); }}});
       });
     }
     $("clLoad").addEventListener("click", function () { loadYT($("clUrl").value.trim()); });
