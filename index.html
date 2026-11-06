@@ -3378,6 +3378,14 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       var add = function (what, c, kind) { out.push({date: d, game: name, what: what, sec: c ? c.sec : null, tag: c ? c.tag : "", kind: kind || "pick"}); };
       if (!R.length && !g) return;
       if (R.length && !url) add("No video link for this game", null, "novideo");
+      var sy = syncOf(d), dupSeen = {};
+      R.forEach(function (c) {
+        if (sy && sy.p) [1, 2, 3, 4].forEach(function (k) {
+          if (sy.p[k] != null && sy.e[k] != null && c.sec >= sy.p[k] && c.sec <= sy.e[k] && (c.p || 1) !== k) add("Marked in period " + (c.p || 1) + " but the time is in period " + k, c, "period" + k);
+        });
+        var dk = c.sec + "|" + c.tag + "|" + (c.players || []).join(",");
+        if (dupSeen[dk]) add("Looks like the same mark twice", c, "dup"); else dupSeen[dk] = 1;
+      });
       R.forEach(function (c) {
         var t = c.tag;
         if (t === "Penalty" && !(c.players || []).length) add("Penalty on us has no player", c, "pick");
@@ -3402,6 +3410,8 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (it.kind === "score") return '<p class="note" style="margin:0">Open the game in Game analysis to find the missing or extra goal. <a href="#/coach/analysis/' + it.date + '">Open Game analysis</a></p>';
     var c = myRvMark(it.date, it.sec, it.tag);
     if (!c) return '<p class="note" style="margin:0">This mark was made by another coach, so only they can change it.</p>';
+    if (/^period\d$/.test(it.kind)) return '<div class="seg"><button data-fx="setper" data-per="' + it.kind.slice(6) + '">Change to period ' + it.kind.slice(6) + "</button></div>";
+    if (it.kind === "dup") return '<div class="seg"><button data-fx="deldup">Remove one of them</button></div>';
     if (it.kind === "noend") return '<div class="fld"><label>Video time when the penalty ends (watch the clip)</label><input type="text" data-fx="end" placeholder="' + hms(c.sec + 120) + '" value="' + hms(c.sec + 120) + '" inputmode="numeric" style="max-width:140px"></div><div class="seg"><button data-fx="saveend">Save end time</button></div><p class="note" style="margin:6px 0 0">It starts with a 2 minute guess. Change it to the video time you see the penalty end.</p>';
     if (it.kind === "nospot") return '<p class="note" style="margin:0 0 6px">Tap the rink where it happened.</p>' + FIX_RINK;
     return reviewPick(c, it.date);
@@ -3467,6 +3477,10 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
         } else if (a === "saveurl") {
           var u = cx.card.querySelector('[data-fx="url"]').value.trim(); if (!ytId(u)) { cx.card.querySelector("input").placeholder = "That does not look like a YouTube link"; return; }
           var l = lget(VK); l[cx.d] = u; lset(VK, l); render();
+        } else if (a === "setper" && cx.c) {
+          cx.c.p = +fx.getAttribute("data-per"); save(cx.d, cx.list); render();
+        } else if (a === "deldup" && cx.c) {
+          var di = cx.list.indexOf(cx.c); if (di >= 0) { cx.list.splice(di, 1); save(cx.d, cx.list); render(); }
         } else if (a === "saveend" && cx.c) {
           var t = parseHms(cx.card.querySelector('[data-fx="end"]').value.trim());
           if (t === null || t <= cx.c.sec) { cx.card.querySelector('[data-fx="end"]').value = ""; cx.card.querySelector('[data-fx="end"]').placeholder = "Type a time after " + hms(cx.c.sec); return; }
