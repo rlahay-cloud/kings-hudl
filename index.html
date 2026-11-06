@@ -933,7 +933,11 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   var LEAD = 8, TAIL = 2;
   function leadWin(m) { return {sec: m, start: Math.max(0, m - LEAD), end: m + TAIL, mark: m}; }
   // A highlight made in Game analysis is saved as its start and end, so the marked moment is 2 seconds before the end.
-  function clipWin(c) { return c.end ? {sec: c.end - 2, start: c.sec, end: c.end, mark: c.end - 2} : leadWin(c.sec); }
+  function clipWin(c) {
+    if (c.end) return {sec: c.end - 2, start: c.sec, end: c.end, mark: c.end - 2};
+    // older marks have no end: they were saved 8 seconds before the tap, so the time is where the clip starts
+    return {sec: c.sec + LEAD, start: c.sec, end: c.sec + LEAD + TAIL, mark: c.sec + LEAD};
+  }
   var AUTO_HL_TAGS = ["Goal", "Goal against", "Penalty", "Away Penalty"];
   function allVideoItems() {
     var items = [];
