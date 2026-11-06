@@ -9,10 +9,10 @@
 0:06:35|Faceoff: OZ Loss|38|,,1,f
 0:07:32|Faceoff: NZ Win|97|,,1,f
 0:07:58|Away Penalty||,,1,f,s517
-0:08:39|Faceoff: OZ Loss||,,1,f
+0:08:39|Faceoff: OZ Loss|97|,,1,f
 0:09:01|For: Shot on goal|10|0.702,0.369,1,f
 0:09:04|Away Penalty||,,1,f
-0:09:06|Penalty||,,1,f
+0:09:06|Penalty|97|,,1,f
 0:09:54|Faceoff: OZ Win|17|,,1,f
 0:10:04|For: Goal|10 a18 a17 i14 i88 i17 i18|0.769,0.384,1,f
 0:10:35|Faceoff: NZ Win|17|,,1,f
@@ -73,6 +73,6 @@
 0:43:28|Faceoff: NZ Win|17|,,3,f
 0:43:43|For: Shot on goal|88|0.830,0.318,3,f
 0:44:11|Away Penalty||,,3,f
-0:44:56|Faceoff: OZ Win||,,3,f
+0:44:56|Faceoff: OZ Win|38|,,3,f
 0:46:40|Faceoff: NZ Win|97|,,3,f
 0:47:12|For: Shot on goal|97|0.820,0.531,3,f
