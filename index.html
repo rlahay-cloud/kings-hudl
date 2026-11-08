@@ -165,8 +165,8 @@ input[type=text], input[type=url], input[type=date], select, textarea { min-heig
 #vpBar .vpbtns .vpgo { flex: 1 1 auto; }
 body.vpfull header.top { display: none; }
 body.vpfull #vpCard { position: static !important; }
-#vpStage.full { background: #000; position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 9999; border-radius: 0; margin: 0; }
-#vpStage.full .ytbox { position: absolute; top: 0; bottom: 0; left: env(safe-area-inset-left); right: env(safe-area-inset-right); max-height: none; width: auto; height: auto; aspect-ratio: auto; border-radius: 0; }
+#vpStage.full { background: #000; position: fixed; inset: 0; width: 100vw; height: 100vh; height: 100dvh; z-index: 9999; border-radius: 0; }
+#vpStage.full .ytbox { position: absolute; inset: 0; max-height: none; width: 100%; height: 100%; aspect-ratio: auto; border-radius: 0; }
 #vpStage.full .ytbox iframe { border-radius: 0 !important; }
 #vpStage.full #vpBar { position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; padding: 28px max(14px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); background: linear-gradient(transparent, rgba(0,0,0,.75)); color: #fff; transition: opacity .2s; }
 #vpStage.full #vpBar button { background: rgba(255,255,255,.16); color: #fff; border: 1px solid rgba(255,255,255,.45); }
