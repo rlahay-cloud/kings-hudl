@@ -17,7 +17,6 @@
 0:20:35|Faceoff: OZ Win|97|,,1,f
 0:21:25|For: Shot on goal|97|0.892,0.175,1,f
 0:21:46|Faceoff: OZ Loss|38|,,1,f
-0:21:53|For: Shot on goal|38|0.917,0.403,1,f
 0:21:53|For: Shot on goal|38|0.934,0.414,1,f
 0:22:10|Faceoff: OZ Win|38|,,1,f
 0:23:16|For: Shot on goal|38|0.936,0.605,1,f
@@ -62,7 +61,6 @@
 0:43:31|Against: Goal|2|0.119,0.465,3,f
 0:43:59|Faceoff: NZ Win|38|,,3,f
 0:45:42|Faceoff: NZ Loss|17|,,3,f
-0:45:52|Against: Shot on goal|2|0.117,0.263,3,f
 0:45:52|Against: Shot on goal|2|0.122,0.340,3,f
 0:46:18|Faceoff: DZ Win|17|,,3,f
 0:47:56|Penalty|97|,,3,f,s2911
