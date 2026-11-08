@@ -175,10 +175,10 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
 .clip .f input.pl { grid-column: 1 / 3; }
 .clip .pick { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
 .rv { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); margin-top: 12px; }
-@media (min-width: 900px) { .rv { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); align-items: start; } .rvl { position: sticky; top: 96px; } }
+@media (min-width: 900px) { .rv { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); align-items: start; } .rvl { position: sticky; top: calc(var(--hdr, 96px) + 6px); } }
 .rvl { display: grid; gap: 12px; }
 @media (max-width: 899px) { .rvl { display: contents; } }
-.rvvideo { position: sticky; top: 96px; z-index: 4; } @media (min-width: 900px) { .rvvideo { position: static; } }
+.rvvideo { position: sticky; top: calc(var(--hdr, 96px) + 6px); z-index: 4; } @media (min-width: 900px) { .rvvideo { position: static; } }
 .rvr { display: grid; gap: 12px; }
 .rvgrp { border-left: 4px solid var(--c); }
 .rvbtns { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; } .rvbtns.fo { grid-template-columns: repeat(2, 1fr); }
@@ -1135,6 +1135,12 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     clearTimeout(ytTimer); vpCtl.armed = false; vpCtl.playing = false; clearInterval(vpCtl.ping);
     vpFull(false); $("vpBox").innerHTML = ""; $("vpCard").hidden = true;
   });
+  // Keep sticky things (the clip window) just under the page header, whatever height it has on this phone
+  (function () {
+    function setHdr() { var h = document.querySelector("header.top"); if (h) document.documentElement.style.setProperty("--hdr", h.offsetHeight + "px"); }
+    setHdr(); window.addEventListener("resize", setHdr); window.addEventListener("orientationchange", setHdr); window.addEventListener("load", setHdr);
+    try { var h = document.querySelector("header.top"); if (h && window.ResizeObserver) new ResizeObserver(setHdr).observe(h); } catch (e) {}
+  })();
   function ytCmd(f, func, args) { try { f.contentWindow.postMessage(JSON.stringify({event: "command", func: func, args: args || []}), "*"); } catch (e) {} }
   function ytMake(box, id, sec, end, auto) {
     box.innerHTML = '<iframe title="Game video" src="' + embedSrc(id, sec, auto, 0, box.id === "vpBox") + '" allow="autoplay; encrypted-media; picture-in-picture' + (box.id === "vpBox" ? "" : "; fullscreen") + '" ' + (box.id === "vpBox" ? "" : "allowfullscreen ") + 'style="width:100%;height:100%;border:0;border-radius:12px"></iframe>';
@@ -1184,7 +1190,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   });
   var PL = [];
   function playCard() {
-    return '<div class="card" id="vpCard" hidden style="position:sticky;top:96px;z-index:4;margin-bottom:12px"><div class="seg" style="justify-content:flex-end;margin-bottom:8px"><button type="button" data-vpclose="1" aria-label="Hide the video">&#10005; Hide video</button></div>' +
+    return '<div class="card" id="vpCard" hidden style="position:sticky;top:calc(var(--hdr, 96px) + 6px);z-index:4;margin-bottom:12px"><div class="seg" style="justify-content:flex-end;margin-bottom:8px"><button type="button" data-vpclose="1" aria-label="Hide the video">&#10005; Hide video</button></div>' +
       '<div id="vpStage"><div class="ytbox" id="vpBox"></div><div id="vpTap" data-step="p" role="button" aria-label="Tap the video to play or pause"></div>' +
       '<div id="vpBar"><div class="vprow"><span class="vptime" id="vpT0">0:00</span><input type="range" id="vpSeek" min="0" max="10" step="0.05" value="0" aria-label="Where you are in the clip"><span class="vptime" id="vpT1">0:10</span></div>' +
       '<div class="vpbtns seg"><button type="button" data-step="-1">Back 1 sec</button><button type="button" data-step="-0.0334">Frame back</button><button type="button" class="vpgo" data-step="p" id="vpPP">Pause</button><button type="button" data-step="0.0334">Frame forward</button><button type="button" data-step="1">Forward 1 sec</button><button type="button" data-replay="1">Replay</button><button type="button" data-vpfs="1" id="vpFs">Full screen</button></div></div></div>' +
@@ -1485,7 +1491,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       (mark ? '<div class="fld"><label for="clFile">Or open a video file from this device</label><input type="file" id="clFile" accept="video/*"></div>' +
         '<p class="note">The site does not store video. Footage stays on YouTube or on your device. Only the highlight times and labels are saved.</p>' : "") +
       (mark ? "" : '<p class="note" id="clNote" aria-live="polite">' + (url ? "Loading the video. Tap a time below to jump to it." : "No video for this game yet.") + "</p>") + "</div>" +
-      '<div id="clVideo" style="margin-top:12px' + ";position:sticky;top:96px;z-index:4" + '"></div>';
+      '<div id="clVideo" style="margin-top:12px' + ";position:sticky;top:calc(var(--hdr, 96px) + 6px);z-index:4" + '"></div>';
     if (mark) {
       h += '<div class="card" style="margin-top:12px"><p class="note" style="margin-top:0">' + (ev ? "Basic game events: goals and penalties. No name is attached. " : "") + 'Watch the video and tap a button when it happens. That is all. Each tap saves the moment a few seconds earlier.</p>' +
         '<div class="tagbtns" id="clTags">' + (ev ? EVENT_TAGS : TAP_TAGS).map(function (t) { return '<button class="btn" data-tag="' + t + '" disabled>' + t + "</button>"; }).join("") + "</div>" +
