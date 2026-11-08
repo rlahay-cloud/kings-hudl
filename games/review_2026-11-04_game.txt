@@ -67,7 +67,7 @@
 0:37:49|Faceoff: OZ Win|13|,,3,f
 0:38:48|For: Shot on goal|19|0.856,0.836,3,f
 0:39:04|For: Shot on goal|93|0.928,0.410,3,f
-0:39:11|Penalty||,,3,f
+0:39:11|Penalty|93|,,3,f
 0:40:55|Faceoff: DZ Win|97|,,3,f
 0:41:56|Away Penalty||,,3,f
 0:42:30|Faceoff: OZ Loss|17|,,3,f
