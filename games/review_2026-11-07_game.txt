@@ -14,7 +14,7 @@
 0:20:18|Faceoff: OZ Win|17|,,1,f
 0:20:20|For: Shot on goal|10|0.722,0.553,1,f
 0:22:09|For: Shot on goal|97|0.933,0.542,1,f
-0:22:15|Away Penalty||,,1,f,s1365
+0:22:15|Away Penalty||,,1,f,s1365,e1534||Tripping
 0:22:46|Faceoff: OZ Win|17|,,1,f
 0:22:49|For: Shot on goal|14|0.880,0.480,1,f
 0:23:16|For: Shot on goal|13|0.939,0.447,1,f
