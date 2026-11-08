@@ -1079,6 +1079,12 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var v = b.getAttribute("data-step"); try { if (v === "p") c.toggle(); else c.step(+v); } catch (x) {}
   });
   document.addEventListener("click", function (e) { if (e.target.closest && e.target.closest("button[data-replay]")) vpCtl.replay(); });
+  document.addEventListener("click", function (e) {
+    if (!(e.target.closest && e.target.closest("button[data-vpclose]"))) return;
+    var f = vpCtl.frame(); if (f) ytCmd(f, "pauseVideo");
+    clearTimeout(ytTimer); vpCtl.armed = false; vpCtl.playing = false; clearInterval(vpCtl.ping);
+    $("vpBox").innerHTML = ""; $("vpCard").hidden = true;
+  });
   function ytCmd(f, func, args) { try { f.contentWindow.postMessage(JSON.stringify({event: "command", func: func, args: args || []}), "*"); } catch (e) {} }
   function ytMake(box, id, sec, end, auto) {
     box.innerHTML = '<iframe title="Game video" src="' + embedSrc(id, sec, auto) + '" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen style="width:100%;height:100%;border:0;border-radius:12px"></iframe>';
@@ -1127,7 +1133,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     camSel[lastPlayed.date] = +b.getAttribute("data-cam"); playItem(lastPlayed);
   });
   var PL = [];
-  function playCard() { return '<div class="card" id="vpCard" hidden style="position:sticky;top:96px;z-index:4;margin-bottom:12px"><div class="ytbox" id="vpBox"></div><p class="note" id="vpNow" style="margin:8px 0 0"></p><div class="seg" style="margin-top:8px"><button type="button" data-replay="1">&#8634; Replay clip</button></div>' + stepBar() + '</div>'; }
+  function playCard() { return '<div class="card" id="vpCard" hidden style="position:sticky;top:96px;z-index:4;margin-bottom:12px"><div class="seg" style="justify-content:flex-end;margin-bottom:8px"><button type="button" data-vpclose="1" aria-label="Hide the video">&#10005; Hide video</button></div><div class="ytbox" id="vpBox"></div><p class="note" id="vpNow" style="margin:8px 0 0"></p><div class="seg" style="margin-top:8px"><button type="button" data-replay="1">&#8634; Replay clip</button></div>' + stepBar() + '</div>'; }
   function timeBtn(it, hasVideo) {
     if (!hasVideo) return '<span class="t" style="font-family:var(--display);font-weight:700;font-size:18px;min-width:70px">' + hms(it.sec) + pSmall(it.date, it.sec) + "</span>";
     PL.push(it);
