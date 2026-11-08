@@ -47,7 +47,7 @@
 0:36:36|Faceoff: DZ Win|13|,,2,f
 0:37:10|Away Penalty||,,2,f
 0:37:41|Faceoff: OZ Win|38|,,2,f
-0:38:16|Against: Goal|2|0.077,0.311,2,f
+0:38:16|Against: Goal|2 i91 i38 i93 i19 i11|0.077,0.311,2,f
 0:38:46|Faceoff: NZ Win|17|,,2,f
 0:38:52|For: Shot on goal|91|0.863,0.778,2,f
 0:39:01|For: Shot on goal|86|0.670,0.410,2,f
@@ -58,7 +58,7 @@
 0:43:14|Faceoff: DZ Loss|38|,,3,f
 0:43:18|Against: Shot on goal|2|0.281,0.888,3,f
 0:43:27|Against: Shot on goal|2|0.078,0.579,3,f
-0:43:31|Against: Goal|2|0.119,0.465,3,f
+0:43:31|Against: Goal|2 i93 i19 i38 i11|0.119,0.465,3,f
 0:43:59|Faceoff: NZ Win|38|,,3,f
 0:45:42|Faceoff: NZ Loss|17|,,3,f
 0:45:52|Against: Shot on goal|2|0.122,0.340,3,f
