@@ -3404,10 +3404,6 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
         if (/^(For|Against): (Goal|Shot on goal|Missed shot|Blocked shot)$/.test(t) && (c.x == null || c.y == null)) add(t.replace(": ", " ") + " has no spot on the rink", c, "nospot");
         if (/^Faceoff:/.test(t) && !(c.players || []).length) add("Faceoff has no taker picked", c, "pick");
       });
-      if (g && g._o && R.length) {
-        var gf = R.filter(function (c) { return c.tag === "For: Goal"; }).length, ga = R.filter(function (c) { return c.tag === "Against: Goal"; }).length;
-        if ((g._o.hs || 0) !== gf || (g._o.as || 0) !== ga) out.push({date: d, game: name, what: "Scoreboard says " + (g._o.hs || 0) + " to " + (g._o.as || 0) + ", Game analysis has " + gf + " to " + ga + " goals", sec: null, tag: "", kind: "score"});
-      }
     });
     return out;
   }
