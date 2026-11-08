@@ -7,3 +7,4 @@ E|3|3487.3
 G|Ottawa Sting|A|14:00|Sandy Hill Arena
 L|10,10,12
 X|2,88
+A|Away Cam|https://youtu.be/0QRz9SHX2RA|-717.9
