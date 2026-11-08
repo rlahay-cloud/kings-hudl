@@ -30,7 +30,7 @@
 0:19:32|Faceoff: DZ Win|97|,,2,f
 0:20:29|For: Shot on goal|13|0.442,0.303,2,f
 0:20:51|For: Shot on goal|13|0.358,0.322,2,f
-0:21:11|Against: Goal|2|0.120,0.498,2,f
+0:21:11|Against: Goal|2 i19 i13 i72 i11|0.120,0.498,2,f
 0:21:44|Faceoff: NZ Win|17|,,2,f
 0:23:33|Faceoff: DZ Loss|38|,,2,f
 0:24:01|Against: Shot on goal|2|0.217,0.101,2,f
