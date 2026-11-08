@@ -7,3 +7,5 @@ E|3|3385.1
 G|Nepean Raiders|H|12:30|Cardinal
 L|10,10,12
 X|2
+A|HOME CAM|https://youtu.be/1J_SZfVl5X0?si=N71tiWpic9b-d8xE|-533.8
+A|AWAY CAM|https://youtu.be/VVCUAW-NSA8?si=gYo4xqH5i53nT-A3|0.0
