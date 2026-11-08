@@ -162,10 +162,12 @@ input[type=text], input[type=url], input[type=date], select, textarea { min-heig
 #vpBar .vpbtns { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
 #vpBar .vpbtns button { min-height: 44px; padding: 0 12px; font-weight: 700; font-size: 14px; }
 #vpBar .vpbtns .vpgo { flex: 1 1 auto; }
+body.vpfull header.top { display: none; }
+body.vpfull #vpCard { position: static !important; }
 #vpStage.full { background: #000; position: fixed; inset: 0; width: 100vw; height: 100vh; height: 100dvh; z-index: 9999; border-radius: 0; }
 #vpStage.full .ytbox { position: absolute; inset: 0; max-height: none; width: 100%; height: 100%; aspect-ratio: auto; border-radius: 0; }
 #vpStage.full .ytbox iframe { border-radius: 0 !important; }
-#vpStage.full #vpBar { position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; padding: 28px 14px 12px; background: linear-gradient(transparent, rgba(0,0,0,.75)); color: #fff; transition: opacity .2s; }
+#vpStage.full #vpBar { position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; padding: 28px max(14px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); background: linear-gradient(transparent, rgba(0,0,0,.75)); color: #fff; transition: opacity .2s; }
 #vpStage.full #vpBar button { background: rgba(255,255,255,.16); color: #fff; border: 1px solid rgba(255,255,255,.45); }
 #vpStage.full.idle #vpBar { opacity: 0; pointer-events: none; }
 video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 12px; aspect-ratio: 16 / 9; display: block; }
@@ -1109,6 +1111,8 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var st = $("vpStage"); if (!st) return;
     if (on === undefined) on = !st.classList.contains("full");
     st.classList.toggle("full", on); st.classList.remove("idle"); document.body.style.overflow = on ? "hidden" : "";
+    // iPhone cannot do real full screen for a page element, so the stage is pinned over the whole page: lift its card above the header and hide the header
+    document.body.classList.toggle("vpfull", on); var vc = $("vpCard"); if (vc) vc.style.zIndex = on ? "100000" : "";
     var fb = $("vpFs"); if (fb) fb.textContent = on ? "Exit full screen" : "Full screen";
     try { if (on && st.requestFullscreen && !document.fullscreenElement) st.requestFullscreen().catch(function () {}); else if (!on && document.fullscreenElement) document.exitFullscreen(); } catch (x) {}
     try { if (on && screen.orientation && screen.orientation.lock) screen.orientation.lock("landscape").catch(function () {}); else if (!on && screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch (x) {}
