@@ -161,6 +161,10 @@ input[type=text], input[type=url], input[type=date], select, textarea { min-heig
 #vpBar .vptime { font-variant-numeric: tabular-nums; font-size: 13px; min-width: 36px; text-align: center; }
 #vpSeek { flex: 1 1 120px; min-width: 0; height: 28px; accent-color: var(--accent, #2b6cd9); }
 #vpBar .vpbtns { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
+#vpBar .vpmain { display: grid; grid-template-columns: 1fr 1.25fr 1.15fr 1.25fr 1fr; gap: 4px; }
+#vpBar .vpmain button { min-width: 0; padding: 0 1px; font-size: 12px; line-height: 1.15; white-space: nowrap; letter-spacing: 0; text-transform: none; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+#vpCard { padding-left: 10px; padding-right: 10px; }
+#vpBar .vpsub button { flex: 1 1 0; }
 #vpBar .vpbtns button { min-height: 44px; padding: 0 12px; font-weight: 700; font-size: 14px; }
 #vpBar .vpbtns .vpgo { flex: 1 1 auto; }
 body.vpfull header.top { display: none; }
@@ -1198,7 +1202,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     return '<div class="card" id="vpCard" hidden style="position:sticky;top:calc(var(--hdr, 96px) + 6px);z-index:4;margin-bottom:12px"><div class="seg" style="justify-content:flex-end;margin-bottom:8px"><button type="button" data-vpclose="1" aria-label="Hide the video">&#10005; Hide video</button></div>' +
       '<div id="vpStage"><div class="ytbox" id="vpBox"></div><div id="vpTap" data-step="p" role="button" aria-label="Tap the video to play or pause"></div>' +
       '<div id="vpBar"><div class="vprow"><span class="vptime" id="vpT0">0:00</span><input type="range" id="vpSeek" min="0" max="10" step="0.05" value="0" aria-label="Where you are in the clip"><span class="vptime" id="vpT1">0:10</span></div>' +
-      '<div class="vpbtns seg"><button type="button" data-step="-1">Back 1 sec</button><button type="button" data-step="-0.0334">Frame back</button><button type="button" class="vpgo" data-step="p" id="vpPP">Pause</button><button type="button" data-step="0.0334">Frame forward</button><button type="button" data-step="1">Forward 1 sec</button><button type="button" data-replay="1">Replay</button><button type="button" data-vpfs="1" id="vpFs">Full screen</button></div></div></div>' +
+      '<div class="vpbtns seg vpmain"><button type="button" data-step="-1" aria-label="Back one second">Back<br>1 sec</button><button type="button" data-step="-0.0334" aria-label="Back one frame">Frame<br>back</button><button type="button" data-step="p" id="vpPP">Pause</button><button type="button" data-step="0.0334" aria-label="Forward one frame">Frame<br>forward</button><button type="button" data-step="1" aria-label="Forward one second">Forward<br>1 sec</button></div><div class="vpbtns seg vpsub"><button type="button" data-replay="1">Replay</button><button type="button" data-vpfs="1" id="vpFs">Full screen</button></div></div></div>' +
       '<p class="note" id="vpNow" style="margin:8px 0 0"></p></div>';
   }
   function timeBtn(it, hasVideo) {
