@@ -8,7 +8,7 @@
 0:05:11|Against: Shot on goal|33|0.198,0.186,1,f
 0:05:22|Against: Shot on goal|33|0.134,0.134,1,f
 0:06:11|Against: Shot on goal|33|0.134,0.925,1,f
-0:06:50|Against: Shot on goal||0.089,0.112,1,f
+0:06:50|Against: Shot on goal|33|0.089,0.112,1,f
 0:07:22|Against: Shot on goal|33|0.345,0.278,1,f
 0:07:24|Against: Goal|33 i93 i19 i4 i91 i13|0.094,0.575,1,f
 0:07:56|Faceoff: NZ Win|97|,,1,f
