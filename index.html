@@ -2866,7 +2866,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
         (c.src === "rv" && (c.tag === "Penalty" || c.tag === "Away Penalty") ? '<div class="fld"><label for="rvInfr">Infraction (optional)</label><select id="rvInfr"><option value="">Not set</option>' + INFR.map(function (n) { return "<option" + (c.infr === n ? " selected" : "") + ">" + n + "</option>"; }).join("") + '</select></div><div class="seg"><button data-act="pstart">Penalty time starts now</button><button data-act="pend">Penalty time ends now</button><button data-act="pendx">Clear times</button></div><p class="note" style="margin:4px 0">Called at ' + hms(c.sec) + ". " + (c.until != null ? "Penalty time: " + penSpan(c) + "." : (c.from != null ? "Penalty time started at " + hms(c.from) + ". Play to where it ends, then tap Penalty time ends now." : "No penalty time yet. Play to where the penalty clock starts, tap Starts now, then Ends now when it is over.")) + "</p>" : "") +
         (c.src !== "ev" ? '<div class="fld"><label for="rvPlIn">Playlists</label>' + ((c.lists || []).length ? '<div class="seg">' + c.lists.map(function (n, i) { return '<button data-act="pldel" data-i="' + i + '" aria-label="Remove from ' + esc(n) + '">' + esc(n) + " &times;</button>"; }).join("") + "</div>" : "") + '<div class="seg"><select id="rvPlSel" aria-label="Choose a playlist"><option value="">Choose a playlist</option>' + allPlaylistNames().concat(allPlaylistNames().some(function (n) { return n.toLowerCase() === "highlights"; }) ? [] : ["Highlights"]).filter(function (n) { return (c.lists || []).indexOf(n) < 0; }).map(function (n) { return '<option value="' + esc(n) + '">' + esc(n) + "</option>"; }).join("") + '</select><button data-act="pladd">Add to playlist</button></div><div class="seg"><input type="text" id="rvPlIn" placeholder="Or type a new playlist name" maxlength="40"></div></div>' : "") +
         (c.src === "rv" && /: Goal$/.test(c.tag) && goalSit(allReview(date), c) ? '<p class="note" style="margin:4px 0"><b>' + (goalSit(allReview(date), c) === "PP" ? "Power play goal" : "Short handed goal") + "</b> (from the penalty times)</p>" : "") +
-        '<div class="pickwrap">' + pickHtml(c) + '</div><div class="seg" style="margin-top:8px"><button data-act="seek">Play from here</button><button data-act="del">Delete</button></div><p class="note" id="rvSelNote" aria-live="polite"></p>';
+        '<div class="pickwrap">' + pickHtml(c) + '</div><div class="seg" style="margin-top:8px"><button data-act="seek">Play from here</button>' + (c.src === "rv" ? '<button data-act="flag" aria-pressed="' + ((c.lists || []).indexOf("Double check") >= 0) + '">' + ((c.lists || []).indexOf("Double check") >= 0 ? "Flagged: tap to clear" : "Flag to double check") + "</button>" : "") + '<button data-act="del">Delete</button></div><p class="note" id="rvSelNote" aria-live="polite">' + ((c.lists || []).indexOf("Double check") >= 0 ? "Flagged. It shows in the Fix it list, where you can watch it from other angles and confirm what it is." : "") + "</p>";
     }
     function zoneOf(x) { return x < 75 / 200 ? "DZ" : x > 125 / 200 ? "OZ" : "NZ"; }
     function drawZones() {
@@ -3013,6 +3013,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       var b = e.target.closest("button"); if (!b) return; var c = st.sel; if (!c) return;
       var act = b.getAttribute("data-act");
       if (act === "seek") { if (cur) cur.seek(c.src === "rv" ? c.sec - 3 : c.sec); return; }
+      if (act === "flag") { c.lists = c.lists || []; var fi = c.lists.indexOf("Double check"); if (fi >= 0) c.lists.splice(fi, 1); else c.lists.push("Double check"); persist(); drawSel(); drawList(); return; }
       if (act === "pladd") { var nm = cleanList($("rvPlSel").value || $("rvPlIn").value); if (!nm) return; c.lists = c.lists || []; if (c.lists.indexOf(nm) < 0) c.lists.push(nm); persist(); drawSel(); drawList(); return; }
       if (act === "pldel") { (c.lists || []).splice(+b.getAttribute("data-i"), 1); persist(); drawSel(); drawList(); return; }
       if (act === "pstart" || act === "pend" || act === "pendx") {
@@ -3502,6 +3503,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       });
       R.forEach(function (c) {
         var t = c.tag;
+        if ((c.lists || []).indexOf("Double check") >= 0) add("Flagged to double check: watch it, use another angle if you have one, and confirm what kind of mark it is", c, "flag");
         if (t === "Penalty" && !(c.players || []).length) add("Penalty on us has no player", c, "pick");
         if ((t === "Penalty" || t === "Away Penalty") && c.until == null) add((t === "Penalty" ? "Penalty on us" : "Penalty on them") + " has no end time (the site guesses 2 minutes)", c, "noend");
         if (t === "For: Goal" && !(c.players || []).length) add("Our goal has no scorer", c, "pick");
@@ -3521,6 +3523,10 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var c = myRvMark(it.date, it.sec, it.tag);
     if (!c) return '<p class="note" style="margin:0">This mark was made by another coach, so only they can change it.</p>';
     if (/^period\d$/.test(it.kind)) return '<div class="seg"><button data-fx="setper" data-per="' + it.kind.slice(6) + '">Change to period ' + it.kind.slice(6) + "</button></div>";
+    if (it.kind === "flag") {
+      var RT = ["For: Goal", "For: Shot on goal", "For: Missed shot", "For: Blocked shot", "Against: Goal", "Against: Shot on goal", "Against: Missed shot", "Against: Blocked shot", "Penalty", "Away Penalty"];
+      return '<p class="note" style="margin:0 0 6px">Right now it is marked as <b>' + esc(geName(c.tag, it.date)) + '</b>. Use the camera buttons under the video to check another angle.</p><div class="seg"><button data-fx="clearflag">It is right, clear the flag</button></div><div class="fld" style="margin-top:8px"><label>Or change it to</label><select data-fx="newtag">' + RT.map(function (t) { return '<option value="' + esc(t) + '"' + (t === c.tag ? " selected" : "") + ">" + esc(geName(t, it.date)) + "</option>"; }).join("") + '</select></div><div class="seg"><button data-fx="retag">Change it and clear the flag</button></div>';
+    }
     if (it.kind === "dup") return '<div class="seg"><button data-fx="deldup">Remove one of them</button></div>';
     if (it.kind === "noend") return '<div class="fld"><label>Video time when the penalty ends (watch the clip)</label><input type="text" data-fx="end" placeholder="' + hms(c.sec + 120) + '" value="' + hms(c.sec + 120) + '" inputmode="numeric" style="max-width:140px"></div><div class="seg"><button data-fx="saveend">Save end time</button></div><p class="note" style="margin:6px 0 0">It starts with a 2 minute guess. Change it to the video time you see the penalty end.</p>';
     if (it.kind === "nospot") return '<p class="note" style="margin:0 0 6px">Tap the rink where it happened.</p>' + FIX_RINK;
@@ -3589,6 +3595,9 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
           var l = lget(VK); l[cx.d] = u; lset(VK, l); render();
         } else if (a === "setper" && cx.c) {
           cx.c.p = +fx.getAttribute("data-per"); save(cx.d, cx.list); render();
+        } else if ((a === "clearflag" || a === "retag") && cx.c) {
+          if (a === "retag") { var nt = cx.card.querySelector('[data-fx="newtag"]').value; if (nt) cx.c.tag = nt; }
+          cx.c.lists = (cx.c.lists || []).filter(function (n) { return n !== "Double check"; }); save(cx.d, cx.list); vkey = null; render();
         } else if (a === "deldup" && cx.c) {
           var di = cx.list.indexOf(cx.c); if (di >= 0) { cx.list.splice(di, 1); save(cx.d, cx.list); render(); }
         } else if (a === "saveend" && cx.c) {
