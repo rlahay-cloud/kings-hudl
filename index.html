@@ -1177,7 +1177,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     replay: function () { var f = this.frame(); if (!f || !this.end) return; clearTimeout(ytTimer); this.armed = true; this.t = this.start; this.playing = true; ytCmd(f, "seekTo", [this.start, true]); ytCmd(f, "playVideo"); var s = this; ytTimer = setTimeout(function () { if (document.body.contains(f) && s.armed) ytCmd(f, "pauseVideo"); }, (this.end - this.start) * 1000 + 600); },
     frame: function () { return $("vpBox") && $("vpBox").querySelector("iframe"); },
     step: function (d) { var f = this.frame(); if (!f) return; clearTimeout(ytTimer); this.armed = false; ytCmd(f, "pauseVideo"); this.t = Math.max(0, this.t + d); this.playing = false; ytCmd(f, "seekTo", [this.t, true]); },
-    toggle: function () { var f = this.frame(); if (!f) return; clearTimeout(ytTimer); if (this.playing) { ytCmd(f, "pauseVideo"); this.playing = false; } else { ytCmd(f, "playVideo"); this.playing = true; } }
+    toggle: function () { var f = this.frame(); if (!f) return; clearTimeout(ytTimer); if (this.playing) { ytCmd(f, "pauseVideo"); this.playing = false; } else { if (this.end && this.t >= this.end - 0.3) { this.replay(); return; } this.armed = !!this.end; ytCmd(f, "playVideo"); this.playing = true; } }
   };
   window.addEventListener("message", function (e) {
     var f = vpCtl.frame(); if (!f || e.source !== f.contentWindow) return;
