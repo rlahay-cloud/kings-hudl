@@ -177,6 +177,8 @@ body.vpfull #vpCard { position: static !important; }
 #vpStage.full.idle #vpBar { opacity: 0; pointer-events: none; }
 video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 12px; aspect-ratio: 16 / 9; display: block; }
 .clip { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; padding: 10px 0; border-bottom: 1px solid var(--line); align-items: center; }
+td.gmn { white-space: nowrap; max-width: 44vw; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 520px) { .card.scroll:has(td.gmn) th, .card.scroll:has(td.gmn) td { padding-left: 5px; padding-right: 5px; font-size: 14px; } }
 .clip .tm { font-family: var(--display); font-weight: 700; font-size: 20px; color: var(--accent); background: none; border: 0; padding: 0; text-align: left; }
 .clip .f { grid-column: 1 / -1; display: grid; grid-template-columns: 130px 1fr auto; gap: 6px; }
 .clip .f input.pl { grid-column: 1 / 3; }
@@ -662,7 +664,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (!list.length) return '<div class="card note">No games yet.</div>';
     return '<div class="card scroll"><table><thead><tr><th>Game</th><th></th><th>Score</th><th>Shots</th></tr></thead><tbody>' +
       list.map(function (g) {
-        return '<tr class="click" onclick="location.hash=\'#/game/' + g.id + '\'"><td>' + fmtDate(g.date) + " vs " + esc(g.away) + '</td><td><span class="pill ' + g.result + '">' + g.result + "</span></td><td>" + g.hs + " - " + g.as + "</td><td>" + g.hShots + " - " + g.aShots + "</td></tr>";
+        return '<tr class="click" onclick="location.hash=\'#/game/' + g.id + '\'"><td class="gmn">' + fmtDate(g.date) + " " + esc(g.away) + '</td><td><span class="pill ' + g.result + '">' + g.result + "</span></td><td>" + g.hs + "-" + g.as + "</td><td>" + g.hShots + "-" + g.aShots + "</td></tr>";
       }).join("") + "</tbody></table></div>";
   }
   function vGames() { return "<h2>All games</h2>" + gameTable(D.games.slice().reverse()); }
