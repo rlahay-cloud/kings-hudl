@@ -12,7 +12,7 @@
 0:14:43|Faceoff: DZ Win|97|,,1,f
 0:14:51|Against: Goal|33 i11 i97 i88 i10|0.233,0.461,1,f
 0:15:24|Faceoff: NZ Win|97|,,1,f
-0:15:36|For: Shot on goal|97|0.866,0.233,1,f|Double check
+0:15:36|For: Shot on goal|97|0.866,0.233,1,f
 0:16:42|For: Goal|72 a38 a97 i86 i38 i97 i18|0.845,0.480,1,f
 0:18:31|For: Goal|91 i19 i13 i93 i4|0.916,0.561,1,f
 0:28:29|For: Goal|14 a86 a97 i86 i18 i38 i97|0.842,0.480,2,f
