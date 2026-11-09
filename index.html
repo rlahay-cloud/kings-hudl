@@ -169,7 +169,7 @@ input[type=text], input[type=url], input[type=date], select, textarea { min-heig
 #vpBar .vpbtns { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
 #vpBar .vpmain { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
 #vpBar .vpmain button { min-width: 0; padding: 0 1px; font-size: 13px; line-height: 1.15; white-space: nowrap; overflow: hidden; letter-spacing: 0; text-transform: none; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
-#vpCard { padding-left: 10px; padding-right: 10px; }
+#vpCard { padding-left: 10px; padding-right: 10px; } #vpCard { -webkit-transform: translateZ(0); transform: translateZ(0); } body.vpfull #vpCard { -webkit-transform: none !important; transform: none !important; }
 #vpBar .vpsub button { flex: 1 1 0; }
 #vpBar .vpbtns button { min-height: 44px; padding: 0 12px; font-weight: 700; font-size: 14px; }
 #vpBar .vpbtns .vpgo { flex: 1 1 auto; }
@@ -1155,6 +1155,8 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   });
   // Keep sticky things (the clip window) just under the page header, whatever height it has on this phone
   (function () {
+    // Safari sometimes leaves the lower part of the clip window unpainted (blank until you scroll): nudge it to repaint whenever its size changes
+    try { if (window.ResizeObserver) { var rob = new ResizeObserver(function () { var c = document.getElementById("vpCard"); if (!c || c.hidden) return; requestAnimationFrame(function () { c.style.opacity = "0.995"; requestAnimationFrame(function () { c.style.opacity = ""; }); }); }); var watch = function () { var c = document.getElementById("vpCard"); if (c && c !== watch.last) { rob.observe(c); watch.last = c; } }; setInterval(watch, 500); } } catch (e) {}
     function setHdr() { var h = document.querySelector("header.top"); if (h) document.documentElement.style.setProperty("--hdr", h.offsetHeight + "px"); }
     setHdr(); window.addEventListener("resize", setHdr); window.addEventListener("orientationchange", setHdr); window.addEventListener("load", setHdr);
     try { var h = document.querySelector("header.top"); if (h && window.ResizeObserver) new ResizeObserver(setHdr).observe(h); } catch (e) {}
