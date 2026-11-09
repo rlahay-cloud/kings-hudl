@@ -169,7 +169,7 @@ input[type=text], input[type=url], input[type=date], select, textarea { min-heig
 #vpBar .vpbtns { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
 #vpBar .vpmain { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
 #vpBar .vpmain button { min-width: 0; padding: 0 1px; font-size: 13px; line-height: 1.15; white-space: nowrap; overflow: hidden; letter-spacing: 0; text-transform: none; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
-#vpCard { padding-left: 10px; padding-right: 10px; }
+#vpCard { padding-left: 10px; padding-right: 10px; scroll-margin-top: calc(var(--hdr, 96px) + 8px); }
 #vpBar .vpsub button { flex: 1 1 0; }
 #vpBar .vpbtns button { min-height: 44px; padding: 0 12px; font-weight: 700; font-size: 14px; }
 #vpBar .vpbtns .vpgo { flex: 1 1 auto; }
@@ -1200,7 +1200,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     vpCtl.t = st; vpCtl.playing = true; vpCtl.start = st; vpCtl.end = en; vpCtl.armed = true; window.__stepCur = vpCtl;
     (function hookVp() { var f = $("vpBox").querySelector("iframe"); if (!f) return; var ask = function () { try { f.contentWindow.postMessage(JSON.stringify({event: "listening", id: 2, channel: "widget"}), "*"); } catch (e) {} }; ask(); f.addEventListener("load", ask); clearInterval(vpCtl.ping); vpCtl.ping = setInterval(function () { if (!document.body.contains(f)) { clearInterval(vpCtl.ping); return; } ask(); }, 1500); })();
     $("vpNow").innerHTML = esc(now) + ' &middot; <a href="' + esc(ytLink(url, st)) + '" target="_blank" rel="noopener">Open in YouTube</a>';
-    if (first) $("vpCard").scrollIntoView({block: "nearest"});
+    if (first) var vcn = $("vpCard"); vcn.scrollIntoView({block: "nearest"}); setTimeout(function () { var r = vcn.getBoundingClientRect(), h = (document.querySelector("header.top") || {offsetHeight: 0}).offsetHeight; if (r.top < h + 2) window.scrollBy(0, r.top - h - 8); }, 60);
   }
   document.addEventListener("click", function (e) {
     var b = e.target.closest && e.target.closest("button[data-cam]"); if (!b || !lastPlayed) return;
