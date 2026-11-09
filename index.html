@@ -1158,26 +1158,6 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     function setHdr() { var h = document.querySelector("header.top"); if (h) document.documentElement.style.setProperty("--hdr", h.offsetHeight + "px"); }
     setHdr(); window.addEventListener("resize", setHdr); window.addEventListener("orientationchange", setHdr); window.addEventListener("load", setHdr);
     try { var h = document.querySelector("header.top"); if (h && window.ResizeObserver) new ResizeObserver(setHdr).observe(h); } catch (e) {}
-    // Safety net for browsers (some iPad Safari versions) where the sticky clip window lets go and scrolls away:
-    // if the window has gone above the header, pin it in place with a spacer holding its spot in the page.
-    var spacer = null, pinned = false, tick = false;
-    function unpin(c) { if (c) { c.style.position = ""; c.style.top = ""; c.style.left = ""; c.style.width = ""; } if (spacer && spacer.parentNode) spacer.parentNode.removeChild(spacer); spacer = null; pinned = false; }
-    function check() {
-      tick = false; var c = document.getElementById("vpCard"); if (!c || c.hidden || document.body.classList.contains("vpfull") || c.style.position === "static") { if (pinned) unpin(c); return; }
-      var hd = document.querySelector("header.top"), lim = (hd ? hd.offsetHeight : 0) + 6;
-      if (!pinned) {
-        var r = c.getBoundingClientRect();
-        if (r.top < lim - 3 && r.bottom > 0 && c.offsetHeight < window.innerHeight - lim) {
-          spacer = document.createElement("div"); spacer.style.height = c.offsetHeight + "px"; spacer.style.marginBottom = getComputedStyle(c).marginBottom; c.parentNode.insertBefore(spacer, c);
-          var sr = spacer.getBoundingClientRect(); c.style.position = "fixed"; c.style.top = lim + "px"; c.style.left = sr.left + "px"; c.style.width = sr.width + "px"; pinned = true;
-        }
-      } else if (spacer) {
-        var sr2 = spacer.getBoundingClientRect(); c.style.left = sr2.left + "px"; c.style.width = sr2.width + "px";
-        if (sr2.top >= lim - 1) unpin(c);
-      }
-    }
-    function sched() { if (!tick) { tick = true; requestAnimationFrame(check); } }
-    window.addEventListener("scroll", sched, {passive: true}); window.addEventListener("resize", sched); window.addEventListener("orientationchange", sched);
   })();
   function ytCmd(f, func, args) { try { f.contentWindow.postMessage(JSON.stringify({event: "command", func: func, args: args || []}), "*"); } catch (e) {} }
   function ytMake(box, id, sec, end, auto) {
@@ -1220,7 +1200,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     vpCtl.t = st; vpCtl.playing = true; vpCtl.start = st; vpCtl.end = en; vpCtl.armed = true; window.__stepCur = vpCtl;
     (function hookVp() { var f = $("vpBox").querySelector("iframe"); if (!f) return; var ask = function () { try { f.contentWindow.postMessage(JSON.stringify({event: "listening", id: 2, channel: "widget"}), "*"); } catch (e) {} }; ask(); f.addEventListener("load", ask); clearInterval(vpCtl.ping); vpCtl.ping = setInterval(function () { if (!document.body.contains(f)) { clearInterval(vpCtl.ping); return; } ask(); }, 1500); })();
     $("vpNow").innerHTML = esc(now) + ' &middot; <a href="' + esc(ytLink(url, st)) + '" target="_blank" rel="noopener">Open in YouTube</a>';
-    var vcn = $("vpCard"); if (first) vcn.scrollIntoView({block: "nearest"}); setTimeout(function () { var r = vcn.getBoundingClientRect(), h = (document.querySelector("header.top") || {offsetHeight: 0}).offsetHeight; if (r.top < h + 2) window.scrollBy(0, r.top - h - 8); }, 60);
+    if (first) var vcn = $("vpCard"); vcn.scrollIntoView({block: "nearest"}); setTimeout(function () { var r = vcn.getBoundingClientRect(), h = (document.querySelector("header.top") || {offsetHeight: 0}).offsetHeight; if (r.top < h + 2) window.scrollBy(0, r.top - h - 8); }, 60);
   }
   document.addEventListener("click", function (e) {
     var b = e.target.closest && e.target.closest("button[data-cam]"); if (!b || !lastPlayed) return;
