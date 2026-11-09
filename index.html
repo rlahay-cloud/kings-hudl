@@ -119,6 +119,8 @@ iframe.gsteam { height: 1000px; } @media (max-width: 1100px) { iframe.gsteam { h
 .cmp { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; margin: 8px 0; }
 .cmp .l { text-align: right; } .cmp .c { color: var(--muted); font-family: var(--display); letter-spacing: .08em; text-transform: uppercase; font-size: 14px; }
 .cmp b { font-family: var(--display); font-size: 22px; }
+.cmp.fo { display: flex; justify-content: center; align-items: baseline; gap: 10px; text-align: center; }
+.cmp.fo b { white-space: nowrap; }
 .bars { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--panel2); margin-top: 4px; grid-column: 1 / -1; }
 .bars i { display: block; background: var(--accent); } .bars i + i { background: var(--blue); }
 .insight { padding: 8px 0 8px 12px; border-left: 3px solid var(--accent); margin: 8px 0; }
@@ -892,7 +894,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var h = '<a class="back" href="#/games">&larr; All games</a><h2>' + fmtDate(g.date) + " vs " + esc(g.away) + '<small><span class="pill ' + g.result + '">' + g.result + "</span> " + esc(g.period) + "</small></h2>";
     h += '<div class="card"><div class="score"><div class="t">' + esc(g.home) + '</div><div class="s">' + g.hs + '</div><div class="s mut">-</div><div class="s">' + g.as + '</div><div class="t">' + esc(g.away) + "</div></div>" +
       cmpRow(g.hShots, "Shots", g.aShots, g.hShots, g.aShots) +
-      (g.fo ? '<div class="cmp"><b class="l">' + esc(g.fo) + '</b><span class="c">Faceoffs won</span><b></b></div>' : "") + "</div>";
+      (g.fo ? '<div class="cmp fo"><b>' + esc(g.fo) + '</b><span class="c">Faceoffs won</span></div>' : "") + "</div>";
     var goalsH = !g.goals.length ? "" : "<h2>Goals</h2><div class='card'>" + g.goals.map(function (x) {
       return '<div class="ev ' + (x.home ? "goal" : "pen") + '"><span class="t" style="font-family:var(--display);font-weight:700;font-size:18px;min-width:90px">' + (x.nc ? "P" + esc(x.per) + " video " + hms(x.vsec) : "P" + esc(x.per) + " " + Math.floor(x.sec / 60) + ":" + ("0" + x.sec % 60).slice(-2)) + '</span><span class="lb">' + (x.sit ? '<span class="pill W">' + x.sit + "</span> " : "") +
         (x.home ? (x.scorer !== null ? esc(label(x.scorer)) + (x.assists.length ? ' <span class="mut">from ' + x.assists.map(function (n) { return esc(label(n)); }).join(", ") + "</span>" : ' <span class="mut">unassisted</span>') : esc(g.home)) : esc(g.away)) + "</span></div>";
