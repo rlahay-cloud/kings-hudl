@@ -1200,7 +1200,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     vpCtl.t = st; vpCtl.playing = true; vpCtl.start = st; vpCtl.end = en; vpCtl.armed = true; window.__stepCur = vpCtl;
     (function hookVp() { var f = $("vpBox").querySelector("iframe"); if (!f) return; var ask = function () { try { f.contentWindow.postMessage(JSON.stringify({event: "listening", id: 2, channel: "widget"}), "*"); } catch (e) {} }; ask(); f.addEventListener("load", ask); clearInterval(vpCtl.ping); vpCtl.ping = setInterval(function () { if (!document.body.contains(f)) { clearInterval(vpCtl.ping); return; } ask(); }, 1500); })();
     $("vpNow").innerHTML = esc(now) + ' &middot; <a href="' + esc(ytLink(url, st)) + '" target="_blank" rel="noopener">Open in YouTube</a>';
-    if (first) $("vpCard").scrollIntoView({block: "nearest"});
+    setTimeout(function () { var c = $("vpCard"); if (!c || c.hidden) return; var hd = document.querySelector("header.top"), top = (hd ? hd.offsetHeight : 0) + 6, r = c.getBoundingClientRect(); if (r.top < top - 2 || r.bottom > window.innerHeight) window.scrollBy({top: r.top - top, behavior: "smooth"}); }, 80);
   }
   document.addEventListener("click", function (e) {
     var b = e.target.closest && e.target.closest("button[data-cam]"); if (!b || !lastPlayed) return;
