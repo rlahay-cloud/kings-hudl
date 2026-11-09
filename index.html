@@ -1145,6 +1145,15 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     vpUpdate();
   }, 250);
   document.addEventListener("click", function (e) { if (e.target.closest && e.target.closest("button[data-vpfs]")) vpFull(); });
+  // Never leave the page locked from scrolling: if nothing is in full screen, give scrolling back
+  function unlockScroll() {
+    if (document.querySelector("#vpStage.full, .shfv.fs")) return;
+    if (document.body.style.overflow) document.body.style.overflow = "";
+    if (document.documentElement.style.overflow) document.documentElement.style.overflow = "";
+    document.body.classList.remove("vpfull"); var vc = document.getElementById("vpCard"); if (vc && vc.style.zIndex === "100000") vc.style.zIndex = "";
+  }
+  setInterval(unlockScroll, 500);
+  ["fullscreenchange", "webkitfullscreenchange", "orientationchange", "pageshow", "visibilitychange", "resize"].forEach(function (n) { (n === "pageshow" ? window : document).addEventListener(n, function () { setTimeout(unlockScroll, 150); }); });
   document.addEventListener("click", function (e) {
     var t = e.target.closest && e.target.closest("button[data-vploop], button[data-vprate]"); if (!t) return;
     if (t.hasAttribute("data-vploop")) { vpCtl.loop = !vpCtl.loop; t.setAttribute("aria-pressed", vpCtl.loop); t.textContent = vpCtl.loop ? "Loop: on" : "Loop: off"; if (vpCtl.loop && !vpCtl.playing && vpCtl.end && vpCtl.t >= vpCtl.end - 0.3) vpCtl.replay(); return; }
