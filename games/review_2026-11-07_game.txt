@@ -22,4 +22,49 @@
 0:24:19|Against: Shot on goal|2|0.166,0.498,1,f
 0:25:48|For: Goal|10 i13 i18 i14 i97|0.908,0.461,1,f
 0:26:23|Faceoff: NZ Loss|97|,,1,f
+0:27:51|Faceoff: NZ Win|17|,,2,f
+0:29:42|Faceoff: DZ Loss|97|,,2,f
+0:30:14|For: Shot on goal|91|0.906,0.186,2,f
+0:30:33|For: Shot on goal|97|0.894,0.539,2,f
+0:30:38|Away Penalty||,,2,f,s1904,e2025
+0:31:45|Faceoff: OZ Win|17|,,2,f
+0:34:02|For: Shot on goal|38|0.880,0.237,2,f
+0:34:16|Faceoff: OZ Loss|17|,,2,f
+0:35:03|Against: Shot on goal|2|0.098,0.583,2,f
+0:35:30|Faceoff: DZ Loss|97|,,2,f
+0:36:34|For: Shot on goal|14|0.906,0.366,2,f
+0:37:01|Faceoff: OZ Loss|17|,,2,f
+0:37:40|Against: Shot on goal|2|0.317,0.296,2,f
+0:37:46|Penalty|72|,,2,f,s2299,e2419
+0:38:22|Faceoff: DZ Loss|97|,,2,f
+0:38:53|Against: Shot on goal|2|0.180,0.509,2,f
+0:40:45|Against: Shot on goal|2|0.089,0.568,2,f
+0:41:08|Faceoff: DZ Win|97|,,2,f
+0:41:24|Against: Shot on goal|2|0.331,0.814,2,f
+0:41:42|Faceoff: DZ Win|97|,,2,f
+0:42:55|Faceoff: NZ Loss|97|,,3,f
+0:45:23|For: Shot on goal|86|0.664,0.921,3,f
+0:45:37|Against: Shot on goal|2|0.113,0.417,3,f
+0:45:59|Away Penalty||,,3,f,s2788
+0:46:32|For: Shot on goal|4|0.713,0.608,3,f
+0:47:05|For: Shot on goal|97|0.875,0.388,3,f
+0:47:27|Faceoff: OZ Loss|17|,,3,f
+0:47:30|For: Shot on goal|17|0.863,0.329,3,f
+0:47:57|For: Shot on goal|17|0.909,0.704,3,f
+0:48:25|Faceoff: OZ Win|97|,,3,f
+0:49:01|For: Shot on goal|93|0.772,0.325,3,f
+0:49:54|Faceoff: OZ Win|17|,,3,f
+0:50:01|For: Shot on goal|86|0.791,0.689,3,f
+0:50:08|For: Shot on goal|14|0.911,0.410,3,f
+0:50:16|For: Shot on goal|13|0.903,0.340,3,f
 0:51:33|For: Goal|97 a38 a19 i38 i72 i19 i4|0.887,0.307,3,f
+0:52:36|Faceoff: NZ Loss|97|,,3,f
+0:52:50|For: Shot on goal|72|0.783,0.741,3,f
+0:53:14|Faceoff: OZ Loss|17|,,3,f
+0:53:16|For: Shot on goal|10|0.739,0.675,3,f
+0:54:50|Against: Shot on goal|2|0.923,0.116,3,f
+0:56:41|Faceoff: OZ Win|97|,,3,f
+0:57:23|Against: Shot on goal|2|0.141,0.774,3,f
+0:57:46|Faceoff: DZ Loss|17|,,3,f
+0:57:49|Against: Shot on goal|2|0.281,0.583,3,f
+0:57:59|Against: Shot on goal|2|0.317,0.127,3,f
