@@ -192,6 +192,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
 @media (min-width: 900px) { .rv { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); align-items: start; } .rvl { position: sticky; top: calc(var(--hdr, 96px) + 14px); } }
 .rvl { display: grid; gap: 12px; }
 @media (max-width: 899px) { .rvl { display: contents; } }
+.rvstep { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin-top: 6px; } .rvstep[hidden] { display: none; } .rvstep button { min-width: 0; min-height: 44px; padding: 0 1px; font-size: 12px; line-height: 1.15; letter-spacing: 0; white-space: nowrap; overflow: hidden; text-transform: none; }
 .rvvideo { position: sticky; top: calc(var(--hdr, 96px) + 14px); z-index: 4; } @media (min-width: 900px) { .rvvideo { position: static; } }
 .rvr { display: grid; gap: 12px; }
 .rvgrp { border-left: 4px solid var(--c); }
@@ -2737,8 +2738,8 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       '<div class="fld"><label for="rvAuto">New marks go to a playlist (optional)</label><input type="text" id="rvAuto" list="rvPlAuto" maxlength="40" placeholder="Like Breakouts to fix"><datalist id="rvPlAuto">' + allPlaylistNames().map(function (n) { return '<option value="' + esc(n) + '">'; }).join("") + "</datalist></div></div>" +
       '<div class="seg"><button id="clLoad">Load video</button></div>' +
       '<div class="fld"><label for="clFile">Or open a video file from this device</label><input type="file" id="clFile" accept="video/*"></div>' +
-      '<p class="note" id="clNote" aria-live="polite">' + (url ? "Loading the video." : "Load the game video to start.") + "</p>" + stepBar() + "</div>";
-    h += '<div class="rv"><div class="rvl"><div id="clVideo" class="rvvideo"></div><div class="card rvtl" id="rvTl"></div><div class="card" id="rvSel"></div></div><div class="rvr">' +
+      '<p class="note" id="clNote" aria-live="polite">' + (url ? "Loading the video." : "Load the game video to start.") + "</p></div>";
+    h += '<div class="rv"><div class="rvl"><div class="rvvideo"><div id="clVideo"></div><div id="rvStep" class="seg rvstep" role="group" aria-label="Step through the video" hidden><button type="button" data-step="-2" aria-label="Back two seconds">&minus;2s</button><button type="button" data-step="-1" aria-label="Back one second">&minus;1s</button><button type="button" data-step="-0.0334" aria-label="Back one frame">&#9664;<br>Frame</button><button type="button" data-step="p" aria-label="Play or pause">Play<br>Pause</button><button type="button" data-step="0.0334" aria-label="Forward one frame">Frame<br>&#9654;</button><button type="button" data-step="1" aria-label="Forward one second">+1s</button><button type="button" data-step="2" aria-label="Forward two seconds">+2s</button></div></div><div class="card rvtl" id="rvTl"></div><div class="card" id="rvSel"></div></div><div class="rvr">' +
       '<div class="card"><h3>Rink</h3><div class="cntbar" id="rvCnt"></div>' + fullRink() +
       '<p class="note" style="margin:6px 0">We attack the net on the right. Tap the rink to choose a spot and a zone, then tap what happened.</p>' +
       '<div class="seg" id="rvFilt"><button data-f="on" aria-pressed="true">Markers on</button><button data-f="H" aria-pressed="true">' + esc(usN()) + '</button><button data-f="A" aria-pressed="true">' + esc(themN(date)) + '</button><button data-f="G" aria-pressed="true">Goals</button><button data-f="S" aria-pressed="true">Shots</button></div>' +
@@ -2913,7 +2914,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     }
     function drawAll() { buildView(); drawTl(); drawSel(); drawRink(); drawList(); drawTeam(); }
     function enable() { Array.prototype.forEach.call(document.querySelectorAll(".rvb"), function (b) { b.disabled = false; }); }
-    function ready(c) { cur = c; window.__stepCur = c; enable(); $("clNote").textContent = "Video loaded. Tap a button when something happens."; drawTl(); }
+    function ready(c) { cur = c; window.__stepCur = c; enable(); var rs = $("rvStep"); if (rs) rs.hidden = false; $("clNote").textContent = "Video loaded. Tap a button when something happens."; drawTl(); }
     function loadFile(file) {
       var v = document.createElement("video"); v.controls = true; v.playsInline = true; v.src = URL.createObjectURL(file);
       $("clVideo").innerHTML = ""; $("clVideo").appendChild(v);
