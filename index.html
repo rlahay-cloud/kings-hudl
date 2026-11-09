@@ -932,7 +932,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     rows.sort(function (a, b) { return a.sec - b.sec; });
     vp.player = null; vp.id = null; PL = [];
     var h = "<h2>Highlights<small><a href='#/video/" + g.date + "'>filter and watch</a></small></h2>";
-    h += playCard() + "<div class='card'>";
+    h += playCard().replace("position:sticky;", "position:relative;") + "<div class='card'>";
     if (!url) h += '<p class="note">Add this game\'s YouTube link in videos.txt or in Coach’s Corner to make these times clickable.</p>';
     if (!rows.length) h += '<p class="note">No highlights yet. " + usN() + " goals show up here by themselves once they are marked in Coach’s Corner.</p>';
     h += rows.map(function (r) {
@@ -1200,7 +1200,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     vpCtl.t = st; vpCtl.playing = true; vpCtl.start = st; vpCtl.end = en; vpCtl.armed = true; window.__stepCur = vpCtl;
     (function hookVp() { var f = $("vpBox").querySelector("iframe"); if (!f) return; var ask = function () { try { f.contentWindow.postMessage(JSON.stringify({event: "listening", id: 2, channel: "widget"}), "*"); } catch (e) {} }; ask(); f.addEventListener("load", ask); clearInterval(vpCtl.ping); vpCtl.ping = setInterval(function () { if (!document.body.contains(f)) { clearInterval(vpCtl.ping); return; } ask(); }, 1500); })();
     $("vpNow").innerHTML = esc(now) + ' &middot; <a href="' + esc(ytLink(url, st)) + '" target="_blank" rel="noopener">Open in YouTube</a>';
-    var vcn = $("vpCard"); if (first) vcn.scrollIntoView({block: "nearest"}); setTimeout(function () { var r = vcn.getBoundingClientRect(), h = (document.querySelector("header.top") || {offsetHeight: 0}).offsetHeight; if (r.top < h + 2) window.scrollBy(0, r.top - h - 8); }, 60);
+    var vcn = $("vpCard"); if (getComputedStyle(vcn).position !== "sticky") vcn.scrollIntoView({block: "start", behavior: "smooth"}); else if (first) vcn.scrollIntoView({block: "nearest"}); setTimeout(function () { var r = vcn.getBoundingClientRect(), h = (document.querySelector("header.top") || {offsetHeight: 0}).offsetHeight; if (r.top < h + 2) window.scrollBy(0, r.top - h - 8); }, 60);
   }
   document.addEventListener("click", function (e) {
     var b = e.target.closest && e.target.closest("button[data-cam]"); if (!b || !lastPlayed) return;
