@@ -1163,7 +1163,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var spacer = null, pinned = false, tick = false;
     function unpin(c) { if (c) { c.style.position = ""; c.style.top = ""; c.style.left = ""; c.style.width = ""; } if (spacer && spacer.parentNode) spacer.parentNode.removeChild(spacer); spacer = null; pinned = false; }
     function check() {
-      tick = false; var c = document.getElementById("vpCard"); if (!c || c.hidden || document.body.classList.contains("vpfull") || c.style.position === "static") { if (pinned) unpin(c); return; }
+      tick = false; fixStale(); var c = document.getElementById("vpCard"); if (!c || c.hidden || document.body.classList.contains("vpfull") || c.style.position === "static") { if (pinned) unpin(c); return; }
       var hd = document.querySelector("header.top"), lim = (hd ? hd.offsetHeight : 0) + 6;
       if (!pinned) {
         var r = c.getBoundingClientRect();
@@ -1176,6 +1176,9 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
         if (sr2.top >= lim - 1) unpin(c);
       }
     }
+    // If the page redraws while full screen is on, the header can stay hidden with no full screen left: put things back
+    function fixStale() { var st = document.getElementById("vpStage"); if (document.body.classList.contains("vpfull") && (!st || !st.classList.contains("full"))) { document.body.classList.remove("vpfull"); document.body.style.overflow = ""; var vc = document.getElementById("vpCard"); if (vc) vc.style.zIndex = ""; } }
+    setInterval(function () { fixStale(); sched(); }, 400);
     function sched() { if (!tick) { tick = true; requestAnimationFrame(check); } }
     window.addEventListener("scroll", sched, {passive: true}); window.addEventListener("resize", sched); window.addEventListener("orientationchange", sched);
   })();
