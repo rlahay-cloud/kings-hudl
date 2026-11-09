@@ -1122,11 +1122,12 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var pp = $("vpPP"); if (pp) pp.textContent = vpCtl.playing ? "Pause" : "Play";
   }
   var vpIdle = null;
+  var vpIsFull = false;
   function vpWake() { var st = $("vpStage"); if (!st) return; st.classList.remove("idle"); clearTimeout(vpIdle); if (st.classList.contains("full") && vpCtl.playing) vpIdle = setTimeout(function () { st.classList.add("idle"); }, 3000); }
   function vpFull(on) {
     var st = $("vpStage"); if (!st) return;
     if (on === undefined) on = !st.classList.contains("full");
-    st.classList.toggle("full", on); st.classList.remove("idle"); document.body.style.overflow = on ? "hidden" : "";
+    vpIsFull = on; st.classList.toggle("full", on); st.classList.remove("idle"); document.body.style.overflow = on ? "hidden" : "";
     // iPhone cannot do real full screen for a page element, so the stage is pinned over the whole page: lift its card above the header and hide the header
     document.body.classList.toggle("vpfull", on); var vc = $("vpCard"); if (vc) vc.style.zIndex = on ? "100000" : "";
     var fb = $("vpFs"); if (fb) fb.textContent = on ? "Exit full screen" : "Full";
@@ -1148,7 +1149,9 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   document.addEventListener("click", function (e) { if (e.target.closest && e.target.closest("button[data-vpfs]")) vpFull(); });
   // Never leave the page locked from scrolling: if nothing is in full screen, give scrolling back
   function unlockScroll() {
-    if (document.querySelector("#vpStage.full, .shfv.fs")) return;
+    var sf = document.querySelector("#vpStage.full"); if (sf && !vpIsFull && !document.fullscreenElement) { sf.classList.remove("full", "idle"); sf = null; }
+    if (sf || document.querySelector(".shfv.fs")) return;
+    var sb = document.querySelector("#vpStage.idle:not(.full)"); if (sb) sb.classList.remove("idle");
     if (document.body.style.overflow) document.body.style.overflow = "";
     if (document.documentElement.style.overflow) document.documentElement.style.overflow = "";
     document.body.classList.remove("vpfull"); var vc = document.getElementById("vpCard"); if (vc && vc.style.zIndex === "100000") vc.style.zIndex = "";
@@ -3555,7 +3558,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     function cardKey(card) { return card.getAttribute("data-d") + "|" + card.getAttribute("data-s") + "|" + card.getAttribute("data-t") + "|" + card.getAttribute("data-k"); }
     var render0 = fixRender;
     function render() {
-      var v = $("vpCard"); if (v) $("fxStash").appendChild(v);
+      var v = $("vpCard"); if (v) { var vs = $("vpStage"); if (vs && vs.classList.contains("full")) vpFull(false); $("fxStash").appendChild(v); }
       render0(box);
       if (vkey && v) {
         var card = Array.prototype.filter.call(box.querySelectorAll(".fxit"), function (c) { return cardKey(c) === vkey; })[0];
