@@ -1045,7 +1045,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     h += playCard();
     h += '<div class="card" style="margin-top:12px"><div class="filters">' +
       '<div class="fld"><label for="vfGame">Game</label><select id="vfGame"><option value="">All games</option>' + games.map(function (d) { var g = D.games.filter(function (x) { return x.date === d; })[0]; return '<option value="' + d + '">' + fmtDate(d) + (oppFor(d) ? " vs " + esc(oppFor(d)) : "") + "</option>"; }).join("") + "</select></div>" +
-      '<div class="fld"><label for="vfTag">Type</label><select id="vfTag"><option value="">All types</option>' + tags.map(function (t) { return "<option>" + esc(t) + "</option>"; }).join("") + "</select></div>" +
+      '<div class="fld"><label for="vfTag">Type</label><select id="vfTag"><option value="">All types</option><option value="__special">Special teams (power plays and penalty kills)</option><option value="__faceoffs">Faceoffs</option>' + tags.map(function (t) { return "<option>" + esc(t) + "</option>"; }).join("") + "</select></div>" +
       '<div class="fld"><label for="vfList2">Playlist</label><select id="vfList2"><option value="">All clips</option>' + lists.map(function (n) { return "<option>" + esc(n) + "</option>"; }).join("") + "</select></div>" +
       '<div class="fld"><label for="vfCoach">Marked by</label><select id="vfCoach"><option value="">Everyone</option>' + coaches.map(function (c) { return "<option>" + esc(c) + "</option>"; }).join("") + "</select></div>" +
       '<div class="fld"><label for="vfPl">Player</label><select id="vfPl"><option value="">Everyone</option>' + nums.map(function (n) { return '<option value="' + n + '">' + esc(label(n)) + "</option>"; }).join("") + "</select></div></div>" +
@@ -1264,12 +1264,14 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     playItem(PL[+b.getAttribute("data-pl")]);
   }
   document.addEventListener("click", plClick);
+  // The clips behind the Team tab numbers: penalties both ways, plus goals scored on a power play or short handed
+  function isSpecialClip(x) { return x.tag === "Penalty" || x.tag === "Away Penalty" || (/^Goal/.test(x.tag) && /Power play|Short handed/.test(x.label || "")); }
   function bindVideo() {
     if (!$("vfList")) return;
     var items = allVideoItems();
     function render() {
       var g = $("vfGame").value, t = $("vfTag").value, c = $("vfCoach").value, pl = $("vfPl").value, pls = $("vfList2").value;
-      var f = items.filter(function (x) { return (!g || x.date === g) && (!t || (x.disp || x.tag) === t) && (!c || x.coach === c) && (!pl || x.players.indexOf(+pl) >= 0) && (!pls || (x.lists || []).indexOf(pls) >= 0); });
+      var f = items.filter(function (x) { return (!g || x.date === g) && (!t || (t === "__special" ? isSpecialClip(x) : t === "__faceoffs" ? /^Faceoff/.test(x.tag) : (x.disp || x.tag) === t)) && (!c || x.coach === c) && (!pl || x.players.indexOf(+pl) >= 0) && (!pls || (x.lists || []).indexOf(pls) >= 0); });
       $("vfCount").textContent = f.length + (f.length === 1 ? " clip" : " clips");
       var last = "";
       $("vfList").innerHTML = f.length ? f.map(function (x, i) {
@@ -1281,6 +1283,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     ["vfGame", "vfTag", "vfCoach", "vfPl", "vfList2"].forEach(function (id) { $(id).addEventListener("change", render); });
     var pg = location.hash.split("/")[2] || "";
     if (pg && $("vfGame").querySelector('option[value="' + pg + '"]')) $("vfGame").value = pg;
+    var pf = location.hash.split("/")[3] || ""; if (pf === "special") $("vfTag").value = "__special"; else if (pf === "faceoffs") $("vfTag").value = "__faceoffs";
     render();
     $("vfList").addEventListener("click", function (e) {
       var b = e.target.closest("button[data-i]"); if (b) playItem(items[+b.getAttribute("data-i")]);
@@ -3419,12 +3422,12 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
         else if (c.tag === "Against: Goal") { var b2 = goalSit(x.R, c); if (b2 === "PP") s.ppgA++; else if (b2 === "SH") s.shgA++; }
       });
       Object.keys(s).forEach(function (k) { T[k] += s[k]; });
-      rows += "<tr class='click' onclick=\"location.hash='#/coach/analysis/" + x.date + "'\"><td>" + fmtDate(x.date) + (x.opp ? " vs " + esc(x.opp) : "") + "</td><td>" + s.drawn + "</td><td>" + s.ppg + "</td><td>" + s.taken + "</td><td>" + s.ppgA + "</td><td>" + s.shg + "</td></tr>";
+      rows += "<tr class='click' onclick=\"location.hash='#/video/" + x.date + "/special'\"><td>" + fmtDate(x.date) + (x.opp ? " vs " + esc(x.opp) : "") + "</td><td>" + s.drawn + "</td><td>" + s.ppg + "</td><td>" + s.taken + "</td><td>" + s.ppgA + "</td><td>" + s.shg + "</td></tr>";
     });
     var ppPct = T.drawn ? Math.round(T.ppg * 100 / T.drawn) + "%" : "-", pkPct = T.taken ? Math.max(0, Math.round((T.taken - T.ppgA) * 100 / T.taken)) + "%" : "-";
     var h = '<div class="kpis" style="margin-top:12px">' + kpi(T.drawn, "Power plays (penalties on them)") + kpi(T.ppg, "Power play goals") + kpi(ppPct, "Power play goals per chance") + kpi(T.taken, "Penalties on us") + kpi(T.ppgA, "Power play goals against") + kpi(pkPct, "Penalty kill") + kpi(T.shg, "Short handed goals for") + kpi(T.shgA, "Short handed goals against") + kpi((T.drawn - T.taken > 0 ? "+" : "") + (T.drawn - T.taken), "Penalties drawn minus taken") + "</div>";
     h += '<p class="note">Power play and penalty kill are rough: each penalty counts as one chance, whatever its length. A power play goal is a goal scored while the other team has more penalties running.</p>';
-    h += "<h2>Game by game</h2><div class='card scroll'><table><thead><tr><th>Game</th><th>Power plays</th><th>PP goals</th><th>Penalties on us</th><th>PP goals against</th><th>Short handed goals</th></tr></thead><tbody>" + rows + "</tbody></table></div>";
+    h += "<h2>Game by game<small>tap a game to watch its clips</small></h2><div class='card scroll'><table><thead><tr><th>Game</th><th>Power plays</th><th>PP goals</th><th>Penalties on us</th><th>PP goals against</th><th>Short handed goals</th></tr></thead><tbody>" + rows + "</tbody></table></div>";
     var pl = Object.keys(byP).map(function (k) { return byP[k]; }).sort(function (a, b) { return b.k - a.k || a.n - b.n; });
     h += "<h2>Who takes the penalties</h2><div class='card scroll'>" + (pl.length ? "<table><thead><tr><th>Player</th><th>Penalties</th></tr></thead><tbody>" + pl.map(function (p) { return '<tr class="click" onclick="location.hash=\'#/player/' + p.n + '\'"><td>' + esc(label(p.n)) + "</td><td>" + p.k + "</td></tr>"; }).join("") + "</tbody></table>" : '<p class="note" style="margin:0">No penalties marked on a player yet.</p>') + "</div>";
     var ik = Object.keys(inf).sort(function (a, b) { return inf[b] - inf[a]; });
@@ -3442,7 +3445,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
         (c.players || []).slice(0, 1).forEach(function (n) { P[n] = P[n] || {n: n, z: {OZ: [0, 0], NZ: [0, 0], DZ: [0, 0]}, w: 0, l: 0}; P[n].z[m[1]][i]++; P[n][i ? "l" : "w"]++; });
       });
       W += w; L += l;
-      if (w + l) rows += "<tr class='click' onclick=\"location.hash='#/coach/analysis/" + x.date + "'\"><td>" + fmtDate(x.date) + (x.opp ? " vs " + esc(x.opp) : "") + "</td><td>" + w + "-" + l + "</td><td>" + pct(w, w + l) + "</td></tr>";
+      if (w + l) rows += "<tr class='click' onclick=\"location.hash='#/video/" + x.date + "/faceoffs'\"><td>" + fmtDate(x.date) + (x.opp ? " vs " + esc(x.opp) : "") + "</td><td>" + w + "-" + l + "</td><td>" + pct(w, w + l) + "</td></tr>";
     });
     if (W + L === 0) return '<div class="card empty" style="margin-top:12px"><p>No faceoffs marked yet.</p><p class="note">In Game analysis, tap the rink for the zone, then Win or Loss.</p></div>';
     var zn = {OZ: "Their zone (we attack)", NZ: "Neutral zone", DZ: "Our zone"};
@@ -3454,7 +3457,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       return '<tr class="click" onclick="location.hash=\'#/player/' + p.n + '\'"><td>' + esc(label(p.n)) + "</td><td>" + (p.w + p.l) + "</td><td>" + p.w + "</td><td>" + pct(p.w, p.w + p.l) + "</td><td>" + zc("OZ") + "</td><td>" + zc("NZ") + "</td><td>" + zc("DZ") + "</td></tr>";
     }).join("") + "</tbody></table>" : '<p class="note" style="margin:0">No faceoffs have a player yet. In Game analysis, tap the taker on the faceoff mark.</p>') + "</div>";
     h += "<h2>By period</h2><div class='card scroll'><table><thead><tr><th>Period</th><th>Won</th><th>Lost</th><th>Win %</th></tr></thead><tbody>" + [1, 2, 3, 4].filter(function (p) { return per[p]; }).map(function (p) { return "<tr><td>" + PERIODS_LABEL[p - 1] + "</td><td>" + per[p][0] + "</td><td>" + per[p][1] + "</td><td>" + pct(per[p][0], per[p][0] + per[p][1]) + "</td></tr>"; }).join("") + "</tbody></table></div>";
-    h += "<h2>Game by game</h2><div class='card scroll'><table><thead><tr><th>Game</th><th>Won-lost</th><th>Win %</th></tr></thead><tbody>" + rows + "</tbody></table></div>";
+    h += "<h2>Game by game<small>tap a game to watch its clips</small></h2><div class='card scroll'><table><thead><tr><th>Game</th><th>Won-lost</th><th>Win %</th></tr></thead><tbody>" + rows + "</tbody></table></div>";
     return h + teamNote(G.length);
   }
   function teamPeriods(G) {
