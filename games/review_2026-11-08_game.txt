@@ -26,7 +26,8 @@
 0:20:00|Away Penalty||,,1,f,s1232,e1367
 0:20:33|Faceoff: OZ Win|97|,,1,f
 0:21:13|For: Shot on goal|10|0.847,0.700,1,f
-0:21:32|For: Shot on goal|11|0.819,0.403,1,f|Double check
+0:21:32|For: Shot on goal|11|0.819,0.403,1,f
+0:21:33|For: Shot on goal|14|0.927,0.461,1,f
 0:21:59|For: Shot on goal|72|0.900,0.472,1,f|Double check
 0:22:40|Faceoff: NZ Win|17|,,1,f
 0:23:06|Against: Shot on goal|33|0.048,0.344,1,f|Double check
