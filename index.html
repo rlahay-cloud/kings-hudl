@@ -224,6 +224,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
 }
 @media (prefers-reduced-motion: no-preference) { .pcard { transition: border-color .15s; } }
 .gapbad { color: #ff7b7b; } .gapsub td { font-size: 13px; color: var(--mut, #9aa3b8); padding-top: 2px; }
+.gstbl td, .gstbl th { white-space: nowrap; padding: 6px 8px; } .gstbl tr.gsus td { background: rgba(124, 77, 255, .18); font-weight: 700; }
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Barlow+Condensed:wght@600;700&display=swap">
 </head>
@@ -430,7 +431,8 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       return Promise.all(jobs.concat(videoJobs));
     });
     var playersP = backupP.then(function () { return getText("games/players.txt"); }).then(function (t) { applyPlayers(parsePlayers(t)); }).catch(function () {}).then(function () { try { if (localStorage.getItem(PK + "-pending") === "2") applyPlayers(JSON.parse(localStorage.getItem(PK) || "{}")); } catch (e) {} });
-    return Promise.all([backupP, videosP, gamesP, cfgP, playersP, schedP]).then(function () {
+    var standP = getText("games/standings.csv?t=" + Date.now()).then(function (t) { D.standings = parseStandings(t); }).catch(function () {});
+    return Promise.all([backupP, videosP, gamesP, cfgP, playersP, schedP, standP]).then(function () {
       D.games.sort(function (a, b) { return a.id < b.id ? -1 : 1; });
     });
   }
@@ -614,6 +616,48 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     return "<h2>" + esc(title) + "<small>" + esc(sub) + "</small></h2><div class='card' style='padding:0;overflow:hidden'><iframe src='" + esc(u) + "' title='" + esc(title) + "' loading='lazy' referrerpolicy='no-referrer' class='" + (t ? "gsteam" : "") + "' style='width:100%;" + (t ? "" : "height:" + (h || 380) + "px;") + "border:0;display:block;background:#fff'></iframe></div>" +
       "<div class='seg' style='margin:8px 0'><a class='btn' href='" + esc(u) + "' target='_blank' rel='noopener' style='text-decoration:none'>Open full page on GameSheet</a></div><p class='note'>Live from GameSheet. If the box above stays blank or scrolls inside itself, use the button." + (teamName && !t ? " This team's own page has not been added yet, so it shows the division list." : "") + "</p>";
   }
+  // GameSheet division standings from its Export file (RK,,TEAM,GP,W,L,...). Newest of this device and the shared copy wins.
+  var SKEY = "kh-standings-v1";
+  function csvRow(l) { var o = [], c = "", q = false, i; for (i = 0; i < l.length; i++) { var ch = l.charAt(i); if (q) { if (ch === '"') { if (l.charAt(i + 1) === '"') { c += '"'; i++; } else q = false; } else c += ch; } else if (ch === '"') q = true; else if (ch === ",") { o.push(c); c = ""; } else c += ch; } o.push(c); return o; }
+  function parseStandings(text) {
+    var ls = String(text || "").replace(/^\ufeff/, "").split(/\r?\n/).filter(function (l) { return l.trim() !== ""; }), stamp = 0;
+    ls = ls.filter(function (l) { var m = /^#updated=(.+)$/.exec(l); if (m) { stamp = Date.parse(m[1]) || 0; return false; } return l.charAt(0) !== "#"; });
+    if (!ls.length) return null; var head = csvRow(ls[0]); if (head.indexOf("TEAM") < 0 || head.indexOf("GP") < 0) return null;
+    var rows = ls.slice(1).map(function (l) { var c = csvRow(l), o = {}; head.forEach(function (h, i) { if (h) o[h] = c[i] === undefined ? "" : c[i]; }); return o; }).filter(function (o) { return o.TEAM; });
+    return {rows: rows, stamp: stamp};
+  }
+  function currentStandings() {
+    var a = D.standings || null, b = null; try { var l = lget(SKEY); if (l.text) { b = parseStandings(l.text); if (b) b.stamp = l.stamp || b.stamp; } } catch (e) {}
+    return b && (!a || b.stamp >= a.stamp) ? b : a;
+  }
+  function vStandings() {
+    var S = currentStandings(), h = "<h2>Division standings" + (S && S.stamp ? "<small>updated " + new Date(S.stamp).toLocaleString([], {month: "short", day: "numeric", hour: "numeric", minute: "2-digit"}) + "</small>" : "") + "</h2>";
+    var cols = [["RK", "#"], ["TEAM", "Team"], ["GP", "GP"], ["W", "W"], ["L", "L"], ["T", "T"], ["PTS", "PTS"], ["P%", "P%"], ["GF", "GF"], ["GA", "GA"], ["DIFF", "+/-"], ["STK", "Streak"], ["PIM", "PIM"], ["PPO", "PPO"], ["PPG", "PPG"], ["PP%", "PP%"], ["PPGA", "PPGA"], ["PK%", "PK%"]];
+    if (S && S.rows.length) {
+      h += "<div class='card scroll'><table class='gstbl'><thead><tr>" + cols.map(function (c, i) { return "<th" + (i > 1 ? " class='num'" : "") + ">" + c[1] + "</th>"; }).join("") + "</tr></thead><tbody>" + S.rows.map(function (r) {
+        var us = sameTeam(r.TEAM, usN()); return "<tr" + (us ? " class='gsus'" : "") + ">" + cols.map(function (c, i) { return "<td" + (i > 1 ? " class='num'" : "") + ">" + esc(r[c[0]] === undefined ? "" : r[c[0]]) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table></div>";
+    } else h += "<div class='card empty'><p>No standings yet.</p><p class='note'>Tap the button below and pick the file you exported from GameSheet.</p></div>";
+    h += "<div class='seg' style='margin:8px 0'><button type='button' id='gsUpdate'>Update GameSheet information</button><a class='btn' href='" + esc(gsUrl("")) + "' target='_blank' rel='noopener' style='text-decoration:none'>Open GameSheet</a></div><input type='file' id='gsFile' accept='.csv,text/csv' hidden><p class='note' id='gsNote' aria-live='polite'>On GameSheet tap Export, then come back here, tap Update and choose the file.</p>";
+    return h;
+  }
+  function bindStandings() {
+    var b = $("gsUpdate"), f = $("gsFile"); if (!b || !f) return;
+    b.onclick = function () { f.value = ""; f.click(); };
+    f.onchange = function () {
+      var file = f.files && f.files[0], note = $("gsNote"); if (!file) return;
+      var rd = new FileReader();
+      rd.onload = function () {
+        var text = String(rd.result || ""), p = parseStandings(text); if (!p || !p.rows.length) { note.textContent = "That does not look like a GameSheet standings file."; return; }
+        var m = /(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})/.exec(file.name), stamp = m ? Date.parse(m[1] + "T" + m[2] + ":" + m[3] + ":" + m[4] + "Z") : Date.now(); if (!stamp || isNaN(stamp)) stamp = Date.now();
+        var clean = "#updated=" + new Date(stamp).toISOString() + "\n" + text.replace(/^\ufeff/, "").replace(/\r/g, "").trim() + "\n";
+        lset(SKEY, {text: clean, stamp: stamp}); route();
+        var n2 = $("gsNote"); if (n2) n2.textContent = "Updated on this device.";
+        var cfg = D.cfg || {}, c = coachCfg(); if (cfg.submitUrl && c.pass.trim() && n2) submitFile("standings", todayStr(), clean, n2);
+        else if (n2 && cfg.submitUrl) n2.textContent += " Add the coach passcode in Coach’s Corner to share it with everyone.";
+      };
+      rd.readAsText(file);
+    };
+  }
   function oppQuery(name) { var w = String(name || "").replace(/[^A-Za-z0-9 ]/g, " ").split(/\s+/).filter(Boolean).sort(function (a, b) { return b.length - a.length; }); return w[0] || ""; }
   function sameTeam(a, b) {
     var n = function (x) { return String(x || "").toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim(); }, x = n(a), y = n(b);
@@ -650,7 +694,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var h = nextGamesHtml() + '<div class="kpis">' +
       kpi(t.w + "-" + t.l + "-" + t.t, "Record") + kpi(t.gf, "Goals for") + kpi(t.ga, "Goals against") +
       kpi(t.sf, "Shots for") + kpi(t.sa, "Shots against") + kpi(pct(t.sf, t.sf + t.sa), "Shot share") + "</div>";
-    h += gsEmbed("", "Division standings", "live from GameSheet, scroll inside the box", 360);
+    h += vStandings();
     h += "<h2>What stands out</h2><div class='card'>" + insights(P, G, t) + "</div>";
     h += "<h2>Trends</h2><div class='row g2'>" +
       "<div class='card'><h3>Shots per game</h3>" + lineChart([{name: usN(), c: "var(--accent)", v: D.games.map(function (g) { return g.hShots; })}, {name: "Opponents", c: "var(--blue)", v: D.games.map(function (g) { return g.aShots; })}], labels, {label: "Shots for and against by game", step: 5}) + "</div>" +
@@ -3804,6 +3848,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     else if (base === "video") h += vVideo();
     else h += vOverview();
     $("app").innerHTML = h;
+    if (base === "") bindStandings();
     if (base === "coach" && needLock()) bindLock();
     else if (base === "coach") { if (parts[1] === "players") bindPlayersEditor(); else if (parts[1] === "shifts") bindShifts(parts[2]); else if (parts[1] === "setup") bindSetup(parts[2]); else if (parts[1] === "clip") bindClipEditor(parts[2], +parts[3], +parts[4]); else if (parts[1] === "analysis" || /^\d{4}-\d{2}-\d{2}$/.test(parts[1] || "")) bindReview(); else if (parts[1] === "fixit") bindFixIt(); else bindCoachClips(); }
     if (base === "video") bindVideo();

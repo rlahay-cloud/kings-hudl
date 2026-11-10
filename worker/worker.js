@@ -72,6 +72,16 @@ function check(body, env) {
     for (const l of ls) if (!SYNC_LINE.test(l)) return {error: "A line was not in the right format"};
     return {path: "games/sync_" + body.date + ".txt", text: ls.length ? ls.join("\n") + "\n" : "\n", coach: "setup"};
   }
+  if (body.kind === "standings") {
+    const t = String(body.text || "");
+    if (t.length > 20000) return {error: "File is too big"};
+    const ls = t.split(/\r?\n/).filter(function (l) { return l.trim() !== ""; });
+    if (ls.length > 60) return {error: "Too many lines"};
+    const rows = ls.filter(function (l) { return l.charAt(0) !== "#"; });
+    if (!rows.length || !/^RK,[^\n]*TEAM,GP,W,L/.test(rows[0])) return {error: "That does not look like a GameSheet standings file"};
+    for (const l of ls) if (l.length > 600) return {error: "A line was too long"};
+    return {path: "games/standings.csv", text: ls.join("\n") + "\n", coach: "standings"};
+  }
   if (body.kind === "players") {
     const t = String(body.text || "");
     if (t.length > 8000) return {error: "File is too big"};
@@ -131,7 +141,7 @@ export default {
     const r = check(body, env);
     if (r.error) return reply(env, r.error === "Wrong passcode" ? 401 : 400, {ok: false, error: r.error});
     try {
-      await saveToGitHub(env, r.path, r.text, (body.kind === "draw" ? "Drawings" : body.kind === "shifts" ? "Shifts" : body.kind === "sync" ? "Game setup" : body.kind === "players" ? "Names and positions" : body.kind === "clips" ? "Highlights" : body.kind === "video" ? "Video link" : body.kind === "review" ? "Review" : "Shots") + " from " + r.coach + " for " + body.date);
+      await saveToGitHub(env, r.path, r.text, (body.kind === "draw" ? "Drawings" : body.kind === "shifts" ? "Shifts" : body.kind === "sync" ? "Game setup" : body.kind === "standings" ? "GameSheet standings" : body.kind === "players" ? "Names and positions" : body.kind === "clips" ? "Highlights" : body.kind === "video" ? "Video link" : body.kind === "review" ? "Review" : "Shots") + " from " + r.coach + " for " + body.date);
     } catch (e) {
       const why = String(e && e.message || e);
       let hint = "";
