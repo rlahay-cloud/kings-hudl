@@ -32,7 +32,6 @@
 0:23:06|Against: Shot on goal|33|0.048,0.344,1,f
 0:23:29|For: Shot on goal|17|0.781,0.737,1,f
 0:25:21|Faceoff: NZ Win|13|,,2,f
-0:27:17|For: Shot on goal|14|0.845,0.509,2,f|Double check
 0:27:43|Against: Shot on goal|33|0.128,0.752,2,f
 0:28:29|For: Goal|14 a86 a97 i86 i18 i38 i97|0.842,0.480,2,f
 0:29:02|Faceoff: NZ Win|17|,,2,f
