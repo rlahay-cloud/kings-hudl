@@ -698,12 +698,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   function vOverview() {
     var t = team(), P = aggPlayers(), G = aggGoalies();
     var labels = D.games.map(function (g) { return fmtDate(g.date); });
-    var fw = 0, ft = 0, fp = [];
-    D.games.forEach(function (g) { if (g.pending) return; var m = /^(\d+)\/(\d+)/.exec(g.fo || ""), q = /(\d+)%/.exec(g.fo || ""); if (m && +m[2]) { fw += +m[1]; ft += +m[2]; } else if (q) fp.push(+q[1]); });
-    var foTxt = ft ? pct(fw, ft) : fp.length ? Math.round(fp.reduce(function (a, b) { return a + b; }, 0) / fp.length) + "%" : "-";
-    var svW = t.sa ? Math.round((1 - t.ga / t.sa) * 1000) / 1000 : null;
-    var h = nextGamesHtml() + '<div class="kpis five">' +
-      kpi(pct(t.sf, t.sf + t.sa), "Shot share") + kpi(t.gp ? (Math.round(t.sf / t.gp * 10) / 10) : "-", "Shots per game") + kpi(pct(t.gf, t.sf), "Shooting %") + kpi(svW === null ? "-" : svW.toFixed(3).replace(/^0/, ""), "Save %") + kpi(foTxt, "Faceoff win %") + "</div>";
+    var h = nextGamesHtml();
     h += vStandings();
     h += "<h2>What stands out</h2><div class='card'>" + insights(P, G, t) + "</div>";
     h += "<h2>Trends</h2><div class='row g2'>" +
@@ -3472,9 +3467,19 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     return '<div class="seg" role="group" aria-label="Team stats sections">' + b("#/team", "Special teams", "specials") + b("#/team/faceoffs", "Faceoffs", "faceoffs") + b("#/team/periods", "Periods", "periods") + "</div>";
   }
   function teamNote(n) { return '<p class="note">Based on ' + n + (n === 1 ? " game" : " games") + " with Game analysis marks. Games that were not marked in Game analysis are left out.</p>"; }
+  function teamKpis() {
+    var t = team();
+    var fw = 0, ft = 0, fp = [];
+    D.games.forEach(function (g) { if (g.pending) return; var m = /^(\d+)\/(\d+)/.exec(g.fo || ""), q = /(\d+)%/.exec(g.fo || ""); if (m && +m[2]) { fw += +m[1]; ft += +m[2]; } else if (q) fp.push(+q[1]); });
+    var foTxt = ft ? pct(fw, ft) : fp.length ? Math.round(fp.reduce(function (a, b) { return a + b; }, 0) / fp.length) + "%" : "-";
+    var svW = t.sa ? Math.round((1 - t.ga / t.sa) * 1000) / 1000 : null;
+    var h = '<div class="kpis five">' +
+      kpi(pct(t.sf, t.sf + t.sa), "Shot share") + kpi(t.gp ? (Math.round(t.sf / t.gp * 10) / 10) : "-", "Shots per game") + kpi(pct(t.gf, t.sf), "Shooting %") + kpi(svW === null ? "-" : svW.toFixed(3).replace(/^0/, ""), "Save %") + kpi(foTxt, "Faceoff win %") + "</div>";
+    return h;
+  }
   function vTeam(sub) {
     var G = reviewGames();
-    var h = "<h2>Team</h2>" + teamTabs(sub === "faceoffs" ? "faceoffs" : sub === "periods" ? "periods" : "specials");
+    var h = "<h2>Team</h2>" + teamKpis() + teamTabs(sub === "faceoffs" ? "faceoffs" : sub === "periods" ? "periods" : "specials");
     if (!G.length) return h + '<div class="card empty" style="margin-top:12px"><p>No Game analysis marks yet.</p><p class="note">Mark a game in Coach’s Corner, Game analysis, and these pages fill in by themselves.</p></div>';
     return h + (sub === "faceoffs" ? teamFaceoffs(G) : sub === "periods" ? teamPeriods(G) : teamSpecials(G));
   }
@@ -3495,24 +3500,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var h = '<div class="kpis" style="margin-top:12px">' + kpi(T.drawn, "Power plays (penalties on them)") + kpi(T.ppg, "Power play goals") + kpi(ppPct, "Power play goals per chance") + kpi(T.taken, "Penalties on us") + kpi(T.ppgA, "Power play goals against") + kpi(pkPct, "Penalty kill") + kpi(T.shg, "Short handed goals for") + kpi(T.shgA, "Short handed goals against") + kpi((T.drawn - T.taken > 0 ? "+" : "") + (T.drawn - T.taken), "Penalties drawn minus taken") + "</div>";
     h += '<p class="note">Power play and penalty kill are rough: each penalty counts as one chance, whatever its length. A power play goal is a goal scored while the other team has more penalties running.</p>';
     h += "<h2>Game by game<small>tap a game to watch its clips</small></h2><div class='card scroll'><table><thead><tr><th>Game</th><th>Power plays</th><th>PP goals</th><th>Penalties on us</th><th>PP goals against</th><th>Short handed goals</th></tr></thead><tbody>" + rows + "</tbody></table></div>";
-    h += teamGameFlow(G);
     return h + teamNote(G.length);
-  }
-  // How our games go: who scores first, close games, big wins (not on the Overview)
-  function teamGameFlow(G) {
-    var f = {w: 0, l: 0, t: 0}, a = {w: 0, l: 0, t: 0}, one = {w: 0, l: 0, t: 0}, big = 0, n1 = 0, n2 = 0, rows = "";
-    G.forEach(function (x) {
-      var g = D.games.filter(function (z) { return z.date === x.date; })[0]; if (!g || g.pending) return;
-      var res = g.result === "W" ? "w" : g.result === "L" ? "l" : "t", d = g.hs - g.as;
-      var goals = x.R.filter(function (c) { return c.tag === "For: Goal" || c.tag === "Against: Goal"; }).sort(function (p, q) { return p.sec - q.sec; }), first = goals.length ? (goals[0].tag === "For: Goal" ? "us" : "them") : "";
-      if (first === "us") { f[res]++; n1++; } else if (first === "them") { a[res]++; n2++; }
-      if (Math.abs(d) === 1) one[res]++; if (d >= 3) big++;
-      rows += "<tr><td>" + fmtDate(x.date) + (x.opp ? " vs " + esc(x.opp) : "") + "</td><td>" + g.hs + "-" + g.as + "</td><td>" + (first === "us" ? "Us" : first === "them" ? "Them" : "-") + "</td></tr>";
-    });
-    var rec = function (o) { return o.w + "-" + o.l + "-" + o.t; };
-    var h = "<h2>How our games go</h2><div class='kpis' style='margin-top:12px'>" + kpi(n1 ? rec(f) : "-", "Record when we score first") + kpi(n2 ? rec(a) : "-", "Record when they score first") + kpi(rec(one), "One goal games") + kpi(big, "Wins by 3 or more") + "</div>";
-    h += "<div class='card scroll' style='margin-top:12px'><table><thead><tr><th>Game</th><th>Score</th><th>First goal</th></tr></thead><tbody>" + (rows || "<tr><td colspan='3'>No games yet.</td></tr>") + "</tbody></table></div>";
-    return h + "<p class='note'>Who scored first comes from the goals marked in Game analysis, so it only shows for games that have goal marks. Records are wins, losses and ties.</p>";
   }
   function teamFaceoffs(G) {
     var Z = {OZ: [0, 0], NZ: [0, 0], DZ: [0, 0]}, P = {}, per = {}, rows = "", W = 0, L = 0;
