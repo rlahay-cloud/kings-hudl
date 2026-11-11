@@ -75,7 +75,7 @@
 0:55:30|For: Shot on goal|97|0.952,0.667,3,f
 0:56:24|Against: Goal|i18 i17 i86 i97 i38|0.106,0.822,3,f|Empty net
 0:56:50|Faceoff: NZ Loss|17|,,3,f
-0:57:27|Against: Goal|i38 i11 i17 i10 i72|0.208,0.476,3,f
+0:57:27|Against: Goal|2 i38 i11 i17 i10 i72|0.208,0.476,3,f
 0:57:55|Faceoff: NZ Win|13|,,3,f
 0:58:26|For: Shot on goal|13|0.917,0.432,3,f
 0:58:56|Faceoff: OZ Loss|97|,,3,f
