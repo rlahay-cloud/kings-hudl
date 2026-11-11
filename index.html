@@ -226,6 +226,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
 @media (prefers-reduced-motion: no-preference) { .pcard { transition: border-color .15s; } }
 .gapbad { color: #ff7b7b; } .gapsub td { font-size: 13px; color: var(--mut, #9aa3b8); padding-top: 2px; }
 .gstbl td, .gstbl th { white-space: nowrap; padding: 6px 8px; } .gstbl td:nth-child(2), .gstbl th:nth-child(2) { text-align: left; } .gstbl tr.gsus td { background: rgba(124, 77, 255, .18); font-weight: 700; }
+.deskwrap { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 6px 14px; margin: 8px 0 4px; } .deskgrp > span { display: block; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 0 0 3px 2px; font-family: var(--display); font-weight: 600; }
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Barlow+Condensed:wght@600;700&display=swap">
 </head>
@@ -642,7 +643,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
 
   }
   function vGameSheet() {
-    var S = currentStandings(), h = "<h2>Coach’s Corner</h2>" + coachSubTabs("gamesheet") + "<div class='card'><h3>GameSheet standings</h3><p class='note' style='margin:0 0 8px'>" + (S && S.stamp ? "Standings on the Overview page were updated " + new Date(S.stamp).toLocaleString([], {month: "short", day: "numeric", hour: "numeric", minute: "2-digit"}) + "." : "No standings added yet.") + "</p>";
+    var S = currentStandings(), h = "<h2>Game Desk</h2>" + coachSubTabs("gamesheet") + "<div class='card'><h3>GameSheet standings</h3><p class='note' style='margin:0 0 8px'>" + (S && S.stamp ? "Standings on the Overview page were updated " + new Date(S.stamp).toLocaleString([], {month: "short", day: "numeric", hour: "numeric", minute: "2-digit"}) + "." : "No standings added yet.") + "</p>";
     h += "<div class='seg' style='margin:8px 0'><button type='button' id='gsUpdate'>Update GameSheet information</button><a class='btn' href='" + esc(gsUrl("")) + "' target='_blank' rel='noopener' style='text-decoration:none'>Open GameSheet</a></div><input type='file' id='gsFile' accept='.csv,text/csv' hidden><p class='note' id='gsNote' aria-live='polite'>On GameSheet tap Export, then come back here, tap Update and choose the file. The Overview page shows the new standings.</p>";
     return h + "</div>";
   }
@@ -1577,9 +1578,16 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     $("lkGo").addEventListener("click", go);
     $("lkPass").addEventListener("keydown", function (e) { if (e.key === "Enter") go(); });
   }
+  var DESK_KEYS = ["review", "players", "shifts", "setup", "gaps", "gamesheet", "fixit", "shots"];
   function coachSubTabs(active) {
     function b(h, label, key) { return '<button onclick="location.hash=\'' + h + '\'" aria-pressed="' + (active === key) + '">' + label + "</button>"; }
-    return '<div class="seg" role="group" aria-label="Coach’s Corner sections">' + b("#/coach", "Clips", "clips") + b("#/coach/analysis", "Game analysis", "review") + b("#/coach/players", "Players", "players") + b("#/coach/shifts", "Shifts", "shifts") + b("#/coach/setup", "Game setup", "setup") + b("#/coach/gaps", "Stat check", "gaps") + b("#/coach/gamesheet", "GameSheet", "gamesheet") + b("#/coach/fixit", "Fix-it list" + (function () { var n = fixItems().length; return n ? " (" + n + ")" : ""; })(), "fixit") + "</div>";
+    if (DESK_KEYS.indexOf(active) < 0) return "";
+    var n = fixItems().length;
+    function grp(name, btns) { return '<div class="deskgrp"><span>' + name + "</span>" + '<div class="seg" role="group" aria-label="' + name + '">' + btns + "</div></div>"; }
+    return '<div class="deskwrap">' + grp("Before the game", b("#/coach/setup", "Game setup", "setup") + b("#/coach/players", "Players", "players")) +
+      grp("Marking", b("#/coach/analysis", "Game analysis", "review") + b("#/coach/shifts", "Shifts", "shifts")) +
+      grp("Checking", b("#/coach/fixit", "Fix-it list" + (n ? " (" + n + ")" : ""), "fixit") + b("#/coach/gaps", "Stat check", "gaps")) +
+      grp("Data", b("#/coach/gamesheet", "GameSheet", "gamesheet")) + "</div>";
   }
   function vClips(dateParam, mode) {
     var dates = dateChoices(), date = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : (D.games.length ? D.games[D.games.length - 1].date : dates[0]);
@@ -2094,7 +2102,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var dates = dateChoices(), date = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : (D.games.length ? D.games[D.games.length - 1].date : dates[0]);
     if (dates.indexOf(date) < 0) dates.unshift(date);
     var url = D.videos[date] || lget(VK)[date] || "";
-    var h = "<h2>Coach’s Corner</h2>" + coachSubTabs("shifts");
+    var h = "<h2>Game Desk</h2>" + coachSubTabs("shifts");
     h += '<div class="card" style="margin-top:12px"><div class="fld"><label for="shfDate">Game</label>' + dateSelect("shfDate", dates, date) + "</div>";
     if (!ytId(url)) return h + '<p class="note">This game has no video link yet. Add the YouTube link in <b>Game analysis</b> first, then come back.</p></div>';
     h += '<p class="note" style="margin-bottom:0">Tap <b>Start tracking</b> when play starts and <b>Stop tracking</b> at every stoppage. Time only counts while tracking is on and the video is playing. Tap a number to put that player on the ice, and tap it again when he comes off. You can change who is on while tracking is stopped.</p></div>';
@@ -2400,7 +2408,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     });
   }
   function vSetupNew() {
-    return "<h2>Coach’s Corner</h2>" + coachSubTabs("setup") + '<p class="note" style="margin:12px 0 0">Make a game that is not in the site yet, so you can load its video, set periods and add angles. Games from Streamn join it automatically when their file arrives for the same date.</p>' + gameFormHtml(todayStr(), true);
+    return "<h2>Game Desk</h2>" + coachSubTabs("setup") + '<p class="note" style="margin:12px 0 0">Make a game that is not in the site yet, so you can load its video, set periods and add angles. Games from Streamn join it automatically when their file arrives for the same date.</p>' + gameFormHtml(todayStr(), true);
   }
   var lnX = null;
   function lineupHtml(date) {
@@ -2439,7 +2447,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var dates = dateChoices(), date = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : (D.games.length ? D.games[D.games.length - 1].date : dates[0]);
     if (dates.indexOf(date) < 0) dates.unshift(date);
     var url = D.videos[date] || lget(VK)[date] || "";
-    var h = "<h2>Coach’s Corner</h2>" + coachSubTabs("setup");
+    var h = "<h2>Game Desk</h2>" + coachSubTabs("setup");
     h += '<div class="card" style="margin-top:12px"><div class="fld"><label for="stDate">Game</label>' + dateSelect("stDate", dates, date) + '</div><div class="seg"><button onclick="location.hash=\'#/coach/setup/new\'">+ New game</button></div></div>';
     h += gameFormHtml(date, false);
     h += lineupHtml(date);
@@ -2788,7 +2796,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var url = D.videos[date] || lget(VK)[date] || "";
     var btns = function (src, tags, extra) { return '<div class="rvbtns">' + tags.map(function (t) { return '<button class="rvb" ' + (extra || "") + ' data-src="' + src + '" data-tag="' + t + '" disabled>' + t + "</button>"; }).join("") + "</div>"; };
     var sect = function (name, c, body, id) { return '<div class="card rvgrp" ' + (id ? 'id="' + id + '" ' : "") + 'style="--c:' + c + '"><h3>' + name + "</h3>" + body + "</div>"; };
-    var h = "<h2>Coach’s Corner</h2>" + coachSubTabs("review");
+    var h = "<h2>Game Desk</h2>" + coachSubTabs("review");
     h += '<div class="card" style="margin-top:12px"><div class="filters"><div class="fld"><label for="rvDate">Game</label>' + dateSelect("rvDate", dates, date) + "</div>" +
       '<div class="fld"><label for="clUrl">YouTube link for this game</label><input type="url" id="clUrl" placeholder="https://youtu.be/..." value="' + esc(url) + '"></div>' +
       '<div class="fld"><label for="cName">Your name (optional, used on coach notes)</label><input type="text" id="cName" autocomplete="name" placeholder="Blank = Team" value="' + esc(coachCfg().name) + '"></div>' +
@@ -2819,7 +2827,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       '<div class="seg" style="margin-top:12px"><button class="btn" id="rvSend" style="width:100%">Share to Kings HUDL</button></div><p class="note" id="rvShare" aria-live="polite"></p>';
     return h;
   }
-  function vCoachPlayers() { return "<h2>Coach’s Corner</h2>" + coachSubTabs("players") + '<div class="card" style="margin-top:12px" id="plEd"></div>'; }
+  function vCoachPlayers() { return "<h2>Game Desk</h2>" + coachSubTabs("players") + '<div class="card" style="margin-top:12px" id="plEd"></div>'; }
   function bindPlayersEditor() {
     var box = $("plEd"); if (!box) return;
     var extra = [];
@@ -3170,7 +3178,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (sub === "mark") {
       var dates = dateChoices(), date = D.games.length ? D.games[D.games.length - 1].date : dates[0];
       if (dates.indexOf(todayStr()) >= 0 && !D.games.some(function (g) { return g.date === todayStr(); })) date = todayStr();
-      return "<h2>Coach’s Corner</h2>" + coachSubTabs("shots") + coachCard() +
+      return "<h2>Game Desk</h2>" + coachSubTabs("shots") + coachCard() +
         '<div class="card" style="margin-top:12px"><div class="fld"><label for="shDate">Game</label>' + dateSelect("shDate", dates, date) + "</div>" +
         '<div class="fld"><label>Whose shot</label><div class="seg" id="shTeam"><button data-v="H" aria-pressed="true">' + esc(usN()) + '</button><button data-v="A" aria-pressed="false">' + esc(themN(date)) + '</button></div></div>' +
         '<div class="fld"><label>Period</label><div class="seg" id="shPer">' + [1, 2, 3, 4].map(function (p, i) { return '<button data-v="' + p + '" aria-pressed="' + (i === 0) + '">' + PERIODS_LABEL[i] + "</button>"; }).join("") + "</div></div>" +
@@ -3635,10 +3643,10 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       });
       return '<h3>' + title + ' <small>' + (total ? total + " with gaps" : "no gaps") + '</small></h3><div class="card scroll"><table><thead><tr><th>Player</th>' + cs.map(function (c) { return "<th class='num'>" + c[1] + "<br><small>stats / clips</small></th>"; }).join("") + "</tr></thead><tbody>" + (out || "<tr><td colspan='" + (cs.length + 1) + "'>Nothing to show yet.</td></tr>") + "</tbody></table></div>";
     };
-    return "<h2>Coach’s Corner</h2>" + coachSubTabs("gaps") + '<p class="note">Each number is the stat on the left and the clips that back it up on the right. A red number means they do not match, so a mark may be missing. Tap a game to open its clips.</p>' + section(R.P, cols, "Skaters") + section(R.G, gcols, "Goalies");
+    return "<h2>Game Desk</h2>" + coachSubTabs("gaps") + '<p class="note">Each number is the stat on the left and the clips that back it up on the right. A red number means they do not match, so a mark may be missing. Tap a game to open its clips.</p>' + section(R.P, cols, "Skaters") + section(R.G, gcols, "Goalies");
   }
   function vFixIt() {
-    return "<h2>Coach’s Corner</h2>" + coachSubTabs("fixit") + '<div id="fxStash" hidden>' + playCard() + '</div><div id="fxBox"></div>';
+    return "<h2>Game Desk</h2>" + coachSubTabs("fixit") + '<div id="fxStash" hidden>' + playCard() + '</div><div id="fxBox"></div>';
   }
   function bindFixIt() {
     var box = $("fxBox"); if (!box) return;
@@ -3707,7 +3715,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       }
     });
   }
-  var tabs = [["", "Overview"], ["players", "Players"], ["games", "Games"], ["shots", "Shot map"], ["team", "Team"], ["video", "Video"], ["coach", "Coach’s Corner"]];
+  var tabs = [["", "Overview"], ["players", "Players"], ["games", "Games"], ["shots", "Shot map"], ["team", "Team"], ["video", "Video"], ["coach", "Coach’s Corner"], ["coach/analysis", "Game Desk"]];
   // Video review beats the scoreboard, but only for what was actually marked. Starts from Streamn's numbers every time.
   function applyReview(g) {
     if (!g._o) g._o = JSON.parse(JSON.stringify({hs: g.hs, as: g.as, hShots: g.hShots, aShots: g.aShots, goals: g.goals, players: g.players, goalies: g.goalies, dnp: g.dnp, fo: g.fo}));
@@ -3832,7 +3840,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (window.__rvT) { clearInterval(window.__rvT); window.__rvT = null; }
     var parts = location.hash.replace(/^#\/?/, "").split("/");
     var base = parts[0] || "";
-    var cur = base === "player" ? "players" : base === "game" ? "games" : base === "next" ? "" : base;
+    var cur = base === "player" ? "players" : base === "game" ? "games" : base === "next" ? "" : base === "coach" && parts[1] && ["analysis", "players", "shifts", "setup", "gaps", "gamesheet", "fixit", "shots"].indexOf(parts[1]) >= 0 ? "coach/analysis" : base;
     $("nav").innerHTML = tabs.map(function (t) { return '<a href="#/' + t[0] + '"' + (t[0] === cur ? ' aria-current="page"' : "") + ">" + t[1] + "</a>"; }).join("");
     var t = team();
     $("team").textContent = "Kings HUDL";
