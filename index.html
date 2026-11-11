@@ -230,7 +230,9 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
 @media (prefers-reduced-motion: no-preference) { .pcard { transition: border-color .15s; } }
 .gapbad { color: #ff7b7b; } .gapsub td { font-size: 13px; color: var(--mut, #9aa3b8); padding-top: 2px; }
 .gstbl td, .gstbl th { white-space: nowrap; padding: 6px 8px; } .gstbl td:nth-child(2), .gstbl th:nth-child(2) { text-align: left; } .gstbl tr.gsus td { background: rgba(124, 77, 255, .18); font-weight: 700; }
-.deskwrap { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 6px 14px; margin: 8px 0 4px; } .deskgrp > span { display: block; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 0 0 3px 2px; font-family: var(--display); font-weight: 600; }
+@media (max-width: 480px) { .filters { grid-template-columns: 1fr; } }
+.ldrow { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 12px; margin: 14px 0 0; } .ldrow .btn { min-height: 44px; } .ldfile { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); cursor: pointer; font-weight: 600; font-size: 14px; }
+.deskwrap { display: flex; flex-wrap: wrap; gap: 14px 30px; margin: 10px 0 16px; padding: 12px 16px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; } .deskgrp .seg { margin: 0; gap: 8px; } .deskgrp .seg button { min-height: 40px; padding: 0 14px; font-size: 14px; } .deskgrp > span { display: block; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px 2px; font-family: var(--display); font-weight: 600; }
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Barlow+Condensed:wght@600;700&display=swap">
 </head>
@@ -1627,10 +1629,9 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (DESK_KEYS.indexOf(active) < 0) return "";
     var n = fixItems().length;
     function grp(name, btns) { return '<div class="deskgrp"><span>' + name + "</span>" + '<div class="seg" role="group" aria-label="' + name + '">' + btns + "</div></div>"; }
-    return '<div class="deskwrap">' + grp("Before the game", b("#/coach/setup", "Game setup", "setup") + b("#/coach/players", "Players", "players")) +
+    return '<div class="deskwrap">' + grp("Before the game", b("#/coach/setup", "Game setup", "setup") + b("#/coach/players", "Players", "players") + b("#/coach/gamesheet", "Standings", "gamesheet")) +
       grp("Marking", b("#/coach/analysis", "Game analysis", "review") + b("#/coach/shifts", "Shifts", "shifts")) +
-      grp("Checking", b("#/coach/fixit", "Fix-it list" + (n ? " (" + n + ")" : ""), "fixit") + b("#/coach/gaps", "Stat check", "gaps")) +
-      grp("Data", b("#/coach/gamesheet", "GameSheet", "gamesheet")) + "</div>";
+      grp("Checking", b("#/coach/fixit", "Fix-it list" + (n ? " (" + n + ")" : ""), "fixit") + b("#/coach/gaps", "Stat check", "gaps")) + "</div>";
   }
   function vClips(dateParam, mode) {
     var dates = dateChoices(), date = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : (D.games.length ? D.games[D.games.length - 1].date : dates[0]);
@@ -2843,12 +2844,11 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var sect = function (name, c, body, id) { return '<div class="card rvgrp" ' + (id ? 'id="' + id + '" ' : "") + 'style="--c:' + c + '"><h3>' + name + "</h3>" + body + "</div>"; };
     var h = "<h2>Game Desk</h2>" + coachSubTabs("review");
     h += '<div class="card" style="margin-top:12px"><div class="filters"><div class="fld"><label for="rvDate">Game</label>' + dateSelect("rvDate", dates, date) + "</div>" +
-      '<div class="fld"><label for="clUrl">YouTube link for this game</label><input type="url" id="clUrl" placeholder="https://youtu.be/..." value="' + esc(url) + '"></div>' +
-      '<div class="fld"><label for="cName">Your name (optional, used on coach notes)</label><input type="text" id="cName" autocomplete="name" placeholder="Blank = Team" value="' + esc(coachCfg().name) + '"></div>' +
-      '<div class="fld"><label for="rvAuto">New marks go to a playlist (optional)</label><input type="text" id="rvAuto" list="rvPlAuto" maxlength="40" placeholder="Like Breakouts to fix"><datalist id="rvPlAuto">' + allPlaylistNames().map(function (n) { return '<option value="' + esc(n) + '">'; }).join("") + "</datalist></div></div>" +
-      '<div class="seg"><button id="clLoad">Load video</button></div>' +
-      '<div class="fld"><label for="clFile">Or open a video file from this device</label><input type="file" id="clFile" accept="video/*"></div>' +
-      '<p class="note" id="clNote" aria-live="polite">' + (url ? "Loading the video." : "Load the game video to start.") + "</p></div>";
+      '<div class="fld"><label for="clUrl">YouTube link</label><input type="url" id="clUrl" placeholder="https://youtu.be/..." value="' + esc(url) + '"></div>' +
+      '<div class="fld"><label for="cName">Your name (optional)</label><input type="text" id="cName" autocomplete="name" placeholder="Leave blank for Team" value="' + esc(coachCfg().name) + '"></div>' +
+      '<div class="fld"><label for="rvAuto">Playlist for new marks (optional)</label><input type="text" id="rvAuto" list="rvPlAuto" maxlength="40" placeholder="Like Breakouts to fix"><datalist id="rvPlAuto">' + allPlaylistNames().map(function (n) { return '<option value="' + esc(n) + '">'; }).join("") + "</datalist></div></div>" +
+      '<div class="ldrow"><button class="btn" id="clLoad">Load video</button><span class="mut">or</span><label class="ldfile" for="clFile">Choose a video file from this device</label><input type="file" id="clFile" accept="video/*" hidden></div>' +
+      '<p class="note" id="clNote" aria-live="polite" style="margin:10px 0 0">' + (url ? "Loading the video." : "Load the game video to start.") + "</p></div>";
     h += '<div class="rv"><div class="rvl"><div class="rvvideo"><div id="clVideo"></div><div id="rvStep" class="seg rvstep" role="group" aria-label="Step through the video" hidden><button type="button" data-step="-2" aria-label="Back two seconds">&minus;2s</button><button type="button" data-step="-1" aria-label="Back one second">&minus;1s</button><button type="button" data-step="-0.0334" aria-label="Back one frame">&#9664;<br>Frame</button><button type="button" data-step="p" aria-label="Play or pause">Play<br>Pause</button><button type="button" data-step="0.0334" aria-label="Forward one frame">Frame<br>&#9654;</button><button type="button" data-step="1" aria-label="Forward one second">+1s</button><button type="button" data-step="2" aria-label="Forward two seconds">+2s</button></div></div><div class="card rvtl" id="rvTl"></div><div class="card" id="rvSel"></div></div><div class="rvr">' +
       '<div class="card"><h3>Rink</h3><div class="cntbar" id="rvCnt"></div>' + fullRink() +
       '<p class="note" style="margin:6px 0">We attack the net on the right. Tap the rink to choose a spot and a zone, then tap what happened.</p>' +
