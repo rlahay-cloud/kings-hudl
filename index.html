@@ -946,6 +946,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var h = '<a class="back" href="#/games">&larr; All games</a><h2>' + fmtDate(g.date) + " vs " + esc(g.away) + '<small><span class="pill ' + g.result + '">' + g.result + "</span> " + esc(g.period) + "</small></h2>";
     h += '<div class="card"><div class="score"><div class="t" title="' + esc(g.home) + '">' + tn(g.home) + '</div><div class="s">' + g.hs + '</div><div class="s mut">-</div><div class="s">' + g.as + '</div><div class="t" title="' + esc(g.away) + '">' + tn(g.away) + "</div></div>" +
       cmpRow(g.hShots, "Shots", g.aShots, g.hShots, g.aShots) +
+      ((g.enFor || 0) + (g.enAgainst || 0) ? cmpRow(g.enFor || 0, "Empty net goals", g.enAgainst || 0, g.enFor || 0, g.enAgainst || 0) : "") +
       (g.fo ? '<div class="cmp fo"><b>' + esc(g.fo) + '</b><span class="c">Faceoffs won</span></div>' : "") + "</div>";
     var goalsH = !g.goals.length ? "" : "<h2>Goals</h2><div class='card'>" + g.goals.map(function (x) {
       return '<div class="ev ' + (x.home ? "goal" : "pen") + '"><span class="t" style="font-family:var(--display);font-weight:700;font-size:18px;min-width:90px">' + (x.nc ? "P" + esc(x.per) + " video " + hms(x.vsec) : "P" + esc(x.per) + " " + Math.floor(x.sec / 60) + ":" + ("0" + x.sec % 60).slice(-2)) + '</span><span class="lb">' + (x.sit ? '<span class="pill W">' + x.sit + "</span> " : "") +
@@ -3771,7 +3772,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (!g._o) g._o = JSON.parse(JSON.stringify({hs: g.hs, as: g.as, hShots: g.hShots, aShots: g.aShots, goals: g.goals, players: g.players, goalies: g.goalies, dnp: g.dnp, fo: g.fo}));
     var o = JSON.parse(JSON.stringify(g._o));
     g.hs = o.hs; g.as = o.as; g.hShots = o.hShots; g.aShots = o.aShots; g.goals = o.goals; g.players = o.players; g.goalies = o.goalies; g.dnp = o.dnp;
-    g.fo = o.fo; g.notes = []; g.adjusted = false;
+    g.fo = o.fo; g.notes = []; g.adjusted = false; g.enFor = 0; g.enAgainst = 0;
     var R = D.sample ? [] : allReview(g.date);
     var applyOut = function () {
       var lo = lineupOut(g.date); if (!lo) return;
@@ -3807,6 +3808,8 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
         keep.push({per: was ? was.per : String(PERIODS_LABEL[(c.p || 1) - 1] || c.p), nc: !was, sec: was ? was.sec : 0, vsec: c.sec, home: home, scorer: sc, assists: a, rv: true, sit: goalSit(R, c)});
       });
     });
+    g.enFor = fG.filter(function (c) { return (c.lists || []).indexOf("Empty net") >= 0; }).length;
+    g.enAgainst = aG.filter(function (c) { return (c.lists || []).indexOf("Empty net") >= 0; }).length;
     var anyG = fG.length || aG.length;
     if (anyG) {
       g.goals = keep.sort(function (a, b) { return (a.per < b.per ? -1 : a.per > b.per ? 1 : 0) || (a.nc || b.nc ? (a.vsec == null ? 1e9 : a.vsec) - (b.vsec == null ? 1e9 : b.vsec) : a.sec - b.sec); });
@@ -3859,7 +3862,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       var enN = 0;
       ag.forEach(function (c) { if (c.tag === "Against: Goal" && (c.lists || []).indexOf("Empty net") >= 0) { enN++; return; } var k = c.players.length ? c.players[0] : one; if (k === null) return; sa[k] = (sa[k] || 0) + 1; if (c.tag === "Against: Goal") ga[k] = (ga[k] || 0) + 1; });
       g.goalies.forEach(function (x) { if (aS.length) x.sa = sa[x.n] || 0; if (aG.length) x.ga = ga[x.n] || 0; });
-      if (enN) { g.enAgainst = enN; note(enN + " empty net goal" + (enN === 1 ? " was" : "s were") + " scored on us. Like the NHL, " + (enN === 1 ? "it is" : "they are") + " not charged to a goalie, so save percentage and goals against average leave " + (enN === 1 ? "it" : "them") + " out."); }
+      if (enN) { note(enN + " empty net goal" + (enN === 1 ? " was" : "s were") + " scored on us. Like the NHL, " + (enN === 1 ? "it is" : "they are") + " not charged to a goalie, so save percentage and goals against average leave " + (enN === 1 ? "it" : "them") + " out."); }
     }
     // penalties: the scoreboard only lists them as timestamps, so just compare counts
     var pr = by("Penalty").length, ev = (D.events[g.date] || []).filter(function (e) { return /^Penalty/i.test(e.label); }).length;
