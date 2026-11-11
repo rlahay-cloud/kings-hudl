@@ -157,7 +157,7 @@ svg .ax { stroke: var(--line); stroke-width: 1; }
 .btn[disabled] { opacity: .4; cursor: default; }
 .fld { display: flex; flex-direction: column; gap: 4px; margin: 8px 0; }
 .fld label { color: var(--muted); font-size: 13px; font-family: var(--display); letter-spacing: .08em; text-transform: uppercase; }
-input[type=text], input[type=url], input[type=date], select, textarea { min-height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel2); color: var(--fg); padding: 8px 10px; font: inherit; width: 100%; }
+input[type=text], input[type=url], input[type=date], input[type=time], select, textarea { -webkit-appearance: none; appearance: none; min-width: 0; text-align: left; min-height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel2); color: var(--fg); padding: 8px 10px; font: inherit; width: 100%; }
 .rinkwrap { max-width: 640px; margin: 0 auto; touch-action: manipulation; }
 .rinkwrap svg { display: block; width: 100%; height: auto; border-radius: 14px; background: #dfeaf5; }
 .rinkwrap svg text { fill: #5b6b86; font-size: 3.2px; }
@@ -231,6 +231,11 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
 .gapbad { color: #ff7b7b; } .gapsub td { font-size: 13px; color: var(--mut, #9aa3b8); padding-top: 2px; }
 .gstbl td, .gstbl th { white-space: nowrap; padding: 6px 8px; } .gstbl td:nth-child(2), .gstbl th:nth-child(2) { text-align: left; } .gstbl tr.gsus td { background: rgba(124, 77, 255, .18); font-weight: 700; }
 @media (max-width: 480px) { .filters { grid-template-columns: 1fr; } }
+input[type=date], input[type=time] { display: block; line-height: 1.2; } input[type=date]::-webkit-date-and-time-value, input[type=time]::-webkit-date-and-time-value { text-align: left; min-height: 1.2em; } select { background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; padding-right: 34px; }
+a.btn { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; } #app .card > .seg { gap: 10px; }
+@media (max-width: 480px) { .pickrow { flex-wrap: wrap; } .pickrow .fld { flex-basis: 100%; } }
+.pickrow { display: flex; align-items: flex-end; gap: 10px; } .pickrow .fld { flex: 1 1 auto; min-width: 0; margin: 0; } .pickrow button { flex: 0 0 auto; min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel2); color: var(--fg); font-family: var(--display); font-weight: 700; font-size: 16px; letter-spacing: .04em; white-space: nowrap; }
+#app .card > .seg > button, #app .card > .btn, #app .ldrow .btn, #app .card > .seg > a { font-family: var(--display); font-size: 16px; font-weight: 700; letter-spacing: .04em; text-transform: none; min-height: 44px; padding: 0 16px; }
 .ldrow { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 12px; margin: 14px 0 0; } .ldrow .btn { min-height: 44px; } .ldfile { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); cursor: pointer; font-weight: 600; font-size: 14px; }
 .deskwrap { display: flex; flex-wrap: wrap; gap: 14px 30px; margin: 10px 0 16px; padding: 12px 16px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; } .deskgrp .seg { margin: 0; gap: 8px; } .deskgrp .seg button { min-height: 40px; padding: 0 14px; font-size: 14px; } .deskgrp > span { display: block; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px 2px; font-family: var(--display); font-weight: 600; }
 </style>
@@ -2492,7 +2497,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (dates.indexOf(date) < 0) dates.unshift(date);
     var url = D.videos[date] || lget(VK)[date] || "";
     var h = "<h2>Game Desk</h2>" + coachSubTabs("setup");
-    h += '<div class="card" style="margin-top:12px"><div class="fld"><label for="stDate">Game</label>' + dateSelect("stDate", dates, date) + '</div><div class="seg"><button onclick="location.hash=\'#/coach/setup/new\'">+ New game</button></div></div>';
+    h += '<div class="card" style="margin-top:12px"><div class="pickrow"><div class="fld"><label for="stDate">Game</label>' + dateSelect("stDate", dates, date) + '</div><button onclick="location.hash=\'#/coach/setup/new\'">+ New game</button></div></div>';
     h += gameFormHtml(date, false);
     h += lineupHtml(date);
     if (!ytId(url)) return h + '<div class="card" style="margin-top:12px"><p class="note" style="margin:0">Add the game video link above and save. Then periods and extra camera angles show here.</p></div>';
@@ -3622,7 +3627,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
         var t = c.tag;
         if ((c.lists || []).indexOf("Double check") >= 0) add("Flagged to double check: watch it, use another angle if you have one, and confirm what kind of mark it is", c, "flag");
         if (t === "Penalty" && !(c.players || []).length) add("Penalty on us has no player", c, "pick");
-        if ((t === "Penalty" || t === "Away Penalty") && c.until == null) add((t === "Penalty" ? "Penalty on us" : "Penalty on them") + " has no end time (the site guesses 2 minutes)", c, "noend");
+        if ((t === "Penalty" || t === "Away Penalty") && c.until == null) add((t === "Penalty" ? "Penalty on us" : "Penalty on them") + " has no end time (the site guesses 2.5 minutes)", c, "noend");
         if (t === "For: Goal" && !(c.players || []).length) add("Our goal has no scorer", c, "pick");
         if (t === "For: Goal" && !(c.ice || []).length) add("Our goal has no one on the ice picked (plus/minus)", c, "pick");
         if (t === "Against: Goal" && !(c.ice || []).length) add("Goal against has no one on the ice picked (plus/minus)", c, "pick");
@@ -3645,7 +3650,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       return '<p class="note" style="margin:0 0 6px">Right now it is marked as <b>' + esc(geName(c.tag, it.date)) + '</b>. Use the camera buttons under the video to check another angle.</p><div class="seg"><button data-fx="clearflag">It is right, clear the flag</button></div><div class="fld" style="margin-top:8px"><label>Or change it to</label><select data-fx="newtag">' + RT.map(function (t) { return '<option value="' + esc(t) + '"' + (t === c.tag ? " selected" : "") + ">" + esc(geName(t, it.date)) + "</option>"; }).join("") + '</select></div><div class="seg"><button data-fx="retag">Change it and clear the flag</button></div>';
     }
     if (it.kind === "dup") return '<div class="seg"><button data-fx="deldup">Remove one of them</button></div>';
-    if (it.kind === "noend") return '<div class="fld"><label>Video time when the penalty ends (watch the clip)</label><input type="text" data-fx="end" placeholder="' + hms(c.sec + 120) + '" value="' + hms(c.sec + 120) + '" inputmode="numeric" style="max-width:140px"></div><div class="seg"><button data-fx="saveend">Save end time</button></div><p class="note" style="margin:6px 0 0">It starts with a 2 minute guess. Change it to the video time you see the penalty end.</p>';
+    if (it.kind === "noend") return '<div class="fld"><label>Video time when the penalty ends (watch the clip)</label><input type="text" data-fx="end" placeholder="' + hms(c.sec + ASSUME_PEN_SEC) + '" value="' + hms(c.sec + ASSUME_PEN_SEC) + '" inputmode="numeric" style="max-width:140px"></div><div class="seg"><button data-fx="saveend">Save end time</button></div><p class="note" style="margin:6px 0 0">It starts with a 2.5 minute guess. Change it to the video time you see the penalty end.</p>';
     if (it.kind === "nospot") return '<p class="note" style="margin:0 0 6px">Tap the rink where it happened.</p>' + FIX_RINK;
     return reviewPick(c, it.date);
   }
