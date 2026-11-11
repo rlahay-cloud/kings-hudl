@@ -946,7 +946,6 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var h = '<a class="back" href="#/games">&larr; All games</a><h2>' + fmtDate(g.date) + " vs " + esc(g.away) + '<small><span class="pill ' + g.result + '">' + g.result + "</span> " + esc(g.period) + "</small></h2>";
     h += '<div class="card"><div class="score"><div class="t" title="' + esc(g.home) + '">' + tn(g.home) + '</div><div class="s">' + g.hs + '</div><div class="s mut">-</div><div class="s">' + g.as + '</div><div class="t" title="' + esc(g.away) + '">' + tn(g.away) + "</div></div>" +
       cmpRow(g.hShots, "Shots", g.aShots, g.hShots, g.aShots) +
-      ((g.enFor || 0) + (g.enAgainst || 0) ? cmpRow(g.enFor || 0, "Empty net goals", g.enAgainst || 0, g.enFor || 0, g.enAgainst || 0) : "") +
       (g.fo ? '<div class="cmp fo"><b>' + esc(g.fo) + '</b><span class="c">Faceoffs won</span></div>' : "") + "</div>";
     var goalsH = !g.goals.length ? "" : "<h2>Goals</h2><div class='card'>" + g.goals.map(function (x) {
       return '<div class="ev ' + (x.home ? "goal" : "pen") + '"><span class="t" style="font-family:var(--display);font-weight:700;font-size:18px;min-width:90px">' + (x.nc ? "P" + esc(x.per) + " video " + hms(x.vsec) : "P" + esc(x.per) + " " + Math.floor(x.sec / 60) + ":" + ("0" + x.sec % 60).slice(-2)) + '</span><span class="lb">' + (x.sit ? '<span class="pill W">' + x.sit + "</span> " : "") +
@@ -2704,8 +2703,10 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var fw = 0, fl = 0; Object.keys(s.fo).forEach(function (z) { fw += s.fo[z][0]; fl += s.fo[z][1]; });
     var en = RV_MOVES.reduce(function (a, m) { return a + s.en[m]; }, 0), ex = RV_MOVES.reduce(function (a, m) { return a + s.ex[m]; }, 0);
     var row = function (l, a, b) { return "<tr><td>" + l + "</td><td>" + a + "</td><td>" + b + "</td></tr>"; };
+    var enN = function (tag) { return list.filter(function (c) { return c.tag === tag && (c.lists || []).indexOf("Empty net") >= 0; }).length; };
+    var enRow = function () { var a = enN("For: Goal"), b = enN("Against: Goal"); return a + b ? row("Empty net goals", a, b) : ""; };
     return "<div class='card scroll'><table><thead><tr><th></th><th>" + esc(usN()) + "</th><th>" + esc(themN(date)) + "</th></tr></thead><tbody>" +
-      row("Shots on goal", s.For.sog, s.Against.sog) + row("Goals", s.For.goals, s.Against.goals) + row("Power play goals", sitN(list, "For: Goal", "PP"), sitN(list, "Against: Goal", "PP")) + row("Short handed goals", sitN(list, "For: Goal", "SH"), sitN(list, "Against: Goal", "SH")) +
+      row("Shots on goal", s.For.sog, s.Against.sog) + row("Goals", s.For.goals, s.Against.goals) + row("Power play goals", sitN(list, "For: Goal", "PP"), sitN(list, "Against: Goal", "PP")) + row("Short handed goals", sitN(list, "For: Goal", "SH"), sitN(list, "Against: Goal", "SH")) + enRow() +
       "</tbody></table></div>" +
       "<div class='card scroll' style='margin-top:12px'><table><thead><tr><th></th><th>OZ</th><th>NZ</th><th>DZ</th><th>All</th></tr></thead><tbody>" +
       "<tr><td>Faceoffs won</td>" + ["OZ", "NZ", "DZ"].map(function (z) { return "<td>" + s.fo[z][0] + "/" + (s.fo[z][0] + s.fo[z][1]) + "</td>"; }).join("") + "<td><b>" + fw + "/" + (fw + fl) + " (" + pct(fw, fw + fl) + ")</b></td></tr></tbody></table></div>" +
