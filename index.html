@@ -37,6 +37,7 @@ h3 { font-family: var(--display); font-weight: 600; letter-spacing: .08em; text-
 .row { display: grid; gap: 12px; }
 .g2 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
 .g3 { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+.kpis.five { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; } .kpis.five .kpi { padding: 10px 4px; text-align: center; } @media (max-width: 600px) { .kpis.five .kpi b { font-size: 22px; } .kpis.five .kpi span { font-size: 10px; letter-spacing: 0; } }
 .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-top: 16px; }
 .kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
 .kpi b { display: block; font-family: var(--display); font-size: 36px; line-height: 1; font-variant-numeric: tabular-nums; }
@@ -224,7 +225,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
 }
 @media (prefers-reduced-motion: no-preference) { .pcard { transition: border-color .15s; } }
 .gapbad { color: #ff7b7b; } .gapsub td { font-size: 13px; color: var(--mut, #9aa3b8); padding-top: 2px; }
-.gstbl td, .gstbl th { white-space: nowrap; padding: 6px 8px; } .gstbl tr.gsus td { background: rgba(124, 77, 255, .18); font-weight: 700; }
+.gstbl td, .gstbl th { white-space: nowrap; padding: 6px 8px; } .gstbl td:nth-child(2), .gstbl th:nth-child(2) { text-align: left; } .gstbl tr.gsus td { background: rgba(124, 77, 255, .18); font-weight: 700; }
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Barlow+Condensed:wght@600;700&display=swap">
 </head>
@@ -696,9 +697,12 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   function vOverview() {
     var t = team(), P = aggPlayers(), G = aggGoalies();
     var labels = D.games.map(function (g) { return fmtDate(g.date); });
-    var h = nextGamesHtml() + '<div class="kpis">' +
-      kpi(t.w + "-" + t.l + "-" + t.t, "Record") + kpi(t.gf, "Goals for") + kpi(t.ga, "Goals against") +
-      kpi(t.sf, "Shots for") + kpi(t.sa, "Shots against") + kpi(pct(t.sf, t.sf + t.sa), "Shot share") + "</div>";
+    var fw = 0, ft = 0, fp = [];
+    D.games.forEach(function (g) { if (g.pending) return; var m = /^(\d+)\/(\d+)/.exec(g.fo || ""), q = /(\d+)%/.exec(g.fo || ""); if (m && +m[2]) { fw += +m[1]; ft += +m[2]; } else if (q) fp.push(+q[1]); });
+    var foTxt = ft ? pct(fw, ft) : fp.length ? Math.round(fp.reduce(function (a, b) { return a + b; }, 0) / fp.length) + "%" : "-";
+    var svW = t.sa ? Math.round((1 - t.ga / t.sa) * 1000) / 1000 : null;
+    var h = nextGamesHtml() + '<div class="kpis five">' +
+      kpi(pct(t.sf, t.sf + t.sa), "Shot share") + kpi(t.gp ? (Math.round(t.sf / t.gp * 10) / 10) : "-", "Shots per game") + kpi(pct(t.gf, t.sf), "Shooting %") + kpi(svW === null ? "-" : svW.toFixed(3).replace(/^0/, ""), "Save %") + kpi(foTxt, "Faceoff win %") + "</div>";
     h += vStandings();
     h += "<h2>What stands out</h2><div class='card'>" + insights(P, G, t) + "</div>";
     h += "<h2>Trends</h2><div class='row g2'>" +
