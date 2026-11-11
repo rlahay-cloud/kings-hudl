@@ -2619,7 +2619,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   function penStart(c) { return c.from != null ? c.from : c.sec; }
   function penSpan(c) { var d = c.until - penStart(c); return (c.from != null && c.from !== c.sec ? "called " + hms(c.sec) + ", " : "") + "penalty time " + hms(penStart(c)) + " to " + hms(c.until) + " (" + Math.floor(d / 60) + ":" + ("0" + d % 60).slice(-2) + " of video)"; }
   // A penalty with no end time is assumed over after this much video, or when the other team scores (a minor ends on a goal).
-  var ASSUME_PEN_SEC = 240;
+  var ASSUME_PEN_SEC = 150;
   function penEnd(list, p) {
     if (p.until != null) return p.until;
     var s0 = penStart(p), end = s0 + ASSUME_PEN_SEC, opp = p.tag === "Penalty" ? "Against: Goal" : "For: Goal";
@@ -2666,7 +2666,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       "<tr><td>Zone entries</td>" + RV_MOVES.map(function (m) { return "<td>" + s.en[m] + "</td>"; }).join("") + "<td>" + en + "</td><td>" + pct(s.en.Carry + s.en.Pass, en) + "</td></tr>" +
       "<tr><td>Zone exits</td>" + RV_MOVES.map(function (m) { return "<td>" + s.ex[m] + "</td>"; }).join("") + "<td>" + ex + "</td><td>" + pct(s.ex.Carry + s.ex.Pass, ex) + "</td></tr></tbody></table></div>" +
       "<p class='note'>Controlled means the puck was carried or passed, not dumped or turned over.</p>" +
-      (list.some(function (c) { return (c.tag === "Penalty" || c.tag === "Away Penalty") && c.until == null; }) ? "<p class='note'>Some penalties have no end time yet. They are assumed to last up to 4 minutes of video, or until the other team scores. Tap a penalty and use Penalty time ends now to set it exactly.</p>" : "");
+      (list.some(function (c) { return (c.tag === "Penalty" || c.tag === "Away Penalty") && c.until == null; }) ? "<p class='note'>Some penalties have no end time yet. They are assumed to last up to 2.5 minutes of video, or until the other team scores. Tap a penalty and use Penalty time ends now to set it exactly.</p>" : "");
   }
   function reviewBlock(date) {
     var l = allReview(date); if (!l.length) return "";
@@ -2964,7 +2964,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       $("rvCount").textContent = view.length + (view.length === 1 ? " event" : " events");
       $("rvList").innerHTML = view.length ? view.map(function (c, i) {
         var g = itemGroup(c);
-        return '<div class="ev" data-i="' + i + '"><button class="tm" style="background:none;border:0;color:var(--accent);font-family:var(--display);font-weight:700;font-size:18px;min-width:70px;text-align:left;padding:0">' + hms(mark(c)) + '</button><span class="lb"><i class="dot" style="background:' + (g ? g.c : "#93a1bd") + '"></i><b>' + esc(itemLabel(c)) + "</b>" + (c.src === "rv" ? " P" + (c.p || 1) : "") + (c.src === "rv" && /: Goal$/.test(c.tag) && goalSit(allReview(date), c) ? ' <span class="pill W">' + goalSit(allReview(date), c) + "</span>" : "") + (c.src === "rv" && c.infr ? ": " + esc(c.infr) : "") + (c.src === "rv" && c.until != null ? ' <span class="mut">' + penSpan(c) + "</span>" : "") + (c.lists && c.lists.length ? c.lists.map(function (n) { return ' <span class="pill">' + esc(n) + "</span>"; }).join("") : "") + (c.src === "rv" && (c.tag === "Penalty" || c.tag === "Away Penalty") && c.until == null ? ' <span class="mut" style="color:#e5484d">no end time yet (assumed up to 4 min)</span>' : "") + whoHtml(c) + (c.x != null ? ' <span class="mut">spot</span>' : "") + (c.label ? " " + esc(c.label) : "") + "</span></div>";
+        return '<div class="ev" data-i="' + i + '"><button class="tm" style="background:none;border:0;color:var(--accent);font-family:var(--display);font-weight:700;font-size:18px;min-width:70px;text-align:left;padding:0">' + hms(mark(c)) + '</button><span class="lb"><i class="dot" style="background:' + (g ? g.c : "#93a1bd") + '"></i><b>' + esc(itemLabel(c)) + "</b>" + (c.src === "rv" ? " P" + (c.p || 1) : "") + (c.src === "rv" && /: Goal$/.test(c.tag) && goalSit(allReview(date), c) ? ' <span class="pill W">' + goalSit(allReview(date), c) + "</span>" : "") + (c.src === "rv" && c.infr ? ": " + esc(c.infr) : "") + (c.src === "rv" && c.until != null ? ' <span class="mut">' + penSpan(c) + "</span>" : "") + (c.lists && c.lists.length ? c.lists.map(function (n) { return ' <span class="pill">' + esc(n) + "</span>"; }).join("") : "") + (c.src === "rv" && (c.tag === "Penalty" || c.tag === "Away Penalty") && c.until == null ? ' <span class="mut" style="color:#e5484d">no end time yet (assumed up to 2.5 min)</span>' : "") + whoHtml(c) + (c.x != null ? ' <span class="mut">spot</span>' : "") + (c.label ? " " + esc(c.label) : "") + "</span></div>";
       }).join("") : '<p class="note">Nothing marked yet.</p>';
       $("rvSum").innerHTML = RV.length ? reviewSummaryHtml(RV, date) : '<div class="card empty"><p class="note">Review numbers appear here as you mark.</p></div>';
     }
