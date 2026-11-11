@@ -175,6 +175,7 @@ input[type=text], input[type=url], input[type=date], select, textarea { min-heig
 #vpBar .vpmain button { min-width: 0; padding: 0 1px; font-size: 13px; line-height: 1.15; white-space: nowrap; overflow: hidden; letter-spacing: 0; text-transform: none; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
 #vpCard { padding-left: 10px; padding-right: 10px; }
 #vpBar .vpsub { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; } #vpBar .vpsub button { min-width: 0; min-height: 40px; padding: 0 2px; font-size: 12px; letter-spacing: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#vpBar button[aria-pressed="true"], #vpStage.full #vpBar button[aria-pressed="true"] { background: var(--accent); border-color: #fff; color: var(--accent-ink); box-shadow: 0 0 0 2px var(--accent), inset 0 0 0 1px #fff; font-weight: 800; }
 #vpBar .vpbtns button { min-height: 44px; padding: 0 12px; font-weight: 700; font-size: 14px; }
 #vpBar .vpbtns .vpgo { flex: 1 1 auto; }
 body:has(#vpStage.full) header.top { display: none; }
