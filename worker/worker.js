@@ -1,4 +1,4 @@
-// Kings HUDL submit helper. Runs on Cloudflare Workers.
+// Kings Film Room submit helper. Runs on Cloudflare Workers.
 // Takes highlight or shot files from the site and saves them into the games folder of the GitHub repo.
 // Settings it needs (set in the Cloudflare dashboard):
 //   GITHUB_TOKEN   secret   a GitHub token that can only write to this one repo

@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Kings HUDL</title>
-<meta name="description" content="Kings HUDL: season stats, game box scores, goals and video for the team">
+<title>Kings Film Room</title>
+<meta name="description" content="Kings Film Room: season stats, game box scores, goals and video for the team">
 <meta name="theme-color" content="#0b1220">
 
 <style>
@@ -234,7 +234,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
 </head>
 <body>
 <header class="top"><div class="in">
-  <div class="title"><h1 id="team">Kings HUDL</h1><span class="rec" id="rec"></span><span class="note" id="sub" style="flex-basis:100%"></span></div>
+  <div class="title"><h1 id="team">Kings Film Room</h1><span class="rec" id="rec"></span><span class="note" id="sub" style="flex-basis:100%"></span></div>
   <nav id="nav" aria-label="Sections"></nav>
 </div></header>
 <main class="wrap" id="app" aria-live="polite"><p class="note" style="margin-top:24px">Loading stats...</p></main>
@@ -610,7 +610,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       return "<a class='card' href='#/next/" + g.date + "' style='display:block;color:inherit;text-decoration:none'><h3 style='margin:0 0 4px'>" + (i === 0 ? "Up next" : "After that") + "</h3><div style='font-family:var(--display);font-weight:700;font-size:22px'>" + days[d.getDay()] + " " + fmtDate(g.date) + ", " + h12 + ":" + mm + " " + ap + "</div><div style='margin-top:4px'>" + (g.home ? "vs " : "at ") + "<b>" + esc(g.opp) + "</b></div>" + (g.venue ? "<div class='note' style='margin:4px 0 0'>" + esc(g.venue) + (g.home ? ", home" : ", away") + "</div>" : "") + "<div class='note' style='margin:6px 0 0;color:var(--accent)'>Tap to see past games against them &rarr;</div></a>";
     }).join("") + "</div>";
   }
-  // GameSheet's own standings page, shown inside Kings HUDL so it is always live.
+  // GameSheet's own standings page, shown inside Kings Film Room so it is always live.
   function gsUrl(q) { return "https://gamesheetstats.com/seasons/15454/standings?configuration%5Bcompact-view%5D=compact&filter%5Bdivision%5D=83415&filter%5Bquery%5D=" + encodeURIComponent(q || "") + "&filter%5Bview%5D=divisions"; }
   // GameSheet team page ids (the number in gamesheetstats.com/seasons/15454/teams/<id>/preview). Add a team here to show its own page.
   var GS_TEAMS = [{name: "Cumberland Jr Grads", id: 533170}, {name: "Kanata Blazers", id: 533169}, {name: "Gloucester Rangers", id: 533166}];
@@ -1485,7 +1485,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var url = /^https?:\/\//.test(cfg.submitUrl) ? cfg.submitUrl : "https://" + cfg.submitUrl;
     return fetch(url, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({passcode: c.pass, coach: asGame ? "game" : c.name, date: date, kind: kind, text: text})})
       .then(function (r) { return r.json().catch(function () { return {ok: false, error: "Bad reply"}; }); })
-      .then(function (j) { if (j.ok) markSent(kind === "review" ? "r" : asGame ? "e" : "c", date); noteEl.textContent = j.ok ? "Sent to Kings HUDL. Thank you!" : "Not sent: " + (j.error || "unknown problem") + "."; })
+      .then(function (j) { if (j.ok) markSent(kind === "review" ? "r" : asGame ? "e" : "c", date); noteEl.textContent = j.ok ? "Sent to Kings Film Room. Thank you!" : "Not sent: " + (j.error || "unknown problem") + "."; })
       .catch(function () { noteEl.textContent = "Not sent, no connection. Your marks are saved on this phone. Try again later."; });
   }
   function coachCard(ev) {
@@ -1605,7 +1605,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
         '<details><summary class="note">Settings</summary><div class="fld"><label for="clLead">Save each moment this many seconds earlier</label><select id="clLead"><option>0</option><option>5</option><option selected>8</option><option>10</option><option>15</option></select></div></details></div>' +
         "<details class='card' id='clBox' style='margin-top:12px'><summary id='clSum' style='cursor:pointer;font-family:var(--display);font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:18px'></summary><div id='clList' style='margin-top:10px'></div></details>" +
         '<div class="seg" style="margin-top:12px"><button class="btn" id="clClear">Delete all of mine for this game</button></div>' +
-        '<div class="seg" style="margin-top:12px"><button class="btn" id="clSend" style="width:100%">Share to Kings HUDL</button></div><p class="note" id="clShare" aria-live="polite"></p>';
+        '<div class="seg" style="margin-top:12px"><button class="btn" id="clSend" style="width:100%">Share to Kings Film Room</button></div><p class="note" id="clShare" aria-live="polite"></p>';
     } else {
       h += "<h2>All highlights</h2><div class='card'><div class='filters'><div class='fld'><label for='clCoach'>Coach</label><select id='clCoach'></select></div><div class='fld'><label for='clTag'>Type</label><select id='clTag'></select></div></div><div id='clAll'></div></div>";
     }
@@ -1740,7 +1740,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       if (!list.length) { $("clShare").textContent = "Nothing to delete."; return; }
       if (!window.confirm("Delete all " + list.length + " of your highlights for this game?")) return;
       list.length = 0; persist(); renderList();
-      $("clShare").textContent = "Deleted here. Tap Share to Kings HUDL to remove them from the site too.";
+      $("clShare").textContent = "Deleted here. Tap Share to Kings Film Room to remove them from the site too.";
     });
     if (mark) return;
     // Everyone's highlights, with filters (watch page)
@@ -2821,7 +2821,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       '<h2>Events<small id="rvCount"></small></h2><div class="card" id="rvList"></div>' +
       '<div class="seg" style="margin-top:12px"><button class="btn" id="rvUndo">Undo last</button><button class="btn" id="rvClear">Delete all of mine for this game</button></div>' +
       (function () { mineOf(CK, "c", date); mineOf(EK, "e", date); mineOf(RK, "r", date); var bk = lget("kh-backup-v1"), n = ["c", "e", "r"].reduce(function (t, k) { return t + ((bk[k + "|" + date] || []).length); }, 0); return n ? '<div class="card" style="margin-top:10px"><p class="note" style="margin:0 0 6px">' + n + ' marks that were on this device before the last update are saved here. Missing something? Bring them back, then check the list and tap Share.</p><div class="seg"><button class="btn" id="rvBk">Bring back my earlier marks</button></div></div>' : ""; })() +
-      '<div class="seg" style="margin-top:12px"><button class="btn" id="rvSend" style="width:100%">Share to Kings HUDL</button></div><p class="note" id="rvShare" aria-live="polite"></p>';
+      '<div class="seg" style="margin-top:12px"><button class="btn" id="rvSend" style="width:100%">Share to Kings Film Room</button></div><p class="note" id="rvShare" aria-live="polite"></p>';
     return h;
   }
   function vCoachPlayers() { return "<h2>Game Desk</h2>" + coachSubTabs("players") + '<div class="card" style="margin-top:12px" id="plEd"></div>'; }
@@ -3112,12 +3112,12 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
         delete bk[j[0] + "|" + date];
       });
       lset("kh-backup-v1", bk); persist(); drawAll(); $("rvBk").parentNode.parentNode.remove();
-      $("rvShare").textContent = "Brought back " + add + " marks. Check them, then tap Share to Kings HUDL.";
+      $("rvShare").textContent = "Brought back " + add + " marks. Check them, then tap Share to Kings Film Room.";
     });
     $("rvClear").addEventListener("click", function () {
       if (!view.length) { $("rvShare").textContent = "Nothing to delete."; return; }
       if (!window.confirm("Delete all " + view.length + " of your marks for this game?")) return;
-      HL.length = 0; EV.length = 0; RV.length = 0; st.sel = null; persist(); drawAll(); $("rvShare").textContent = "Deleted here. Tap Share to Kings HUDL to remove them from the site too.";
+      HL.length = 0; EV.length = 0; RV.length = 0; st.sel = null; persist(); drawAll(); $("rvShare").textContent = "Deleted here. Tap Share to Kings Film Room to remove them from the site too.";
     });
     $("rvSend").addEventListener("click", function () {
       var sent = D.clips[date] || {}, jobs = [];
@@ -3184,7 +3184,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
         rinkSvg() +
         '<div class="seg stickybar"><button class="btn good" id="shGoal" disabled>Goal</button><button class="btn bad" id="shSave" disabled>Saved, no goal</button></div>' +
         '<p class="note" id="shNote" aria-live="polite"></p>' +
-        '<div class="seg"><button id="shUndo">Undo last</button></div><button class="btn" id="shSend" style="width:100%">Share to Kings HUDL</button><p class="note" id="shShare" aria-live="polite"></p></div>';
+        '<div class="seg"><button id="shUndo">Undo last</button></div><button class="btn" id="shSend" style="width:100%">Share to Kings Film Room</button><p class="note" id="shShare" aria-live="polite"></p></div>';
     }
     var ds = shotDates(), nums = rosterNums();
     return "<h2>Shot map</h2>" +
@@ -3606,7 +3606,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     if (!items.length) { box.innerHTML = '<div class="card" style="margin-top:12px"><p style="margin:0"><b>Nothing to fix.</b> Every mark has what it needs.</p></div>'; return; }
     var n = 0, h = '<p class="note" style="margin-top:12px">' + items.length + (items.length === 1 ? " thing" : " things") + " to fix. Tap Watch to see the clip, fix it right here, and it disappears from the list. Then tap Share for that game.</p>";
     order.forEach(function (d) {
-      h += "<h2>" + esc(by[d][0].game) + "<small>" + by[d].length + '</small></h2><div class="seg" style="margin-bottom:8px"><button class="btn" data-fx="share" data-d="' + d + '">Share this game to Kings HUDL</button></div><p class="note" data-fxn="' + d + '" aria-live="polite"></p>';
+      h += "<h2>" + esc(by[d][0].game) + "<small>" + by[d].length + '</small></h2><div class="seg" style="margin-bottom:8px"><button class="btn" data-fx="share" data-d="' + d + '">Share this game to Kings Film Room</button></div><p class="note" data-fxn="' + d + '" aria-live="polite"></p>';
       by[d].forEach(function (x) {
         h += '<div class="card fxit" data-d="' + d + '" data-s="' + (x.sec == null ? "" : x.sec) + '" data-t="' + esc(x.tag) + '" data-k="' + x.kind + '" style="margin-bottom:10px"><div class="seg" style="justify-content:space-between;align-items:center;margin-bottom:8px"><b>' + (x.sec != null ? hms(x.sec) + " " : "") + esc(x.what) + "</b>" + (x.sec != null ? '<button data-fx="watch">Watch</button>' : "") + "</div>" + fixBody(x) + "</div>";
       });
@@ -3846,10 +3846,10 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     var cur = base === "player" ? "players" : base === "game" ? "games" : base === "next" ? "" : base === "coach" && parts[1] && ["analysis", "players", "shifts", "setup", "gaps", "gamesheet", "fixit", "shots"].indexOf(parts[1]) >= 0 ? "coach/analysis" : base;
     $("nav").innerHTML = tabs.map(function (t) { return '<a href="#/' + t[0] + '"' + (t[0] === cur ? ' aria-current="page"' : "") + ">" + t[1] + "</a>"; }).join("");
     var t = team();
-    $("team").textContent = "Kings HUDL";
+    $("team").textContent = "Kings Film Room";
     $("sub").textContent = D.home || "";
     $("rec").textContent = D.games.length ? t.w + "-" + t.l + "-" + t.t + (D.sample ? " (sample)" : "") : "";
-    document.title = "Kings HUDL";
+    document.title = "Kings Film Room";
     var h = D.sample ? '<div class="banner">This is sample data to show how the site looks. It is not real.</div>' : "";
     if (base === "shots" && parts[1] === "mark") { location.replace("#/coach"); return; }
     if (base === "coach" && parts[1] === "shots") { location.replace("#/coach/analysis"); return; }

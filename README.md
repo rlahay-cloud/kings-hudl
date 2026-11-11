@@ -1,10 +1,10 @@
-# Kings HUDL
+# Kings Film Room
 
-A season stats website for the team, called Kings HUDL. Open it on a phone or computer to see the record, leaders, player tables, game box scores, goalies and video moments.
+A season stats website for the team, called Kings Film Room. Open it on a phone or computer to see the record, leaders, player tables, game box scores, goalies and video moments.
 
 ## Coaches
 
-Coaches open **Coach’s Corner**, type their name and the coach passcode once, load the game video, and tap the buttons (Goal, Save, Chance, Good play, Breakout, Blocked shot, Review). Share to Kings HUDL sends their file into the games folder, one file per coach. The Video tab shows everyone's clips together and can filter by game, coach, type, player and playlist. Setup for the sending helper is in `worker/SETUP.md`.
+Coaches open **Coach’s Corner**, type their name and the coach passcode once, load the game video, and tap the buttons (Goal, Save, Chance, Good play, Breakout, Blocked shot, Review). Share to Kings Film Room sends their file into the games folder, one file per coach. The Video tab shows everyone's clips together and can filter by game, coach, type, player and playlist. Setup for the sending helper is in `worker/SETUP.md`.
 
 ## After each game
 
@@ -40,7 +40,7 @@ The Video tab collects every clip from every game: coach highlights plus Streamn
 
 ## Roster from Streamn
 
-After End Game, Streamn writes `season_backup.txt`. Upload it to the top of this repository (replace the old one). Kings HUDL then uses Streamn's roster, with names, for the shot marking buttons, player lists and goalie names. `roster.json` is only used for names Streamn does not have.
+After End Game, Streamn writes `season_backup.txt`. Upload it to the top of this repository (replace the old one). Kings Film Room then uses Streamn's roster, with names, for the shot marking buttons, player lists and goalie names. `roster.json` is only used for names Streamn does not have.
 
 ## Names
 
@@ -77,7 +77,7 @@ One screen, Review, holds everything for coaches.
 - **Coach notes.** Good play, Breakout, Chance and Review save with the coach's name and show in the Video tab.
 - **No names on game facts.** Shots, goals, penalties and the rest of the review save as one shared file per game, `games/review_DATE_game.txt`. Goals and penalties also show in the Video tab and on player pages.
 
-Share to Kings HUDL sends everything at once. Player pages show goals, assists and penalties by default, with buttons to switch on the rest. If two coaches review the same game, whoever shares last replaces the shared review file, so load the game first and add to what is there.
+Share to Kings Film Room sends everything at once. Player pages show goals, assists and penalties by default, with buttons to switch on the rest. If two coaches review the same game, whoever shares last replaces the shared review file, so load the game first and add to what is there.
 
 ## Upcoming games
 

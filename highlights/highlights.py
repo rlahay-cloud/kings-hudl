@@ -1,10 +1,10 @@
-"""Kings HUDL highlight video maker.
+"""Kings Film Room highlight video maker.
 
-Reads the clip list that Kings HUDL already has for a game (every Kings goal, plus the clips
+Reads the clip list that Kings Film Room already has for a game (every Kings goal, plus the clips
 tagged Highlight in Coach's Corner), cuts those moments out of the full game video on this
 computer, and joins them into one video. Nothing is uploaded.
 
-Times in Kings HUDL are seconds into the main game video. If your video file starts at a
+Times in Kings Film Room are seconds into the main game video. If your video file starts at a
 different moment than that one, use the offset (seconds to add to every time, can be negative).
 
 Command line:
@@ -30,7 +30,7 @@ LEAD_SAVE, TAIL_SAVE = 4.0, 3.0
 MAX_WIDTH = 1920
 
 
-# ---------- the clip list from Kings HUDL ----------
+# ---------- the clip list from Kings Film Room ----------
 def hms(text):
     m = re.match(r"^(\d+):(\d{2}):(\d{2})$", text.strip())
     return int(m.group(1)) * 3600 + int(m.group(2)) * 60 + int(m.group(3)) if m else None
@@ -43,7 +43,7 @@ def _get(url):
 
 
 def game_dates():
-    """Dates that have a video review or clips on Kings HUDL, newest first."""
+    """Dates that have a video review or clips on Kings Film Room, newest first."""
     names = json.loads(_get(RAW + "index.json"))
     dates = set()
     for n in names:
@@ -243,7 +243,7 @@ def make_video(video, date, out, offset=0.0, test=False, local_dir=None, log=pri
     files = fetch_game_files(date, local_dir)
     items = [i for i in collect(files) if saves or i["kind"] != "save"]
     if not items:
-        raise RuntimeError("Kings HUDL has no goals or highlight clips for %s yet." % date)
+        raise RuntimeError("Kings Film Room has no goals or highlight clips for %s yet." % date)
     ffmpeg = find_ffmpeg(log)
     dur = video_length(ffmpeg, video)
     segs = segments(items, offset, dur)
@@ -283,10 +283,10 @@ def make_video(video, date, out, offset=0.0, test=False, local_dir=None, log=pri
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Make a Kings highlight video from Kings HUDL clips.")
+    ap = argparse.ArgumentParser(description="Make a Kings highlight video from Kings Film Room clips.")
     ap.add_argument("date", help="Game date, like 2026-10-18")
     ap.add_argument("video", help="The full game video file")
-    ap.add_argument("--offset", type=float, default=0.0, help="Seconds to add to every Kings HUDL time")
+    ap.add_argument("--offset", type=float, default=0.0, help="Seconds to add to every Kings Film Room time")
     ap.add_argument("--test", action="store_true", help="Only make the first clip, to check the timing")
     ap.add_argument("--no-saves", action="store_true", help="Leave out the saves (shots against)")
     ap.add_argument("--out", default=None)

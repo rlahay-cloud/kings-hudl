@@ -1,7 +1,7 @@
 Kings Highlight Video
 
 Makes one highlight video for a game. It uses every Kings goal plus the clips you tagged Highlight in
-Coach's Corner, in game order, with a short caption on each. The clip list comes from Kings HUDL.
+Coach's Corner, in game order, with a short caption on each. The clip list comes from Kings Film Room.
 The video is cut on this computer from your full game video. Nothing is uploaded.
 
 First time only

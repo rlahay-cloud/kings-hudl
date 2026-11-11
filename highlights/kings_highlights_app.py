@@ -1,6 +1,6 @@
-"""Kings HUDL Highlight Video maker, its own small Windows program.
+"""Kings Film Room Highlight Video maker, its own small Windows program.
 
-Cuts the Kings goals and Highlight clips that Kings HUDL has for a game out of the full game video
+Cuts the Kings goals and Highlight clips that Kings Film Room has for a game out of the full game video
 on this computer and joins them into one video. Nothing is uploaded.
 """
 import os
@@ -26,7 +26,7 @@ def keep_awake(on):
 
 
 class App(tk.Tk):
-    """Cuts the Kings goals and Highlight clips from Kings HUDL out of the game video and joins them."""
+    """Cuts the Kings goals and Highlight clips from Kings Film Room out of the game video and joins them."""
 
     def __init__(self):
         super().__init__()
@@ -36,7 +36,7 @@ class App(tk.Tk):
         self.q = queue.Queue()
         self.busy = False
         pad = {"padx": 12, "pady": 6}
-        tk.Label(self, text="Highlight video from Kings HUDL", font=("Segoe UI", 14, "bold")).pack(anchor="w", **pad)
+        tk.Label(self, text="Highlight video from Kings Film Room", font=("Segoe UI", 14, "bold")).pack(anchor="w", **pad)
         tk.Label(self, justify="left", anchor="w", wraplength=600,
                  text="Uses every Kings goal plus the clips you tagged Highlight in Coach's Corner. "
                       "It cuts them out of the full game video on this computer and joins them in game order.").pack(fill="x", padx=12)
@@ -51,7 +51,7 @@ class App(tk.Tk):
         self.date = tk.StringVar()
         self.cb = ttk.Combobox(f2, textvariable=self.date, width=14)
         self.cb.pack(side="left", padx=8, pady=8)
-        self.lbl_dates = tk.Label(f2, text="Loading the games from Kings HUDL...", anchor="w")
+        self.lbl_dates = tk.Label(f2, text="Loading the games from Kings Film Room...", anchor="w")
         self.lbl_dates.pack(side="left", padx=8)
         f3 = ttk.LabelFrame(self, text="3. Timing (leave at 0 unless the clips start at the wrong moment)")
         f3.pack(fill="x", **pad)

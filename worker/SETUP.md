@@ -1,6 +1,6 @@
 # Setting up the helper (one time, about 15 minutes)
 
-The helper is a small free program on Cloudflare. When a coach taps Share to Kings HUDL, the site sends the highlights to the helper, and the helper saves them into the games folder here.
+The helper is a small free program on Cloudflare. When a coach taps Share to Kings Film Room, the site sends the highlights to the helper, and the helper saves them into the games folder here.
 
 ## Part 1: Make a GitHub key
 
@@ -28,7 +28,7 @@ The helper is a small free program on Cloudflare. When a coach taps Share to Kin
 
 ## Part 3: Tell the site where the helper is
 
-Open config.json in this repo on GitHub, tap the pencil, and put the address between the quotes after submitUrl, then commit. After a minute the Share to Kings HUDL button sends to GitHub.
+Open config.json in this repo on GitHub, tap the pencil, and put the address between the quotes after submitUrl, then commit. After a minute the Share to Kings Film Room button sends to GitHub.
 
 ## If something goes wrong
 
