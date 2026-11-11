@@ -1,0 +1,10 @@
+0:09:26|Faceoff: NZ Loss|97|,,1,f
+0:16:39|For: Goal|13 a93 a91 i86 i18 i91 i93|0.828,0.700,1,f
+0:24:30|Against: Goal|2 i93 i13 i19 i4 i91|0.161,0.256,2,f
+0:31:46|Against: Goal|2 i88 i97 i86 i18 i14|0.163,0.278,2,f
+0:41:16|For: Goal|93 i86 i13 i4 i91|0.909,0.465,3,f
+0:44:12|Against: Goal|2 i38 i11 i10 i72 i97|0.125,0.399,3,f
+0:47:32|For: Goal|93 a86 a13 i91 i13 i18 i86|0.778,0.741,3,f
+0:51:47|Against: Goal|2 i72 i4 i38 i17 i11|0.139,0.730,3,f
+0:56:24|Against: Goal|i18 i17 i86 i97 i38|0.106,0.822,3,f|Double check
+0:57:27|Against: Goal|i38 i11 i17 i10 i72|0.208,0.476,3,f
