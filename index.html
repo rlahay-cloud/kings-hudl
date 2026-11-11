@@ -2974,7 +2974,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
         (c.src === "rv" && (c.tag === "Penalty" || c.tag === "Away Penalty") ? '<div class="fld"><label for="rvInfr">Infraction (optional)</label><select id="rvInfr"><option value="">Not set</option>' + INFR.map(function (n) { return "<option" + (c.infr === n ? " selected" : "") + ">" + n + "</option>"; }).join("") + '</select></div><div class="seg"><button data-act="pstart">Penalty time starts now</button><button data-act="pend">Penalty time ends now</button><button data-act="pendx">Clear times</button></div><p class="note" style="margin:4px 0">Called at ' + hms(c.sec) + ". " + (c.until != null ? "Penalty time: " + penSpan(c) + "." : (c.from != null ? "Penalty time started at " + hms(c.from) + ". Play to where it ends, then tap Penalty time ends now." : "No penalty time yet. Play to where the penalty clock starts, tap Starts now, then Ends now when it is over.")) + "</p>" : "") +
         (c.src !== "ev" ? '<div class="fld"><label for="rvPlIn">Playlists</label>' + ((c.lists || []).length ? '<div class="seg">' + c.lists.map(function (n, i) { return '<button data-act="pldel" data-i="' + i + '" aria-label="Remove from ' + esc(n) + '">' + esc(n) + " &times;</button>"; }).join("") + "</div>" : "") + '<div class="seg"><select id="rvPlSel" aria-label="Choose a playlist"><option value="">Choose a playlist</option>' + allPlaylistNames().concat(allPlaylistNames().some(function (n) { return n.toLowerCase() === "highlights"; }) ? [] : ["Highlights"]).filter(function (n) { return (c.lists || []).indexOf(n) < 0; }).map(function (n) { return '<option value="' + esc(n) + '">' + esc(n) + "</option>"; }).join("") + '</select><button data-act="pladd">Add to playlist</button></div><div class="seg"><input type="text" id="rvPlIn" placeholder="Or type a new playlist name" maxlength="40"></div></div>' : "") +
         (c.src === "rv" && /: Goal$/.test(c.tag) && goalSit(allReview(date), c) ? '<p class="note" style="margin:4px 0"><b>' + (goalSit(allReview(date), c) === "PP" ? "Power play goal" : "Short handed goal") + "</b> (from the penalty times)</p>" : "") +
-        '<div class="pickwrap">' + pickHtml(c) + '</div><div class="seg" style="margin-top:8px"><button data-act="seek">Play from here</button>' + (c.src === "rv" ? '<button data-act="flag" aria-pressed="' + ((c.lists || []).indexOf("Double check") >= 0) + '">' + ((c.lists || []).indexOf("Double check") >= 0 ? "Flagged: tap to clear" : "Flag to double check") + "</button>" : "") + '<button data-act="del">Delete</button></div><p class="note" id="rvSelNote" aria-live="polite">' + ((c.lists || []).indexOf("Double check") >= 0 ? "Flagged. It shows in the Fix it list, where you can watch it from other angles and confirm what it is." : "") + "</p>";
+        '<div class="pickwrap">' + pickHtml(c) + '</div><div class="seg" style="margin-top:8px"><button data-act="seek">Play from here</button>' + (c.src === "rv" && /Goal$/.test(c.tag) ? '<button data-act="en" aria-pressed="' + ((c.lists || []).indexOf("Empty net") >= 0) + '">' + ((c.lists || []).indexOf("Empty net") >= 0 ? "Empty net: on" : "Empty net") + "</button>" : "") + (c.src === "rv" ? '<button data-act="flag" aria-pressed="' + ((c.lists || []).indexOf("Double check") >= 0) + '">' + ((c.lists || []).indexOf("Double check") >= 0 ? "Flagged: tap to clear" : "Flag to double check") + "</button>" : "") + '<button data-act="del">Delete</button></div><p class="note" id="rvSelNote" aria-live="polite">' + ((c.lists || []).indexOf("Double check") >= 0 ? "Flagged. It shows in the Fix it list, where you can watch it from other angles and confirm what it is." : "") + "</p>";
     }
     function zoneOf(x) { return x < 75 / 200 ? "DZ" : x > 125 / 200 ? "OZ" : "NZ"; }
     function drawZones() {
@@ -3121,6 +3121,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
       var b = e.target.closest("button"); if (!b) return; var c = st.sel; if (!c) return;
       var act = b.getAttribute("data-act");
       if (act === "seek") { if (cur) cur.seek(c.src === "rv" ? c.sec - 3 : c.sec); return; }
+      if (act === "en") { c.lists = c.lists || []; var ei = c.lists.indexOf("Empty net"); if (ei >= 0) c.lists.splice(ei, 1); else c.lists.push("Empty net"); persist(); drawSel(); drawList(); return; }
       if (act === "flag") { c.lists = c.lists || []; var fi = c.lists.indexOf("Double check"); if (fi >= 0) c.lists.splice(fi, 1); else c.lists.push("Double check"); persist(); drawSel(); drawList(); return; }
       if (act === "pladd") { var nm = cleanList($("rvPlSel").value || $("rvPlIn").value); if (!nm) return; c.lists = c.lists || []; if (c.lists.indexOf(nm) < 0) c.lists.push(nm); persist(); drawSel(); drawList(); return; }
       if (act === "pldel") { (c.lists || []).splice(+b.getAttribute("data-i"), 1); persist(); drawSel(); drawList(); return; }
@@ -3673,7 +3674,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
         bump(P, p.n, g, "sog", p.sog || 0, shc); bump(P, p.n, g, "g", p.g || 0, gc); bump(P, p.n, g, "a", p.a || 0, ac); bump(P, p.n, g, "pen", Math.ceil((pimFor(g.date, p) || 0) / 2), pc);
       });
       (g.goalies || []).forEach(function (q) {
-        var c = its.filter(function (x) { return (x.tag === "Goal against" || x.tag === "Against: Shot on goal") && (x.players || []).indexOf(q.n) >= 0; }).length;
+        var c = its.filter(function (x) { return (x.tag === "Goal against" || x.tag === "Against: Shot on goal") && (x.lists || []).indexOf("Empty net") < 0 && (x.players || []).indexOf(q.n) >= 0; }).length;
         bump(G, q.n, g, "sa", q.sa || 0, c);
       });
     });
@@ -3855,8 +3856,10 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
         if (n1 !== g.aShots) note("Their shots on goal: scoreboard had " + n1 + ", video review has " + g.aShots + ".");
       }
       var sa = {}, ga = {}, one = g.goalies.length === 1 ? g.goalies[0].n : null;
-      ag.forEach(function (c) { var k = c.players.length ? c.players[0] : one; if (k === null) return; sa[k] = (sa[k] || 0) + 1; if (c.tag === "Against: Goal") ga[k] = (ga[k] || 0) + 1; });
+      var enN = 0;
+      ag.forEach(function (c) { if (c.tag === "Against: Goal" && (c.lists || []).indexOf("Empty net") >= 0) { enN++; return; } var k = c.players.length ? c.players[0] : one; if (k === null) return; sa[k] = (sa[k] || 0) + 1; if (c.tag === "Against: Goal") ga[k] = (ga[k] || 0) + 1; });
       g.goalies.forEach(function (x) { if (aS.length) x.sa = sa[x.n] || 0; if (aG.length) x.ga = ga[x.n] || 0; });
+      if (enN) { g.enAgainst = enN; note(enN + " empty net goal" + (enN === 1 ? " was" : "s were") + " scored on us. Like the NHL, " + (enN === 1 ? "it is" : "they are") + " not charged to a goalie, so save percentage and goals against average leave " + (enN === 1 ? "it" : "them") + " out."); }
     }
     // penalties: the scoreboard only lists them as timestamps, so just compare counts
     var pr = by("Penalty").length, ev = (D.events[g.date] || []).filter(function (e) { return /^Penalty/i.test(e.label); }).length;
