@@ -165,6 +165,7 @@ input[type=text], input[type=url], input[type=date], select, textarea { min-heig
 #vpStage { position: relative; }
 #vpStage .ytbox { overflow: hidden; }
 #vpStage:not(.full) .ytbox { max-height: max(30vh, 160px); width: min(100%, calc(max(30vh, 160px) * 16 / 9)); margin: 0 auto; }
+#vpStage.full #vpTap { touch-action: none; }
 #vpTap { position: absolute; left: 0; right: 0; top: 0; bottom: 0; z-index: 1; cursor: pointer; }
 #vpBar { position: relative; z-index: 2; padding: 10px 2px 2px; background: transparent; }
 #vpBar .vprow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -1177,10 +1178,54 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
   var vpIdle = null;
   var vpIsFull = false;
   function vpWake() { var st = $("vpStage"); if (!st) return; st.classList.remove("idle"); clearTimeout(vpIdle); if (st.classList.contains("full") && vpCtl.playing) vpIdle = setTimeout(function () { st.classList.add("idle"); }, 3000); }
+  // pinch to zoom, drag to move and double tap to reset, for the video in full screen (iPad turns off page zoom in real full screen)
+  var vpZ = {s: 1, x: 0, y: 0, block: false, pts: {}, d0: 0, s0: 1, last: 0, moved: false};
+  function vpZoomApply() {
+    var b = $("vpBox"), st = $("vpStage"); if (!b || !st) return;
+    var w = st.clientWidth, h = st.clientHeight;
+    vpZ.s = Math.min(5, Math.max(1, vpZ.s));
+    vpZ.x = Math.min(0, Math.max(w * (1 - vpZ.s), vpZ.x)); vpZ.y = Math.min(0, Math.max(h * (1 - vpZ.s), vpZ.y));
+    b.style.transformOrigin = "0 0";
+    b.style.transform = vpZ.s === 1 ? "" : "translate(" + vpZ.x + "px," + vpZ.y + "px) scale(" + vpZ.s + ")";
+  }
+  function vpZoomReset() { vpZ.s = 1; vpZ.x = 0; vpZ.y = 0; vpZ.pts = {}; vpZoomApply(); }
+  function vpFullNow() { var st = $("vpStage"); return st && st.classList.contains("full"); }
+  document.addEventListener("pointerdown", function (e) {
+    if (!vpFullNow() || e.target.id !== "vpTap") return;
+    vpZ.pts[e.pointerId] = {x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY}; vpZ.moved = false;
+    var k = Object.keys(vpZ.pts); if (k.length === 2) { var a = vpZ.pts[k[0]], c = vpZ.pts[k[1]]; vpZ.d0 = Math.hypot(a.x - c.x, a.y - c.y) || 1; vpZ.s0 = vpZ.s; }
+    try { e.target.setPointerCapture(e.pointerId); } catch (x) {}
+  });
+  document.addEventListener("pointermove", function (e) {
+    var p = vpZ.pts[e.pointerId]; if (!p || !vpFullNow()) return;
+    var k = Object.keys(vpZ.pts), st = $("vpStage"), r = st.getBoundingClientRect();
+    if (k.length >= 2) {
+      var a = vpZ.pts[k[0]], c = vpZ.pts[k[1]];
+      var oldMx = (a.x + c.x) / 2 - r.left, oldMy = (a.y + c.y) / 2 - r.top;
+      p.x = e.clientX; p.y = e.clientY;
+      var mx = (a.x + c.x) / 2 - r.left, my = (a.y + c.y) / 2 - r.top, d = Math.hypot(a.x - c.x, a.y - c.y) || 1;
+      var ns = Math.min(5, Math.max(1, vpZ.s0 * d / vpZ.d0)), f = ns / vpZ.s;
+      vpZ.x = mx - (oldMx - vpZ.x) * f; vpZ.y = my - (oldMy - vpZ.y) * f; vpZ.s = ns; vpZ.moved = true; vpZ.block = true; vpZoomApply();
+    } else if (vpZ.s > 1) {
+      var dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
+      if (Math.hypot(e.clientX - p.sx, e.clientY - p.sy) > 8) { vpZ.moved = true; vpZ.block = true; }
+      if (vpZ.moved) { vpZ.x += dx; vpZ.y += dy; vpZoomApply(); }
+    }
+  });
+  function vpZoomUp(e) {
+    if (!vpZ.pts[e.pointerId]) return;
+    delete vpZ.pts[e.pointerId];
+    var k = Object.keys(vpZ.pts); if (k.length === 1) { vpZ.pts[k[0]].sx = vpZ.pts[k[0]].x; vpZ.pts[k[0]].sy = vpZ.pts[k[0]].y; }
+    if (!k.length && !vpZ.moved && vpZ.s > 1 && e.type === "pointerup") {
+      var n = Date.now(); if (n - vpZ.last < 350) { vpZoomReset(); vpZ.block = true; } vpZ.last = n;
+    } else if (!k.length && vpZ.s === 1) vpZ.last = vpZ.moved ? 0 : Date.now();
+    if (!k.length && vpZ.moved) setTimeout(function () { vpZ.block = false; }, 350);
+  }
+  document.addEventListener("pointerup", vpZoomUp); document.addEventListener("pointercancel", vpZoomUp);
   function vpFull(on) {
     var st = $("vpStage"); if (!st) return;
     if (on === undefined) on = !st.classList.contains("full");
-    vpIsFull = on; st.classList.toggle("full", on); st.classList.remove("idle"); document.body.style.overflow = on ? "hidden" : "";
+    vpIsFull = on; vpZoomReset(); st.classList.toggle("full", on); st.classList.remove("idle"); document.body.style.overflow = on ? "hidden" : "";
     // iPhone cannot do real full screen for a page element, so the stage is pinned over the whole page: lift its card above the header and hide the header
     document.body.classList.toggle("vpfull", on); var vc = $("vpCard"); if (vc) vc.style.zIndex = on ? "100000" : "";
     var fb = $("vpFs"); if (fb) fb.textContent = on ? "Exit full screen" : "Full";
@@ -1218,7 +1263,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
     t.textContent = vpCtl.rate === 1 ? "1x" : vpCtl.rate === 0.5 ? "1/2x" : "1/4x"; t.setAttribute("aria-pressed", vpCtl.rate !== 1);
     var f = vpCtl.frame(); if (f) ytCmd(f, "setPlaybackRate", [vpCtl.rate]);
   });
-  document.addEventListener("click", function (e) { if (e.target && e.target.id === "vpTap" && window.__stepCur === vpCtl) { try { vpCtl.toggle(); } catch (x) {} vpWake(); } });
+  document.addEventListener("click", function (e) { if (e.target && e.target.id === "vpTap" && window.__stepCur === vpCtl) { if (vpZ.block || vpZ.s > 1) { vpZ.block = false; vpWake(); return; } try { vpCtl.toggle(); } catch (x) {} vpWake(); } });
   document.addEventListener("fullscreenchange", function () { if (!document.fullscreenElement && $("vpStage") && $("vpStage").classList.contains("full")) vpFull(false); });
   document.addEventListener("keydown", function (e) { if (e.key === "Escape" && $("vpStage") && $("vpStage").classList.contains("full")) vpFull(false); });
   document.addEventListener("click", function (e) {
