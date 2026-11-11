@@ -81,5 +81,5 @@
 0:58:56|Faceoff: OZ Loss|97|,,3,f
 0:59:22|Faceoff: NZ Win|97|,,3,f
 0:59:46|Against: Shot on goal|2|0.113,0.259,3,f
-0:59:49|Against: Shot on goal||0.119,0.491,3,f
+0:59:49|Against: Shot on goal|2|0.119,0.491,3,f
 0:59:58|Against: Shot on goal|2|0.333,0.244,3,f
