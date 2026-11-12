@@ -275,7 +275,6 @@ header.top:after { content: ""; position: absolute; right: 0; top: 0; bottom: 0;
 nav a[aria-current="page"] { color: #fff; background: linear-gradient(180deg, transparent, rgba(155,124,255,.22)); }
 .card, .kpi { background: linear-gradient(160deg, #1a1340, #0c0a1c); border: 1px solid #4a3487; border-left: 4px solid var(--accent); border-radius: 6px; }
 .kpi { clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px)); }
-.card:not(#vpCard):not(.scroll):not(.pcard) { clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px)); }
 .kpi b { font-weight: 700; color: #fff; text-shadow: 0 0 18px rgba(155,124,255,.5); }
 h2 { font-weight: 700; font-style: italic; border-left: 6px solid var(--accent); padding-left: 10px; }
 @media (max-width: 600px) { h2 { font-size: 20px; } h2 small { display: inline; margin: 0 0 0 6px; font-size: 12px; white-space: normal; } }
@@ -310,6 +309,21 @@ table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
 .focbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 14px; }
 .focbar .btn { margin: 0; min-height: 44px; padding: 0 16px; }
 #vpFs { white-space: nowrap; min-width: 0; }
+@media (max-width: 600px) {
+  h2 small.hint { display: none; }
+  .ev .tm, .clip .tm { min-height: 40px; display: inline-flex; align-items: center; }
+  .card.scroll table:not(.gbg) th, .card.scroll table:not(.gbg) td { padding: 8px 5px; font-size: 14px; }
+  .gstbl td:nth-child(8), .gstbl th:nth-child(8), .gstbl td:nth-child(9), .gstbl th:nth-child(9), .gstbl td:nth-child(10), .gstbl th:nth-child(10), .gstbl td:nth-child(n+12), .gstbl th:nth-child(n+12) { display: none; }
+  .gstbl td:nth-child(2) { white-space: normal; }
+  .rotnote { display: block; }
+}
+.rotnote { display: none; margin: 8px 0 0; }
+@media (max-width: 600px) {
+  .card.scroll table:not(.gbg) th { white-space: normal; line-height: 1.15; vertical-align: bottom; font-size: 12px; letter-spacing: .03em; }
+  .card.scroll table:not(.gbg) td:first-child, .card.scroll table:not(.gbg) th:first-child { white-space: normal; min-width: 0; }
+  #app .card.scroll table.ptbl td:nth-child(10), #app .card.scroll table.ptbl th:nth-child(10), #app .card.scroll table.ptbl td:nth-child(11), #app .card.scroll table.ptbl th:nth-child(11) { display: none; }
+}
+@media (max-width: 600px) { .card.scroll table:not(.gbg) th, .card.scroll table:not(.gbg) td { padding: 8px 3px; font-size: 13px; } table.sp th, table.sp td { padding: 8px 3px; } }
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Barlow+Condensed:wght@600;700&family=Oswald:wght@600;700&display=swap">
 </head>
@@ -716,11 +730,11 @@ table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
     return b && (!a || b.stamp >= a.stamp) ? b : a;
   }
   function vStandings() {
-    var S = currentStandings(), h = "<h2>Division standings" + (S && S.stamp ? "<small>updated " + new Date(S.stamp).toLocaleString([], {month: "short", day: "numeric", hour: "numeric", minute: "2-digit"}) + "</small>" : "") + "</h2>";
+    var S = currentStandings(), h = "<h2>Standings" + (S && S.stamp ? "<small>updated " + new Date(S.stamp).toLocaleString([], {month: "short", day: "numeric", hour: "numeric", minute: "2-digit"}) + "</small>" : "") + "</h2>";
     var cols = [["RK", "#"], ["TEAM", "Team"], ["GP", "GP"], ["W", "W"], ["L", "L"], ["T", "T"], ["PTS", "PTS"], ["P%", "P%"], ["GF", "GF"], ["GA", "GA"], ["DIFF", "+/-"], ["STK", "Streak"], ["PIM", "PIM"], ["PPO", "PPO"], ["PPG", "PPG"], ["PP%", "PP%"], ["PPGA", "PPGA"], ["PK%", "PK%"]];
     if (S && S.rows.length) {
       h += "<div class='card scroll'><table class='gstbl'><thead><tr>" + cols.map(function (c, i) { return "<th" + (i > 1 ? " class='num'" : "") + ">" + c[1] + "</th>"; }).join("") + "</tr></thead><tbody>" + S.rows.map(function (r) {
-        var us = sameTeam(r.TEAM, usN()); return "<tr" + (us ? " class='gsus'" : "") + ">" + cols.map(function (c, i) { return "<td" + (i > 1 ? " class='num'" : "") + ">" + esc(r[c[0]] === undefined ? "" : r[c[0]]) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table></div>";
+        var us = sameTeam(r.TEAM, usN()); return "<tr" + (us ? " class='gsus'" : "") + ">" + cols.map(function (c, i) { return "<td" + (i > 1 ? " class='num'" : "") + ">" + esc(r[c[0]] === undefined ? "" : r[c[0]]) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table></div><p class='note rotnote'>Turn your phone sideways to see more columns.</p>";
     } else h += "<div class='card empty'><p>No standings yet.</p><p class='note'>Standings will show here once a coach adds them.</p></div>";
     return h;
 
@@ -765,7 +779,7 @@ table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
     var w = 0, l = 0, t = 0, gf = 0, ga = 0, sf = 0, sa = 0;
     meets.forEach(function (g) { if (g.result === "W") w++; else if (g.result === "L") l++; else t++; gf += g.hs; ga += g.as; sf += g.hShots; sa += g.aShots; });
     h += '<div class="kpis">' + kpi(w + "-" + l + "-" + t, "Record against them") + kpi(gf, "Goals for") + kpi(ga, "Goals against") + kpi(sf, "Shots for") + kpi(sa, "Shots against") + "</div>";
-    h += "<h2>Past games against them<small>tap Review to open a game</small></h2>";
+    h += "<h2>Past games against them<small class='hint'>tap Review to open a game</small></h2>";
     h += meets.map(function (g) {
       var url = D.videos[g.date] || lget(VK)[g.date] || "", hasVid = !!ytId(url) || allClips(g.date).length > 0 || allReview(g.date).length > 0;
       return '<div class="card" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><div><b>' + fmtDate(g.date) + " vs " + esc(g.away) + '</b><div class="note" style="margin:2px 0 0">' + esc(g.home) + " " + g.hs + ", " + esc(g.away) + " " + g.as + (g.period && g.period !== "Final" ? " (" + esc(g.period) + ")" : "") + '</div></div><span class="pill ' + g.result + '">' + g.result + '</span></div>' +
@@ -846,7 +860,7 @@ table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
     var EX = {}; if (posFilter) { P.forEach(function (p) { EX[p.n] = posExtras(p.n, posFilter); }); }
     var exHead = P.length && posFilter ? EX[P[0].n].map(function (x) { return "<th>" + x[0] + "</th>"; }).join("") : "";
     P.sort(function (a, b) { var x = a[sortKey] === null ? -1 : a[sortKey], y = b[sortKey] === null ? -1 : b[sortKey]; return (y - x) * -sortDir || a.n - b.n; });
-    var h = "<h2>Skaters<small>tap a heading to sort</small></h2>" + (Object.keys(D.pos).length ? '<div class="seg" id="posChips" role="group" aria-label="Position">' + [["", "All"], ["F", "Forwards"], ["C", "Centres"], ["W", "Wings"], ["D", "Defence"]].map(function (x) { return '<button data-pos="' + x[0] + '" aria-pressed="' + (posFilter === x[0]) + '">' + x[1] + "</button>"; }).join("") + "</div>" : "") + (posFilter === "C" ? "<p class='note' style='margin:10px 0 0'>Includes anyone who has taken faceoffs, even if listed at another position.</p>" : posFilter === "D" ? "<p class='note' style='margin:10px 0 0'>Includes anyone who has blocked shots, even if listed at another position.</p>" : "") + "<div class='card scroll'><table><thead><tr><th>Player</th><th>Pos</th>" +
+    var h = "<h2>Skaters<small class='hint'>tap a heading to sort</small></h2>" + (Object.keys(D.pos).length ? '<div class="seg" id="posChips" role="group" aria-label="Position">' + [["", "All"], ["F", "Forwards"], ["C", "Centres"], ["W", "Wings"], ["D", "Defence"]].map(function (x) { return '<button data-pos="' + x[0] + '" aria-pressed="' + (posFilter === x[0]) + '">' + x[1] + "</button>"; }).join("") + "</div>" : "") + (posFilter === "C" ? "<p class='note' style='margin:10px 0 0'>Includes anyone who has taken faceoffs, even if listed at another position.</p>" : posFilter === "D" ? "<p class='note' style='margin:10px 0 0'>Includes anyone who has blocked shots, even if listed at another position.</p>" : "") + "<div class='card scroll'><table class='ptbl'><thead><tr><th>Player</th><th>Pos</th>" +
       cols.map(function (c) { return '<th class="sort' + (c[0] === sortKey ? " on" : "") + '" data-k="' + c[0] + '">' + c[1] + "</th>"; }).join("") + (hasIce ? "<th>Shifts</th><th>TOI/GP</th>" : "") + exHead + "</tr></thead><tbody>" +
       P.map(function (p) {
         return '<tr class="click" onclick="location.hash=\'#/player/' + p.n + '\'"><td>' + esc(label(p.n)) + "</td><td>" + esc(D.pos[p.n] || "") + "</td><td>" + p.gp + "</td><td>" + p.g + "</td><td>" + p.a + "</td><td><b>" + p.p + "</b></td><td>" + p.ppg.toFixed(2) + '</td><td class="' + pmCls(p.pm) + '">' + pmText(p.pm) + "</td><td>" + p.sog + "</td><td>" + (p.shp === null ? "-" : Math.round(p.shp * 100) + "%") + "</td><td>" + p.pim + "</td>" + (hasIce ? (ICE[p.n] ? "<td>" + ICE[p.n].shifts + "</td><td>" + mss(ICE[p.n].toi / ICE[p.n].games) + "</td>" : "<td>-</td><td>-</td>") : "") + (EX[p.n] || []).map(function (x) { return "<td>" + x[1] + "</td>"; }).join("") + "</tr>";
@@ -960,7 +974,7 @@ table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
     var k = grp === "C" ? [kpi(p.p, "Points"), kpi(p.g, "Goals"), kpi(p.a, "Assists"), kpi(v(pct(T.fow, fo)), "Faceoff win %"), kpi(v(T.fow + "-" + T.fol), "Faceoffs W-L"), kpi(p.sog, "Shots on goal"), kpi(v(pct(T.en.Carry + T.en.Pass, en)), "Controlled entries"), kpi(pm, "Plus / minus")]
       : grp === "W" ? [kpi(p.g, "Goals"), kpi(p.sog, "Shots on goal"), kpi(p.shp === null ? "-" : Math.round(p.shp * 100) + "%", "Shooting %"), kpi(p.p, "Points"), kpi(v(T.ppg), "Power play goals"), kpi(v(pct(T.en.Carry + T.en.Pass, en)), "Controlled entries"), kpi(pm, "Plus / minus")]
       : [kpi(pm, "Plus / minus"), kpi(v(T.blk), "Shots blocked"), kpi(v(pct(T.ex.Carry + T.ex.Pass, ex)), "Controlled exits"), kpi(p.a, "Assists"), kpi(p.p, "Points"), kpi(p.pim, "Penalty min"), kpi(v(T.ga), "Goals against on ice"), kpi(v(T.pen), "Penalties")];
-    return "<h2>Key stats<small>" + esc(POS_NAME[pos] || pos) + ", the numbers that matter most for the position</small></h2><div class='kpis'>" + k.join("") + "</div>";
+    return "<h2>Key stats<small class='hint'>" + esc(POS_NAME[pos] || pos) + ", the numbers that matter most for the position</small></h2><div class='kpis'>" + k.join("") + "</div>";
   }
   function playerVideoHtml(n) {
     var T = playerVideoStats(n); if (!T.games.length) return "<h2>From video review</h2><div class='card'><p class='note' style='margin:0'>No video review marks for this player yet. Shots, faceoffs, zone entries and exits show up here once they are marked in Coach’s Corner.</p></div>";
@@ -1421,7 +1435,7 @@ table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
   });
   var PL = [];
   function playCard() {
-    return '<div class="card" id="vpCard" hidden style="position:sticky;top:calc(var(--hdr, 96px) + 14px);z-index:4;margin-bottom:12px"><div class="vpxrow"><button type="button" class="vpx" data-vpclose="1" aria-label="Hide the video" title="Hide video">&#10005;</button></div>' +
+    return '<div class="card" id="vpCard" hidden style="position:sticky;top:calc(var(--hdr, 96px) + 14px);z-index:30;margin-bottom:12px"><div class="vpxrow"><button type="button" class="vpx" data-vpclose="1" aria-label="Hide the video" title="Hide video">&#10005;</button></div>' +
       '<div id="vpStage"><div class="ytbox" id="vpBox"></div><div id="vpTap" data-step="p" role="button" aria-label="Tap the video to play or pause"></div>' +
       '<div id="vpBar"><div class="vprow"><span class="vptime" id="vpT0">0:00</span><input type="range" id="vpSeek" min="0" max="10" step="0.05" value="0" aria-label="Where you are in the clip"><span class="vptime" id="vpT1">0:10</span></div>' +
       '<div class="vpbtns seg vpmain"><button type="button" data-step="-1" aria-label="Back one second">&minus;1s</button><button type="button" data-step="-0.0334" aria-label="Back one frame">Frame<br>back</button><button type="button" data-step="p" id="vpPP">Pause</button><button type="button" data-step="0.0334" aria-label="Forward one frame">Frame<br>next</button><button type="button" data-step="1" aria-label="Forward one second">+1s</button></div><div class="vpbtns seg vpsub"><button type="button" data-replay="1">Replay</button><button type="button" data-vploop="1" id="vpLoop" aria-pressed="false" aria-label="Loop the clip">Loop</button><button type="button" data-vprate="1" id="vpRate" aria-label="Playback speed">1x</button><button type="button" data-vpfs="1" id="vpFs">Full</button></div></div></div>' +
@@ -2195,7 +2209,7 @@ table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
     if (!SHOW_ICE) return "";
     var ev = getShifts(g.date); if (!ev.length) return "";
     var c = computeShifts(ev); if (!c.rows.length) return "";
-    return "<h2>Ice time<small>stoppages not counted</small></h2><div class='card scroll'><table><thead><tr><th>Player</th><th>Shifts</th><th>Ice time</th><th>Avg shift</th><th>Longest</th><th>Shortest</th></tr></thead><tbody>" +
+    return "<h2>Ice time<small class='hint'>stoppages not counted</small></h2><div class='card scroll'><table><thead><tr><th>Player</th><th>Shifts</th><th>Ice time</th><th>Avg shift</th><th>Longest</th><th>Shortest</th></tr></thead><tbody>" +
       c.rows.map(function (r) { return '<tr class="click" onclick="location.hash=\'#/player/' + r.n + '\'"><td>' + esc(label(r.n)) + "</td><td>" + r.count + "</td><td><b>" + mss(r.toi) + "</b></td><td>" + mss(r.avg) + "</td><td>" + mss(r.max) + "</td><td>" + mss(r.min) + "</td></tr>"; }).join("") + "</tbody></table></div>";
   }
   function playerIceHtml(n) {
@@ -2204,7 +2218,7 @@ table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
     iceDates().forEach(function (d) { var r = computeShifts(getShifts(d)).rows.filter(function (x) { return x.n === n; })[0]; if (r) games.push({date: d, r: r}); });
     if (!games.length) return "";
     var cnt = games.reduce(function (s0, x) { return s0 + x.r.count; }, 0), toi = games.reduce(function (s0, x) { return s0 + x.r.toi; }, 0), mx = Math.max.apply(null, games.map(function (x) { return x.r.max; }));
-    var h = playCard() + "<h2>Ice time<small>" + games.length + (games.length === 1 ? " game" : " games") + ", stoppages not counted</small></h2><div class='kpis'>" + kpi(mss(toi / games.length), "Ice time per game") + kpi((cnt / games.length).toFixed(1), "Shifts per game") + kpi(mss(toi / cnt), "Average shift") + kpi(mss(mx), "Longest shift") + "</div>";
+    var h = playCard() + "<h2>Ice time<small class='hint'>" + games.length + (games.length === 1 ? " game" : " games") + ", stoppages not counted</small></h2><div class='kpis'>" + kpi(mss(toi / games.length), "Ice time per game") + kpi((cnt / games.length).toFixed(1), "Shifts per game") + kpi(mss(toi / cnt), "Average shift") + kpi(mss(mx), "Longest shift") + "</div>";
     h += "<div class='card scroll' style='margin-top:12px'><table><thead><tr><th>Game (tap for every shift)</th><th>Shifts</th><th>Ice time</th><th>Avg</th><th>Longest</th></tr></thead><tbody>" + games.slice().reverse().map(function (x) {
       var gm = D.games.filter(function (q) { return q.date === x.date; })[0], hasV = !!ytId(D.videos[x.date] || lget(VK)[x.date] || "");
       return "<tr class='click' data-iceg='" + x.date + "'><td>&#9656; " + fmtDate(x.date) + (oppFor(x.date) ? " vs " + esc(oppFor(x.date)) : "") + (gm ? " <a href='#/game/" + gm.id + "' class='mut' style='font-size:12px'>game page</a>" : "") + "</td><td>" + x.r.count + "</td><td><b>" + mss(x.r.toi) + "</b></td><td>" + mss(x.r.avg) + "</td><td>" + mss(x.r.max) + "</td></tr>" +
@@ -2230,7 +2244,7 @@ table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
       '<div class="seg" style="margin-top:10px"><button id="shfAllOff">Everyone off</button><button id="shfPeriod">End of period</button><button id="shfUndo">Undo last tap</button></div>' +
       '<div class="filters" style="margin-top:8px"><div class="fld"><label for="shfAdd">Another jersey number</label><div class="seg"><input type="number" id="shfAdd" min="0" max="999" placeholder="Like 21" style="max-width:110px"><button id="shfAddBtn">Add</button></div></div></div></div>';
     h += '<div class="seg" style="margin-top:12px"><button class="btn" id="shfSave" style="width:100%">Save for everyone</button></div><p class="note" id="shfSaved" aria-live="polite">Everything is saved on this device as you tap.</p><div class="seg"><button id="shfPull">Refresh other coaches</button></div><p class="note" id="shfSync" aria-live="polite"></p>';
-    h += '<h2>Shifts so far<small>tap a player to see each shift</small></h2><div class="card scroll" id="shfRes"></div>';
+    h += '<h2>Shifts so far<small class="hint">tap a player to see each shift</small></h2><div class="card scroll" id="shfRes"></div>';
     h += '<details class="card" style="margin-top:12px"><summary id="shfLogSum" style="cursor:pointer">All taps</summary><div id="shfLog" style="margin-top:8px"></div></details>';
     h += '</div></div>';
     return h;
@@ -3437,7 +3451,7 @@ table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
     var maxN = Math.max.apply(null, sides.map(function (s) { return Math.max.apply(null, Z[s].map(function (z) { return z.n; })); }));
     var iso = "<div class='card' style='margin-top:12px'><div class='isowrap'>" + sides.map(function (s) { return "<div><h3 style='margin:0 0 4px;text-align:center'>" + name[s] + " shooting at the net on the right</h3>" + zoneRink(Z[s], name[s], maxN, s) + "</div>"; }).join("") + "</div>" +
       "<div class='isoleg'><span>Bigger circle = more shots</span><span class='ramp'></span><span>Colour: shooting % (blue low, purple, pink 40% or more)</span></div></div>";
-    var h = "<h2>Shot zones<small>shots on goal and goals by area</small></h2>" + k + iso +
+    var h = "<h2>Shot zones<small class='hint'>shots on goal and goals by area</small></h2>" + k + iso +
       "<div class='card scroll' style='margin-top:12px'><table><thead><tr><th rowspan='2'>Zone</th>" + sides.map(function (s) { return "<th colspan='3' style='text-align:center'>" + name[s] + "</th>"; }).join("") + "</tr><tr>" + sides.map(function () { return "<th>SOG</th><th>Goals</th><th>Shoot %</th>"; }).join("") + "</tr></thead><tbody>" +
       SHOT_ZONES.map(function (zn, i) {
         return "<tr><td title='" + esc(zn[1]) + "'><b>" + zn[0] + "</b></td>" + sides.map(function (s) { var z = Z[s][i]; return "<td" + (z.sog ? ' data-foc="' + s + ":Z:" + i + '" style="cursor:pointer;color:var(--accent);font-weight:700"' : "") + ">" + z.sog + "</td><td" + (z.g ? ' data-foc="' + s + ":ZG:" + i + '" style="cursor:pointer;color:var(--accent);font-weight:700"' : "") + ">" + z.g + "</td><td>" + pct(z.g, z.sog) + "</td>"; }).join("") + "</tr>";
@@ -3601,7 +3615,7 @@ table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
     var h = grp("Offence", [kpi(one(t.gf / t.gp), "Goals per game"), kpi(one(t.sf / t.gp), "Shots per game"), kpi(pct(t.gf, t.sf), "Shooting %")]);
     h += grp("Defence", [kpi(one(t.ga / t.gp), "Goals against per game"), kpi(one(t.sa / t.gp), "Shots against per game"), kpi(sv(t.ga, t.sa), "Save %")]);
     h += grp("Puck control", [kpi(pct(t.sf, t.sf + t.sa), "Shot share"), kpi(foTxt, "Faceoff win %"), kpi((t.gf - t.ga > 0 ? "+" : "") + (t.gf - t.ga), "Goal difference")]);
-    h += "<h2>Game by game<small>tap a game to review it</small></h2><div class='card scroll'><table class='gbg'><thead><tr><th>Game</th><th></th><th class='num'>Score</th><th class='num' title='Shots for and against'>Shots</th><th class='num' title='Shot share'>Share</th><th class='num' title='Save percentage'>SV%</th></tr></thead><tbody>" +
+    h += "<h2>Game by game<small class='hint'>tap a game to review it</small></h2><div class='card scroll'><table class='gbg'><thead><tr><th>Game</th><th></th><th class='num'>Score</th><th class='num' title='Shots for and against'>Shots</th><th class='num' title='Shot share'>Share</th><th class='num' title='Save percentage'>SV%</th></tr></thead><tbody>" +
       done.map(function (g) { return '<tr class="click" onclick="location.hash=\'#/game/' + g.id + '\'"><td>' + fmtDate(g.date) + " vs " + esc(g.away) + '</td><td><span class="pill ' + g.result + '">' + g.result + "</span></td><td class='num'>" + g.hs + " - " + g.as + "</td><td class='num'>" + g.hShots + " - " + g.aShots + "</td><td class='num'>" + pct(g.hShots, g.hShots + g.aShots) + "</td><td class='num'>" + sv(g.as, g.aShots) + "</td></tr>"; }).reverse().join("") + "</tbody></table></div>";
     return h;
   }
@@ -3632,7 +3646,7 @@ table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
     h += grp("Short handed", "scored while down a player", [kpi(T.shg, "We scored"), kpi(T.shgA, "They scored")]);
     h += grp("Penalty balance", "their penalties minus ours", [kpi((T.drawn - T.taken > 0 ? "+" : "") + (T.drawn - T.taken), "Penalty +/-")]);
     h += '<p class="note">Power play and penalty kill are rough: each penalty counts as one chance, whatever its length.</p>';
-    h += "<h2>Game by game<small>tap a game to watch its clips</small></h2><div class='card scroll'><table class='gbg sp'><thead><tr class='grow'><th></th><th colspan='2' class='gh'>Power play</th><th colspan='2' class='gh'>Penalty kill</th><th colspan='2' class='gh'>Short handed</th></tr><tr><th>Game</th><th class='num g1' title='Power plays'>Chances</th><th class='num' title='Power play goals'>Goals</th><th class='num g1' title='Penalties on us'>Chances</th><th class='num' title='Power play goals against'>Against</th><th class='num g1' title='Short handed goals we scored'>For</th><th class='num' title='Short handed goals against us'>Against</th></tr></thead><tbody>" + rows + "</tbody></table></div>";
+    h += "<h2>Game by game<small class='hint'>tap a game to watch its clips</small></h2><div class='card scroll'><table class='gbg sp'><thead><tr class='grow'><th></th><th colspan='2' class='gh'>Power play</th><th colspan='2' class='gh'>Penalty kill</th><th colspan='2' class='gh'>Short handed</th></tr><tr><th>Game</th><th class='num g1' title='Power plays'>Total</th><th class='num' title='Power play goals'>Goals</th><th class='num g1' title='Penalties on us'>Total</th><th class='num' title='Power play goals against'>Against</th><th class='num g1' title='Short handed goals we scored'>For</th><th class='num' title='Short handed goals against us'>Against</th></tr></thead><tbody>" + rows + "</tbody></table></div>";
     return h + teamNote(G.length);
   }
   function teamFaceoffs(G) {
@@ -3658,7 +3672,7 @@ table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
       return '<tr class="click" onclick="location.hash=\'#/player/' + p.n + '\'"><td>' + esc(label(p.n)) + "</td><td>" + (p.w + p.l) + "</td><td>" + p.w + "</td><td>" + pct(p.w, p.w + p.l) + "</td><td>" + zc("OZ") + "</td><td>" + zc("NZ") + "</td><td>" + zc("DZ") + "</td></tr>";
     }).join("") + "</tbody></table>" : '<p class="note" style="margin:0">No faceoffs have a player yet. In Game analysis, tap the taker on the faceoff mark.</p>') + "</div>";
     h += "<h2>By period</h2><div class='card scroll'><table><thead><tr><th>Period</th><th>Won</th><th>Lost</th><th>Win %</th></tr></thead><tbody>" + [1, 2, 3, 4].filter(function (p) { return per[p]; }).map(function (p) { return "<tr><td>" + PERIODS_LABEL[p - 1] + "</td><td>" + per[p][0] + "</td><td>" + per[p][1] + "</td><td>" + pct(per[p][0], per[p][0] + per[p][1]) + "</td></tr>"; }).join("") + "</tbody></table></div>";
-    h += "<h2>Game by game<small>tap a game to watch its clips</small></h2><div class='card scroll'><table><thead><tr><th>Game</th><th>Won-lost</th><th>Win %</th></tr></thead><tbody>" + rows + "</tbody></table></div>";
+    h += "<h2>Game by game<small class='hint'>tap a game to watch its clips</small></h2><div class='card scroll'><table><thead><tr><th>Game</th><th>Won-lost</th><th>Win %</th></tr></thead><tbody>" + rows + "</tbody></table></div>";
     return h + teamNote(G.length);
   }
   function teamPeriods(G) {
@@ -3676,10 +3690,10 @@ table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
     var use = ps.filter(function (p) { var s = S[p]; return p < 4 || s.sf + s.sa + s.gf + s.ga + s.pen + s.fw + s.fl > 0; });
     var labs = use.map(function (p) { return PERIODS_LABEL[p - 1]; });
     var h = '<div class="row g2" style="margin-top:12px"><div class="card"><h3>Our shots on goal</h3>' + barChart(use.map(function (p) { return S[p].sf; }), labs, {c: "var(--accent)", label: "Our shots on goal by period"}) + '</div><div class="card"><h3>Shots against</h3>' + barChart(use.map(function (p) { return S[p].sa; }), labs, {c: "var(--blue)", label: "Shots against by period"}) + "</div></div>";
-    h += "<h2>Period by period</h2><div class='card scroll'><table><thead><tr><th>Period</th><th>Shots for</th><th>Shots against</th><th>Shot share</th><th>Goals for</th><th>Goals against</th><th>Penalties on us</th><th>Faceoff win %</th></tr></thead><tbody>" + use.map(function (p) {
+    h += "<h2>Period by period</h2><div class='card scroll'><table><thead><tr><th>Period</th><th title='Shots for'>SF</th><th title='Shots against'>SA</th><th title='Shot share'>Share</th><th title='Goals for'>GF</th><th title='Goals against'>GA</th><th title='Penalties on us'>Pen</th><th title='Faceoff win %'>FO%</th></tr></thead><tbody>" + use.map(function (p) {
       var s = S[p]; return "<tr><td>" + PERIODS_LABEL[p - 1] + "</td><td>" + s.sf + "</td><td>" + s.sa + "</td><td>" + pct(s.sf, s.sf + s.sa) + "</td><td>" + s.gf + "</td><td>" + s.ga + "</td><td>" + s.pen + "</td><td>" + pct(s.fw, s.fw + s.fl) + "</td></tr>";
     }).join("") + "</tbody></table></div>";
-    h += '<p class="note">Shot share is our shots on goal out of all shots on goal in that period. Above 50% means we had the puck more than they did. Goals count as shots on goal.</p>';
+    h += '<p class="note">SF is shots for, SA shots against, GF goals for, GA goals against, Pen penalties on us and FO% faceoff wins. Shot share is our shots on goal out of all shots on goal in that period. Above 50% means we had the puck more than they did. Goals count as shots on goal.</p>';
     return h + teamNote(G.length);
   }
   // ---- Fix-it list: marks that are missing something ----
