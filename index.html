@@ -352,12 +352,13 @@ table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
 #app .swrap .card.scroll table.ptbl th:last-child, #app .swrap .card.scroll table.ptbl td:last-child { padding-right: 16px; }
 @media (max-width: 600px) { #app .card.scroll table.ptbl.ptx th, #app .card.scroll table.ptbl.ptx td { padding: 10px 7px; } #app .card.scroll table.ptbl.ptx td:first-child, #app .card.scroll table.ptbl.ptx th:first-child { min-width: 0; } #app .card.scroll table.ptbl.ptx td:nth-child(2), #app .card.scroll table.ptbl.ptx th:nth-child(2) { padding-left: 4px; padding-right: 4px; } }
 @media (max-width: 600px) { #app .card.scroll table.ptbl.ptx td:nth-child(2), #app .card.scroll table.ptbl.ptx th:nth-child(2) { padding-left: 12px; padding-right: 6px; } }
-@media (max-width: 600px) {
-  .phead { gap: 12px; }
-  .phead .av.lg, .phead .avatar.lg, .phead > :first-child { width: 64px; height: 64px; min-width: 64px; font-size: 22px; }
-  .phead h2 { font-size: clamp(15px, 5.6vw, 22px); line-height: 1.2; white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-  .phead h2 small { display: block; margin: 6px 0 0; font-size: 12px; white-space: nowrap; }
-}
+.phead { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0 0 14px; align-items: stretch; }
+.phead .pbox { background: linear-gradient(160deg, #1a1340, #0c0a1c); border: 1px solid #4a3487; border-left: 4px solid var(--accent); border-radius: 6px; padding: 14px 12px; clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px)); min-width: 0; }
+.phead .pavbox { display: flex; align-items: center; justify-content: center; }
+.phead .pavbox .av.lg { width: 92px; height: 92px; font-size: 32px; }
+.phead .pnbox { display: flex; flex-direction: column; justify-content: center; gap: 2px; }
+.pl1, .pl2 { font-family: var(--display); font-style: italic; font-weight: 700; text-transform: uppercase; letter-spacing: .02em; color: #fff; font-size: clamp(15px, 4.4vw, 24px); line-height: 1.15; overflow-wrap: break-word; }
+.pl3 { margin-top: 6px; font-family: var(--display); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-size: 12px; line-height: 1.3; }
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Barlow+Condensed:wght@600;700&family=Oswald:wght@600;700&display=swap">
 </head>
@@ -414,6 +415,10 @@ table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
   };
   function avatar(n, size) {
     return '<img class="av ' + (size || "") + '" data-n="' + n + '" data-i="0" src="photos/' + n + '.jpg" alt="" loading="lazy" onerror="__av(this)">';
+  }
+  function pheadBox(n, third) {
+    var nm = pname(n), parts = nm.split(" "), last = parts.length > 1 ? parts.pop() : "", first = parts.join(" ");
+    return '<div class="phead"><div class="pbox pavbox">' + avatar(n, "lg") + '</div><div class="pbox pnbox"><div class="pl1">#' + n + (first ? " " + esc(first) : "") + "</div>" + (last ? '<div class="pl2">' + esc(last) + "</div>" : "") + '<div class="pl3">' + third + "</div></div></div>";
   }
   function label(n) { return "#" + n + (pname(n) ? " " + pname(n) : ""); }
   function sum(a, f) { return a.reduce(function (t, x) { return t + f(x); }, 0); }
@@ -964,7 +969,7 @@ table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
   function vGoalie(n) {
     var x = aggGoalies().filter(function (a) { return a.n === n; })[0];
     var labels = x.log.map(function (l) { return fmtDate(l.game.date); });
-    var h = '<a class="back" href="#/players">&larr; All players</a><div class="phead">' + avatar(n, "lg") + "<h2 style='margin:18px 0 10px'>" + esc(label(n)) + "<small>Goalie, " + x.gp + (x.gp === 1 ? " game" : " games") + "</small></h2></div>";
+    var h = '<a class="back" href="#/players">&larr; All players</a>' + pheadBox(n, "Goalie, " + x.gp + (x.gp === 1 ? " game" : " games"));
     h += '<div class="kpis">' + kpi(svText(x.sv), "Save %") + kpi(x.gaa === null ? "-" : x.gaa.toFixed(2), "GAA") + kpi(x.sa, "Shots against") + kpi(x.sa - x.ga, "Saves") + kpi(x.ga, "Goals against") + kpi(Math.floor(x.toi / 60) + " min", "Time in net") + "</div>" + (x.partial ? '<p class="note">Save % and GAA skip games where the shots against or the minutes in net were not recorded.</p>' : "");
     h += "<h2>Game by game</h2><div class='card'><h3>Save percentage</h3>" + lineChart([{name: "SV%", c: "var(--accent)", v: x.log.map(function (l) { return svp(l.s.sa, l.s.ga); })}], labels, {min: 0.5, max: 1, fmt: function (v) { return svText(v); }}) + "</div>";
     h += "<div class='card scroll' style='margin-top:12px'><table><thead><tr><th>Game</th><th></th><th>SA</th><th>GA</th><th>SV%</th></tr></thead><tbody>" +
@@ -1031,7 +1036,7 @@ table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
     if (!p) return '<a class="back" href="#/players">&larr; All players</a><div class="card empty">No games found for #' + n + ".</div>";
     var labels = p.log.map(function (l) { return fmtDate(l.game.date); });
     var cum = 0, cumPm = 0;
-    var h = '<a class="back" href="#/players">&larr; All players</a><div class="phead">' + avatar(n, "lg") + "<h2 style='margin:18px 0 10px'>" + esc(label(n)) + "<small>" + (D.pos[n] ? esc(POS_NAME[D.pos[n]] || D.pos[n]) + ", " : "") + p.gp + " games played</small></h2></div>";
+    var h = '<a class="back" href="#/players">&larr; All players</a>' + pheadBox(n, (D.pos[n] ? esc(POS_NAME[D.pos[n]] || D.pos[n]) + ", " : "") + p.gp + (p.gp === 1 ? " game" : " games"));
     h += '<div class="kpis">' + kpi(p.g, "Goals") + kpi(p.a, "Assists") + kpi(p.p, "Points") + kpi('<span class="' + pmCls(p.pm) + '">' + pmText(p.pm) + "</span>", "Plus / minus") + kpi(p.sog, "Shots") + kpi(p.shp === null ? "-" : Math.round(p.shp * 100) + "%", "Shooting %") + kpi(p.pim, "Penalty min") + kpi(p.ppg.toFixed(2), "Points / game") + kpi(p.gp ? (p.g / p.gp).toFixed(2) : "-", "Goals / game") + kpi(p.gp ? (p.sog / p.gp).toFixed(1) : "-", "Shots / game") + "</div>";
     h += playerIceHtml(n);
     h += "<h2>Game by game</h2><div class='row g2'>" +
