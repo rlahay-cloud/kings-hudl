@@ -333,6 +333,7 @@ table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
 .ngcard .note:last-child { margin-top: auto !important; padding-top: 6px; }
 .row:has(> .ngcard), .row.g3 { grid-auto-rows: 1fr; }
 .row > *, .kpis > *, .pcards > * { margin-top: 0 !important; }
+@media (max-width: 600px) { #posChips { display: grid; grid-template-columns: repeat(5, auto); gap: 6px; } #posChips button { min-width: 0; padding: 0 4px; font-size: 14px; letter-spacing: 0; white-space: nowrap; } }
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Barlow+Condensed:wght@600;700&family=Oswald:wght@600;700&display=swap">
 </head>
@@ -3645,7 +3646,8 @@ table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
         else if (c.tag === "Against: Goal") { var b2 = goalSit(x.R, c); if (b2 === "PP") s.ppgA++; else if (b2 === "SH") s.shgA++; }
       });
       Object.keys(s).forEach(function (k) { T[k] += s[k]; });
-      rows += "<tr class='click' onclick=\"location.hash='#/video/" + x.date + "/special'\"><td>" + fmtDate(x.date) + (x.opp ? " vs " + esc(x.opp) : "") + "</td><td class='num g1'>" + s.drawn + "</td><td class='num'>" + s.ppg + "</td><td class='num g1'>" + s.taken + "</td><td class='num'>" + s.ppgA + "</td><td class='num g1'>" + s.shg + "</td><td class='num'>" + s.shgA + "</td></tr>";
+      var kills = s.taken - s.ppgA, net = s.drawn - s.taken;
+      rows += "<tr class='click' onclick=\"location.hash='#/video/" + x.date + "/special'\"><td>" + fmtDate(x.date) + (x.opp ? " vs " + esc(x.opp) : "") + "</td><td class='num'>" + s.ppg + "/" + s.drawn + "</td><td class='num'>" + (s.taken ? Math.max(0, kills) + "/" + s.taken : "-") + "</td><td class='num'>" + s.shg + "-" + s.shgA + "</td><td class='num " + (net > 0 ? "pos" : net < 0 ? "neg" : "") + "'>" + (net > 0 ? "+" : "") + net + "</td></tr>";
     });
     var ppPct = T.drawn ? Math.round(T.ppg * 100 / T.drawn) + "%" : "-", pkPct = T.taken ? Math.max(0, Math.round((T.taken - T.ppgA) * 100 / T.taken)) + "%" : "-";
     var grp = function (title, sub, tiles) { return "<h3 class='tgrp'>" + title + " <small>" + sub + "</small></h3><div class='kpis three'>" + tiles.join("") + "</div>"; };
@@ -3654,7 +3656,11 @@ table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
     h += grp("Short handed", "scored while down a player", [kpi(T.shg, "We scored"), kpi(T.shgA, "They scored")]);
     h += grp("Penalty balance", "their penalties minus ours", [kpi((T.drawn - T.taken > 0 ? "+" : "") + (T.drawn - T.taken), "Penalty +/-")]);
     h += '<p class="note">Power play and penalty kill are rough: each penalty counts as one chance, whatever its length.</p>';
-    h += "<h2>Game by game<small class='hint'>tap a game to watch its clips</small></h2><div class='card scroll'><table class='gbg sp'><thead><tr class='grow'><th></th><th colspan='2' class='gh'>Power play</th><th colspan='2' class='gh'>Penalty kill</th><th colspan='2' class='gh'>Short handed</th></tr><tr><th>Game</th><th class='num g1' title='Power plays'>Total</th><th class='num' title='Power play goals'>Goals</th><th class='num g1' title='Penalties on us'>Total</th><th class='num' title='Power play goals against'>Against</th><th class='num g1' title='Short handed goals we scored'>For</th><th class='num' title='Short handed goals against us'>Against</th></tr></thead><tbody>" + rows + "</tbody></table></div>";
+    h += "<h2>Game by game<small class='hint'>tap a game to watch its clips</small></h2><div class='card scroll'><table class='gbg'><thead><tr><th>Game</th><th class='num' title='Power play goals out of power plays'>PP</th><th class='num' title='Penalties killed out of times short handed'>PK</th><th class='num' title='Short handed goals, ours then theirs'>SH</th><th class='num' title='Their penalties minus ours'>Pen +/-</th></tr></thead><tbody>" + rows + "</table></div>";
+    var infL = Object.keys(inf).map(function (k) { return [k, inf[k]]; }).sort(function (a, b) { return b[1] - a[1]; }).slice(0, 6);
+    var pL = Object.keys(byP).map(function (k) { return byP[k]; }).sort(function (a, b) { return b.k - a.k; }).slice(0, 6);
+    var mini = function (title, list) { return "<div class='card'><h3 style='margin-top:0'>" + title + "</h3><table class='gbg'><tbody>" + list.map(function (r) { return "<tr><td>" + r[0] + "</td><td class='num'>" + r[1] + "</td></tr>"; }).join("") + "</tbody></table></div>"; };
+    if (infL.length || pL.length) h += "<h2>Penalties we take</h2><div class='row'>" + (infL.length ? mini("Most common", infL) : "") + (pL.length ? mini("By player", pL.map(function (r) { return [(pname(r.n) ? esc(pname(r.n)) : "#" + esc(r.n)), r.k]; })) : "") + "</div>";
     return h + teamNote(G.length);
   }
   function teamFaceoffs(G) {
