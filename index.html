@@ -359,6 +359,7 @@ table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
   .phead h2 small { display: block; margin: 6px 0 0; font-size: 12px; white-space: nowrap; }
 }
 h2.mhead small { display: block; margin: 8px 0 0; font-size: 14px; letter-spacing: .06em; white-space: normal; line-height: 1.3; }
+.oppseg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } .oppseg > * { min-width: 0; text-align: center; justify-content: center; } .oppseg > :only-child { grid-column: 1 / -1; }
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Barlow+Condensed:wght@600;700&family=Oswald:wght@600;700&display=swap">
 </head>
@@ -804,12 +805,58 @@ h2.mhead small { display: block; margin: 8px 0 0; font-size: 14px; letter-spacin
     if (x === y || y.indexOf(x) >= 0 || x.indexOf(y) >= 0) return true;
     var lx = x.split(" ").pop(), ly = y.split(" ").pop(); return lx.length > 3 && lx === ly;
   }
+  // Opponent stats from the two GameSheet Export files (players and goalies), added by a coach and kept on this device.
+  function oppKey(name) { return "kh-opp-" + String(name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-"); }
+  function parseTable(text) {
+    var ls = String(text || "").replace(/^\ufeff/, "").split(/\r?\n/).filter(function (l) { return l.trim() !== "" && l.charAt(0) !== "#"; });
+    if (ls.length < 2) return null;
+    var head = csvRow(ls[0]).map(function (x) { return x.trim(); });
+    if (head.filter(Boolean).length < 3) return null;
+    var rows = ls.slice(1).map(function (l) { var c = csvRow(l); return head.map(function (h, i) { return (c[i] === undefined ? "" : c[i]).trim(); }); });
+    return {head: head, rows: rows};
+  }
+  function tableKind(t) { return t.head.some(function (h) { return /^(SV%|SV|GAA|SA|SAVES|GA)$/i.test(h) || /save/i.test(h); }) ? "goalies" : "players"; }
+  function oppTable(t, title) {
+    var keep = t.head.map(function (h, i) { return h && t.rows.some(function (r) { return r[i] !== ""; }) ? i : -1; }).filter(function (i) { return i >= 0; });
+    var sortI = -1; ["PTS", "P", "SV%", "GP"].forEach(function (k) { if (sortI < 0) sortI = t.head.findIndex(function (h) { return h.toUpperCase() === k; }); });
+    var rows = t.rows.slice(); if (sortI >= 0) rows.sort(function (a, b) { return (parseFloat(b[sortI]) || 0) - (parseFloat(a[sortI]) || 0); });
+    var isNum = function (v) { return /^[-+]?[\d.]+%?$/.test(v); };
+    return "<h2>" + title + "</h2><div class='swrap'><div class='card scroll'><table class='ptbl ptx'><thead><tr>" + keep.map(function (i, k) { return "<th" + (k ? " class='num'" : "") + ">" + esc(t.head[i]) + "</th>"; }).join("") + "</tr></thead><tbody>" + rows.map(function (r) { return "<tr>" + keep.map(function (i, k) { return "<td" + (k && isNum(r[i]) ? " class='num'" : "") + ">" + esc(r[i]) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table></div><p class='swhint'>Swipe the table sideways to see more</p></div>";
+  }
+  function oppStatsBlock(opp) {
+    var d = lget(oppKey(opp)), coach = !!coachCfg().pass.trim(), t = D.schedule ? GS_TEAMS.filter(function (x) { return sameTeam(x.name, opp); })[0] : null;
+    var P = d.players ? parseTable(d.players.text) : null, G = d.goalies ? parseTable(d.goalies.text) : null, h = "";
+    if (P) h += oppTable(P, "Their skaters");
+    if (G) h += oppTable(G, "Their goalies");
+    var when = Math.max(d.players ? d.players.stamp : 0, d.goalies ? d.goalies.stamp : 0);
+    h += "<div class='card' style='margin-top:12px'>" + (!P && !G ? "<p style='margin:0 0 8px'>No stats for " + esc(opp) + " yet.</p>" : "<p class='note' style='margin:0 0 8px'>Added " + new Date(when).toLocaleDateString([], {month: "short", day: "numeric"}) + " on this device.</p>") +
+      "<div class='seg oppseg' style='margin:0'>" + (coach ? "<button type='button' id='oppAdd'>" + (P || G ? "Replace stats" : "Add stats") + "</button>" : "") + "<a class='btn' href='" + esc(t ? gsTeamUrl(t.id) : gsUrl(oppQuery(opp))) + "' target='_blank' rel='noopener' style='text-decoration:none'>GameSheet page</a></div>" +
+      "<input type='file' id='oppFile' accept='.csv,text/csv' multiple hidden><p class='note' id='oppNote' style='margin:12px 0 0'>" + (coach ? "On their GameSheet page tap both Export buttons (players and goalies), then choose both files here." : "A coach adds these from their phone or computer.") + "</p></div>";
+    return h;
+  }
+  function bindOppStats(date) {
+    var b = $("oppAdd"), f = $("oppFile"); if (!b || !f) return;
+    var sc = (D.schedule || []).filter(function (g) { return g.date === date; })[0]; if (!sc) return;
+    b.onclick = function () { f.value = ""; f.click(); };
+    f.onchange = function () {
+      var files = Array.prototype.slice.call(f.files || []), note = $("oppNote"), d = lget(oppKey(sc.opp)), left = files.length, bad = 0;
+      files.forEach(function (file) {
+        var rd = new FileReader();
+        rd.onload = function () {
+          var text = String(rd.result || ""), t = parseTable(text);
+          if (!t) bad++; else d[tableKind(t)] = {text: text, stamp: Date.now()};
+          if (--left === 0) { lset(oppKey(sc.opp), d); route(); var n2 = $("oppNote"); if (n2 && bad) n2.textContent = bad + " file" + (bad > 1 ? "s" : "") + " did not look like a GameSheet export."; }
+        };
+        rd.readAsText(file);
+      });
+    };
+  }
   function vMatchup(date) {
     var sc = (D.schedule || []).filter(function (g) { return g.date === date; })[0];
     if (!sc) return '<a class="back" href="#/">&larr; Overview</a><div class="card empty">That game is not on the schedule.</div>';
     var meets = D.games.filter(function (g) { return sameTeam(g.away, sc.opp); }).sort(function (a, b) { return a.date < b.date ? 1 : -1; });
     var pt = sc.time.split(":"), hh = +pt[0], tm = (hh % 12 || 12) + ":" + pt[1] + (hh < 12 ? " AM" : " PM");
-    var h = '<a class="back" href="#/">&larr; Overview</a><h2 class="mhead">' + (sc.home ? "vs " : "at ") + esc(sc.opp) + "<small>" + fmtDate(date) + ", " + tm + (sc.venue ? ", " + esc(sc.venue) : "") + "</small></h2>" + gsEmbed(oppQuery(sc.opp), sc.opp + " this season", "live from GameSheet", 420, sc.opp);
+    var h = '<a class="back" href="#/">&larr; Overview</a><h2 class="mhead">' + (sc.home ? "vs " : "at ") + esc(sc.opp) + "<small>" + fmtDate(date) + ", " + tm + (sc.venue ? ", " + esc(sc.venue) : "") + "</small></h2>" + oppStatsBlock(sc.opp);
     if (!meets.length) return h + '<div class="card empty"><p>No games against them yet this season.</p><p class="note">Past games show here once they are in the site.</p></div>';
     var w = 0, l = 0, t = 0, gf = 0, ga = 0, sf = 0, sa = 0;
     meets.forEach(function (g) { if (g.result === "W") w++; else if (g.result === "L") l++; else t++; gf += g.hs; ga += g.as; sf += g.hShots; sa += g.aShots; });
@@ -4069,6 +4116,7 @@ h2.mhead small { display: block; margin: 8px 0 0; font-size: 14px; letter-spacin
     else h += vOverview();
     $("app").innerHTML = h;
     if (base === "coach" && needLock()) bindLock();
+    else if (base === "next") bindOppStats(parts[1]);
     else if (base === "coach") { if (parts[1] === "gamesheet") bindStandings(); else if (parts[1] === "players") bindPlayersEditor(); else if (parts[1] === "shifts") bindShifts(parts[2]); else if (parts[1] === "setup") bindSetup(parts[2]); else if (parts[1] === "clip") bindClipEditor(parts[2], +parts[3], +parts[4]); else if (parts[1] === "analysis" || /^\d{4}-\d{2}-\d{2}$/.test(parts[1] || "")) bindReview(); else if (parts[1] === "fixit") bindFixIt(); else bindCoachClips(); }
     if (base === "video") bindVideo();
     if (base === "player") bindPlayerClips(+parts[1]);
