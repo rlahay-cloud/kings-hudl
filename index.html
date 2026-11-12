@@ -1511,7 +1511,7 @@ h2.mhead small { display: block; margin: 8px 0 0; font-size: 14px; letter-spacin
     var f = vpCtl.frame(); if (f) ytCmd(f, "setPlaybackRate", [vpCtl.rate]);
   });
   document.addEventListener("click", function (e) { if (e.target && e.target.id === "vpTap" && window.__stepCur === vpCtl) { if (vpZ.block || vpZ.s > 1) { vpZ.block = false; vpWake(); return; } try { vpCtl.toggle(); } catch (x) {} vpWake(); } });
-  document.addEventListener("fullscreenchange", function () { if (!document.fullscreenElement && $("vpStage") && $("vpStage").classList.contains("full")) vpFull(false); });
+  document.addEventListener("fullscreenchange", function () { if ($("teDraw")) return; /* the drawing editor never asks for real full screen, so a stray event must not close it */ if (!document.fullscreenElement && $("vpStage") && $("vpStage").classList.contains("full")) vpFull(false); });
   document.addEventListener("keydown", function (e) { if (e.key === "Escape" && $("vpStage") && $("vpStage").classList.contains("full")) vpFull(false); });
   document.addEventListener("click", function (e) {
     if (!(e.target.closest && e.target.closest("button[data-vpclose]"))) return;
@@ -2098,7 +2098,15 @@ h2.mhead small { display: block; margin: 8px 0 0; font-size: 14px; letter-spacin
       ctx.font = "700 " + Math.round(20 * u + 6) + "px sans-serif"; ctx.lineWidth = Math.max(2, 4 * u); ctx.strokeStyle = "rgba(0,0,0,.7)"; ctx.strokeText(s.s, X(p[0]), Y(p[0])); ctx.fillText(s.s, X(p[0]), Y(p[0]));
     }
   }
-  function sizeCanvas(cv) { var r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1; cv.width = Math.max(1, Math.round(r.width * d)); cv.height = Math.max(1, Math.round(r.height * d)); return {w: cv.width, h: cv.height}; }
+  // The drawing layer sits exactly on the 16:9 picture, not on the whole box. In full screen the box can be taller or wider than the video,
+  // and drawings are saved as fractions of the picture, so they must be measured against the picture or they land in the wrong place.
+  function fitCanvas(cv) {
+    var b = cv.parentNode; if (!b || !b.clientWidth) return;
+    var bw = b.clientWidth, bh = b.clientHeight, A = 16 / 9, w = bw, h = bh;
+    if (bw / bh > A) w = bh * A; else h = bw / A;
+    cv.style.left = Math.round((bw - w) / 2) + "px"; cv.style.top = Math.round((bh - h) / 2) + "px"; cv.style.width = Math.round(w) + "px"; cv.style.height = Math.round(h) + "px";
+  }
+  function sizeCanvas(cv) { fitCanvas(cv); var r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1; cv.width = Math.max(1, Math.round(r.width * d)); cv.height = Math.max(1, Math.round(r.height * d)); return {w: cv.width, h: cv.height}; }
   function paintFrame(cv, strokes) {
     var z = sizeCanvas(cv), ctx = cv.getContext("2d"); ctx.clearRect(0, 0, z.w, z.h);
     (strokes || []).forEach(function (s) { paintStroke(ctx, z.w, z.h, s); });
@@ -2258,7 +2266,7 @@ h2.mhead small { display: block; margin: 8px 0 0; font-size: 14px; letter-spacin
       if (b.hasAttribute("data-del")) { frames.splice(+b.getAttribute("data-del"), 1); if (st.editing && frames.indexOf(st.editing) < 0) { st.editing = null; cv.style.pointerEvents = "none"; $("vpStage").classList.remove("te-editing"); $("teDraw").disabled = false; $("teDone").disabled = true; } persist(); paintFrame(cv, []); drawFramesList(); }
     });
     $("teFrames").addEventListener("change", function (e) { var s = e.target.getAttribute("data-hold"); if (s !== null) { frames[+s].hold = +e.target.value; persist(); } });
-    window.addEventListener("resize", function () { if ($("teCv")) repaint(); });
+    window.addEventListener("resize", function () { if ($("teCv")) { repaint(); setTimeout(repaint, 300); } }); window.addEventListener("orientationchange", function () { setTimeout(function () { if ($("teCv")) repaint(); }, 400); });
     $("teSave").addEventListener("click", function () {
       var note = $("teSaved"); frames = frames.filter(function (f) { return f.strokes.length; }); persist();
       if (!(D.cfg && D.cfg.submitUrl)) { note.textContent = "Saved on this device only (no helper is set up)."; return; }
