@@ -28,6 +28,10 @@ header.top { position: sticky; top: 0; z-index: 5; background: rgba(11,18,32,.96
 .title .rec { font-family: var(--display); font-weight: 600; font-size: 18px; letter-spacing: .08em; color: var(--accent); }
 nav { display: flex; gap: 4px; overflow-x: auto; margin-top: 6px; scrollbar-width: none; }
 nav::-webkit-scrollbar { display: none; }
+nav.more-r { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 44px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 44px), transparent); }
+nav.more-l { -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 44px), transparent); mask-image: linear-gradient(to left, #000 calc(100% - 44px), transparent); }
+nav.more-l.more-r { -webkit-mask-image: linear-gradient(to right, transparent, #000 44px, #000 calc(100% - 44px), transparent); mask-image: linear-gradient(to right, transparent, #000 44px, #000 calc(100% - 44px), transparent); }
+@media (max-width: 600px) { nav { gap: 0; } nav a { padding: 10px 11px; font-size: 15px; letter-spacing: .06em; } .title h1 { font-size: 22px; } }
 nav a { flex: none; padding: 10px 14px; text-decoration: none; color: var(--muted); font-family: var(--display); font-weight: 600; letter-spacing: .1em; text-transform: uppercase; font-size: 17px; border-bottom: 3px solid transparent; min-height: 44px; }
 nav a[aria-current="page"] { color: var(--fg); border-bottom-color: var(--accent); }
 h2 { font-family: var(--display); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; font-size: 22px; margin: 28px 0 10px; }
@@ -3901,6 +3905,11 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
     var base = parts[0] || "";
     var cur = base === "player" ? "players" : base === "game" ? "games" : base === "next" ? "" : base === "coach" && parts[1] && ["analysis", "players", "shifts", "setup", "gaps", "gamesheet", "fixit", "shots"].indexOf(parts[1]) >= 0 ? "coach/analysis" : base;
     $("nav").innerHTML = tabs.map(function (t) { return '<a href="#/' + t[0] + '"' + (t[0] === cur ? ' aria-current="page"' : "") + ">" + t[1] + "</a>"; }).join("");
+    (function () { var nv = $("nav"); if (!nv) return;
+      function edges() { nv.classList.toggle("more-r", nv.scrollLeft + nv.clientWidth < nv.scrollWidth - 4); nv.classList.toggle("more-l", nv.scrollLeft > 4); }
+      if (!nv._kfEdges) { nv._kfEdges = true; nv.addEventListener("scroll", edges, {passive: true}); window.addEventListener("resize", edges); }
+      var a = nv.querySelector('[aria-current="page"]'); if (a && (a.offsetLeft < nv.scrollLeft || a.offsetLeft + a.offsetWidth > nv.scrollLeft + nv.clientWidth)) nv.scrollLeft = Math.max(0, a.offsetLeft - 24); else if (a && a.offsetLeft < 80) nv.scrollLeft = 0;
+      edges(); setTimeout(edges, 300); })();
     var t = team();
     $("team").textContent = "Kings Film Room";
     $("sub").textContent = D.home || "";
