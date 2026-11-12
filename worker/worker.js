@@ -82,6 +82,17 @@ function check(body, env) {
     for (const l of ls) if (l.length > 600) return {error: "A line was too long"};
     return {path: "games/standings.csv", text: ls.join("\n") + "\n", coach: "standings"};
   }
+  if (body.kind === "oppstats") {
+    const slug = String(body.opp || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60);
+    if (!slug) return {error: "No team name"};
+    if (body.which !== "players" && body.which !== "goalies") return {error: "Unknown file type"};
+    const t = String(body.text || "");
+    if (t.length > 30000) return {error: "File is too big"};
+    const ls = t.split(/\r?\n/).filter(function (l) { return l.trim() !== ""; });
+    if (ls.length < 2 || ls.length > 120) return {error: "That does not look like a GameSheet export"};
+    for (const l of ls) if (l.length > 800) return {error: "A line was too long"};
+    return {path: "games/opp/" + slug + "_" + body.which + ".csv", text: ls.join("\n") + "\n", coach: "opponent stats"};
+  }
   if (body.kind === "players") {
     const t = String(body.text || "");
     if (t.length > 8000) return {error: "File is too big"};
@@ -141,7 +152,7 @@ export default {
     const r = check(body, env);
     if (r.error) return reply(env, r.error === "Wrong passcode" ? 401 : 400, {ok: false, error: r.error});
     try {
-      await saveToGitHub(env, r.path, r.text, (body.kind === "draw" ? "Drawings" : body.kind === "shifts" ? "Shifts" : body.kind === "sync" ? "Game setup" : body.kind === "standings" ? "GameSheet standings" : body.kind === "players" ? "Names and positions" : body.kind === "clips" ? "Highlights" : body.kind === "video" ? "Video link" : body.kind === "review" ? "Review" : "Shots") + " from " + r.coach + " for " + body.date);
+      await saveToGitHub(env, r.path, r.text, (body.kind === "draw" ? "Drawings" : body.kind === "shifts" ? "Shifts" : body.kind === "sync" ? "Game setup" : body.kind === "standings" ? "GameSheet standings" : body.kind === "oppstats" ? "Opponent stats" : body.kind === "players" ? "Names and positions" : body.kind === "clips" ? "Highlights" : body.kind === "video" ? "Video link" : body.kind === "review" ? "Review" : "Shots") + " from " + r.coach + " for " + body.date);
     } catch (e) {
       const why = String(e && e.message || e);
       let hint = "";
