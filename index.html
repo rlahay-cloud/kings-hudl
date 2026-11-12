@@ -165,6 +165,17 @@ input[type=text], input[type=url], input[type=date], input[type=time], select, t
 #vpStage { position: relative; }
 #vpStage .ytbox { overflow: hidden; }
 #vpStage:not(.full) .ytbox { max-height: max(30vh, 160px); width: min(100%, calc(max(30vh, 160px) * 16 / 9)); margin: 0 auto; }
+#teBar { display: none; }
+body:has(#teBox.full) header.top { display: none; } body:has(#teBox.full) { overflow: hidden; }
+#teBox.full { position: fixed !important; inset: 0; z-index: 9999; background: #000; max-width: none !important; margin: 0 !important; width: 100vw; height: 100vh; height: 100dvh; }
+#teBox.full .ytbox { position: absolute; inset: 0; max-height: none !important; width: 100%; height: 100%; aspect-ratio: auto; border-radius: 0; }
+#teBox.full #teCv { border-radius: 0 !important; }
+#teBox.full #teBar { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px 14px; position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; padding: 28px max(14px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); background: linear-gradient(transparent, rgba(0,0,0,.82) 30%); }
+#teBar .seg, #teBar .fld { margin: 0; flex-wrap: wrap; flex: 0 0 auto; } #teBar select { width: auto; min-height: 38px; } #teBar button { min-height: 38px; padding: 4px 10px; font-size: 14px; } #teBar #teTextFld { display: none; } #teBar:has([data-tool="text"][aria-pressed="true"]) #teTextFld { display: block; flex: 1 1 240px; } #teBar .fld label { color: #fff; }
+#teBox.full #teBar button:not([data-col]), #teBox.full #teBar select { background: rgba(255,255,255,.16); color: #fff; border: 1px solid rgba(255,255,255,.45); }
+#teBox.full #teBar button[aria-pressed="true"]:not([data-col]) { background: var(--accent); border-color: #fff; color: var(--accent-ink); }
+#teBox.full #teBar button[data-col][aria-pressed="true"] { border-color: #fff !important; box-shadow: 0 0 0 2px var(--accent); }
+#teBox.full #teBar input { background: rgba(0,0,0,.5); color: #fff; }
 #vpStage.full #vpTap { touch-action: none; }
 #vpTap { position: absolute; left: 0; right: 0; top: 0; bottom: 0; z-index: 1; cursor: pointer; }
 #vpBar { position: relative; z-index: 2; padding: 10px 2px 2px; background: transparent; }
@@ -1945,17 +1956,17 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
     var url = D.videos[date] || lget(VK)[date] || "";
     var h = '<a class="back" href="#/coach">&larr; All clips</a><h2>Clip editor<small>' + fmtDate(date) + (oppFor(date) ? " vs " + esc(oppFor(date)) : "") + ", " + esc(title) + " at " + hms(start) + "</small></h2>";
     if (!ytId(url)) return h + '<div class="card empty"><p>This game has no video link yet.</p><p class="note">Add the YouTube link in <b>Game analysis</b> first, then come back.</p></div>';
-    h += '<div class="card"><div id="teBox" style="position:relative;max-width:860px;margin:0 auto"><div class="ytbox" id="teYt" style="max-height:none"></div><canvas id="teCv" style="position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;border-radius:12px;touch-action:none"></canvas></div>' +
+    h += '<div class="card"><div id="teBox" style="position:relative;max-width:860px;margin:0 auto"><div class="ytbox" id="teYt" style="max-height:none"></div><canvas id="teCv" style="position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;border-radius:12px;touch-action:none"></canvas><div id="teBar"></div></div>' +
       '<p class="note" id="teTime" style="text-align:center;margin:6px 0">Loading the video.</p>' +
-      '<div class="seg" role="group" aria-label="Video controls"><button id="teBack">&larr; 2s</button><button id="tePlay">Play / Pause</button><button id="teFwd">2s &rarr;</button><button id="teRestart">Restart clip</button>' +
-      '<select id="teSpeed" aria-label="Speed"><option value="1">Normal speed</option><option value="0.5">Half speed</option><option value="0.25">Quarter speed</option></select></div></div>' +
+      '<div class="seg" id="teCtl" role="group" aria-label="Video controls"><button id="teBack">&larr; 2s</button><button id="tePlay">Play / Pause</button><button id="teFwd">2s &rarr;</button><button id="teRestart">Restart clip</button>' +
+      '<select id="teSpeed" aria-label="Speed"><option value="1">Normal speed</option><option value="0.5">Half speed</option><option value="0.25">Quarter speed</option></select><button id="teFull">Full screen</button></div></div>' +
       '<div class="card" style="margin-top:12px"><h3 style="margin-top:0">Draw</h3>' +
-      '<div class="seg"><button class="btn" id="teDraw">Draw on this frame</button><button id="teDone" disabled>Done drawing</button></div>' +
+      '<div class="seg" id="teRowDraw"><button class="btn" id="teDraw">Draw on this frame</button><button id="teDone" disabled>Done drawing</button></div>' +
       '<p class="note" id="teNote">Pause where you want it, then tap Draw on this frame. The video freezes while you draw.</p>' +
       '<div class="seg" id="teTools" role="group" aria-label="Drawing tool">' + [["pen", "Pen"], ["arrow", "Arrow"], ["line", "Line"], ["circle", "Circle"], ["text", "Text"]].map(function (t, i) { return '<button data-tool="' + t[0] + '" aria-pressed="' + (i === 1) + '">' + t[1] + "</button>"; }).join("") + "</div>" +
       '<div class="seg" id="teCols" role="group" aria-label="Colour">' + TE_COLORS.map(function (c, i) { return '<button data-col="' + c + '" aria-pressed="' + (i === 0) + '" aria-label="Colour ' + c + '" style="background:' + c + ';min-width:44px;min-height:36px;border:2px solid var(--line)"></button>'; }).join("") + '<select id="teWidth" aria-label="Line thickness"><option value="2">Thin</option><option value="3" selected>Medium</option><option value="5">Thick</option></select></div>' +
-      '<div class="fld"><label for="teText">Text to place (for the Text tool)</label><input type="text" id="teText" maxlength="40" placeholder="Like Cover the slot"></div>' +
-      '<div class="seg"><button id="teUndo">Undo</button><button id="teClear">Clear this drawing</button></div></div>' +
+      '<div class="fld" id="teTextFld"><label for="teText">Text to place (for the Text tool)</label><input type="text" id="teText" maxlength="40" placeholder="Like Cover the slot"></div>' +
+      '<div class="seg" id="teRowUndo"><button id="teUndo">Undo</button><button id="teClear">Clear this drawing</button></div></div>' +
       '<h2>Drawings on this clip</h2><div class="card" id="teFrames"></div>' +
       '<div class="seg" style="margin-top:12px"><button class="btn" id="teSave" style="width:100%">Save drawings for everyone</button></div><p class="note" id="teSaved" aria-live="polite"></p>' +
       '<p class="note">Players and coaches see the drawings when they play this clip in the Video tab. The video pauses on each drawing for the time you choose, then carries on.</p>';
@@ -2029,6 +2040,24 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
     $("tePlay").addEventListener("click", function () { if (!ready) return; var s = pl.getPlayerState(); if (s === 1) pl.pauseVideo(); else pl.playVideo(); });
     $("teSpeed").addEventListener("change", function () { if (ready) pl.setPlaybackRate(+$("teSpeed").value); });
     window.addEventListener("resize", function () { if ($("teCv")) repaint(); });
+    // full screen: the controls and the drawing tools move into an overlay on the video
+    var teMoved = [];
+    function teFullOn(on) {
+      var box = $("teBox"), bar = $("teBar"); if (!box || !bar) return;
+      if (on === box.classList.contains("full")) return;
+      var ids = ["teCtl", "teRowDraw", "teTools", "teCols", "teTextFld", "teRowUndo"];
+      if (on) {
+        teMoved = ids.map(function (id) { var n = $(id), ph = document.createElement("span"); ph.hidden = true; n.parentNode.insertBefore(ph, n); bar.appendChild(n); return [n, ph]; });
+        box.classList.add("full"); $("teFull").textContent = "Exit full screen";
+      } else {
+        teMoved.forEach(function (m) { m[1].parentNode.insertBefore(m[0], m[1]); m[1].remove(); }); teMoved = [];
+        box.classList.remove("full"); $("teFull").textContent = "Full screen";
+      }
+      setTimeout(repaint, 120); setTimeout(repaint, 500);
+    }
+    $("teFull").addEventListener("click", function () { teFullOn(!$("teBox").classList.contains("full")); });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && $("teBox")) teFullOn(false); });
+    window.addEventListener("hashchange", function () { document.body.style.overflow = ""; });
     // playing back what has been drawn, so the coach can check it
     var done = {}, busy = false;
     var tm = setInterval(function () {
