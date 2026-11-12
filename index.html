@@ -3657,10 +3657,14 @@ table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
     h += grp("Penalty balance", "their penalties minus ours", [kpi((T.drawn - T.taken > 0 ? "+" : "") + (T.drawn - T.taken), "Penalty +/-")]);
     h += '<p class="note">Power play and penalty kill are rough: each penalty counts as one chance, whatever its length.</p>';
     h += "<h2>Game by game<small class='hint'>tap a game to watch its clips</small></h2><div class='card scroll'><table class='gbg'><thead><tr><th>Game</th><th class='num' title='Power play goals out of power plays'>PP</th><th class='num' title='Penalties killed out of times short handed'>PK</th><th class='num' title='Short handed goals, ours then theirs'>SH</th><th class='num' title='Their penalties minus ours'>Pen +/-</th></tr></thead><tbody>" + rows + "</table></div>";
-    var infL = Object.keys(inf).map(function (k) { return [k, inf[k]]; }).sort(function (a, b) { return b[1] - a[1]; }).slice(0, 6);
-    var pL = Object.keys(byP).map(function (k) { return byP[k]; }).sort(function (a, b) { return b.k - a.k; }).slice(0, 6);
-    var mini = function (title, list) { return "<div class='card'><h3 style='margin-top:0'>" + title + "</h3><table class='gbg'><tbody>" + list.map(function (r) { return "<tr><td>" + r[0] + "</td><td class='num'>" + r[1] + "</td></tr>"; }).join("") + "</tbody></table></div>"; };
-    if (infL.length || pL.length) h += "<h2>Penalties we take</h2><div class='row'>" + (infL.length ? mini("Most common", infL) : "") + (pL.length ? mini("By player", pL.map(function (r) { return [(pname(r.n) ? esc(pname(r.n)) : "#" + esc(r.n)), r.k]; })) : "") + "</div>";
+    var pp = {};
+    G.forEach(function (x) { x.R.forEach(function (c) {
+      if (c.tag !== "For: Goal" || goalSit(x.R, c) !== "PP") return;
+      var as = c.assists || [];
+      (c.players || []).forEach(function (n) { pp[n] = pp[n] || {n: n, g: 0, a: 0}; if (as.indexOf(n) >= 0) pp[n].a++; else pp[n].g++; });
+    }); });
+    var ppL = Object.keys(pp).map(function (k) { return pp[k]; }).sort(function (a, b) { return (b.g + b.a) - (a.g + a.a) || b.g - a.g; });
+    if (ppL.length) h += "<h2>Power play producers<small class='hint'>who scores and sets up our power play goals</small></h2><div class='card'><table class='gbg'><thead><tr><th>Player</th><th class='num' title='Power play goals'>G</th><th class='num' title='Power play assists'>A</th><th class='num' title='Power play points'>P</th></tr></thead><tbody>" + ppL.map(function (r) { return "<tr class='click' onclick=\"location.hash='#/player/" + r.n + "'\"><td>" + (pname(r.n) ? esc(pname(r.n)) : "#" + esc(r.n)) + "</td><td class='num'>" + r.g + "</td><td class='num'>" + r.a + "</td><td class='num'>" + (r.g + r.a) + "</td></tr>"; }).join("") + "</tbody></table></div>";
     return h + teamNote(G.length);
   }
   function teamFaceoffs(G) {
