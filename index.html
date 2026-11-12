@@ -278,7 +278,7 @@ nav a[aria-current="page"] { color: #fff; background: linear-gradient(180deg, tr
 .card:not(#vpCard):not(.scroll):not(.pcard) { clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px)); }
 .kpi b { font-weight: 700; color: #fff; text-shadow: 0 0 18px rgba(155,124,255,.5); }
 h2 { font-weight: 700; font-style: italic; border-left: 6px solid var(--accent); padding-left: 10px; }
-@media (max-width: 600px) { h2 small { display: block; margin: 2px 0 0; white-space: normal; } }
+@media (max-width: 600px) { h2 { font-size: 20px; } h2 small { display: inline; margin: 0 0 0 6px; font-size: 12px; white-space: normal; } }
 h2 small { font-style: normal; }
 h3, th { color: var(--accent); }
 @media (max-width: 430px) { .title { gap: 8px; } .title h1 { font-size: 20px; letter-spacing: .03em; gap: 7px; } .title h1:before { width: 36px; height: 32px; } .title .rec { font-size: 15px; padding: 0 8px; letter-spacing: .04em; } }
@@ -303,6 +303,13 @@ table.sp th.gh { text-align: center; color: #fff; background: rgba(155,124,255,.
 table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
 @media (max-width: 600px) { table.sp th { font-size: 11px; letter-spacing: .02em; white-space: normal; line-height: 1.15; vertical-align: bottom; } .card.scroll table.gbg.sp td, .card.scroll table.gbg.sp th { padding: 8px 4px; } }
 @media (max-width: 600px) { .card.scroll table.gbg td:first-child, .card.scroll table.gbg th:first-child { white-space: normal; min-width: 0; } .card.scroll table.gbg td:nth-child(2) { padding-left: 0; padding-right: 0; text-align: center; } .card.scroll table.gbg .pill { margin: 0; } }
+.vpxrow { display: flex; justify-content: flex-end; margin: -2px 0 6px; }
+.vpx { width: 34px; height: 34px; min-height: 0; min-width: 0; padding: 0; border-radius: 50%; font-size: 15px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; background: var(--panel2); border: 1px solid var(--line); color: var(--muted); }
+#vpCam.camrow { display: grid; grid-template-columns: repeat(auto-fit, minmax(82px, 1fr)); gap: 8px; }
+#app #vpCam.camrow > button { min-height: 44px; padding: 6px 4px; font-family: var(--display); font-weight: 600; font-size: 15px; letter-spacing: .03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.focbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 14px; }
+.focbar .btn { margin: 0; min-height: 44px; padding: 0 16px; }
+#vpFs { white-space: nowrap; min-width: 0; }
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Barlow+Condensed:wght@600;700&family=Oswald:wght@600;700&display=swap">
 </head>
@@ -1310,7 +1317,7 @@ table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
     vpIsFull = on; vpZoomReset(); st.classList.toggle("full", on); st.classList.remove("idle"); document.body.style.overflow = on ? "hidden" : "";
     // iPhone cannot do real full screen for a page element, so the stage is pinned over the whole page: lift its card above the header and hide the header
     document.body.classList.toggle("vpfull", on); var vc = $("vpCard"); if (vc) vc.style.zIndex = on ? "100000" : "";
-    var fb = $("vpFs"); if (fb) fb.textContent = on ? "Exit full screen" : "Full";
+    var fb = $("vpFs"); if (fb) fb.textContent = on ? "Exit" : "Full"; fb.setAttribute("aria-label", on ? "Exit full screen" : "Full screen");
     try { var inEditor = !!$("teDraw"); if (on && !inEditor && st.requestFullscreen && !document.fullscreenElement) st.requestFullscreen().catch(function () {}); else if (!on && document.fullscreenElement) document.exitFullscreen(); } catch (x) {}
     try { if (on && screen.orientation && screen.orientation.lock) screen.orientation.lock("landscape").catch(function () {}); else if (!on && screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch (x) {}
     vpWake();
@@ -1397,7 +1404,7 @@ table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
     var id = ytId(url);
     var first = $("vpCard").hidden; $("vpCard").hidden = false;
     var pt = pTime(it.date, it.sec), now = it.game + ", " + hms(it.sec) + (pt ? " (" + pt + ")" : "") + " " + (it.disp || it.tag) + (ci >= 0 ? " (" + cams[ci].name + ")" : "");
-    var cb = $("vpCam"); if (!cb) { cb = document.createElement("div"); cb.id = "vpCam"; cb.className = "seg"; cb.style.marginTop = "8px"; $("vpNow").parentNode.appendChild(cb); }
+    var cb = $("vpCam"); if (!cb) { cb = document.createElement("div"); cb.id = "vpCam"; cb.className = "seg camrow"; cb.style.marginTop = "10px"; $("vpNow").parentNode.appendChild(cb); }
     cb.innerHTML = cams.length ? '<button data-cam="-1" aria-pressed="' + (ci < 0) + '">Main camera</button>' + cams.map(function (c, i) { return '<button data-cam="' + i + '" aria-pressed="' + (ci === i) + '">' + esc(c.name) + "</button>"; }).join("") : "";
     if (!id) { $("vpBox").innerHTML = ""; $("vpBox").style.display = "none"; $("vpNow").textContent = now + ". No video link for this game yet. Add it to videos.txt or in Coach’s Corner."; return; }
     $("vpBox").style.display = "";
@@ -1414,7 +1421,7 @@ table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
   });
   var PL = [];
   function playCard() {
-    return '<div class="card" id="vpCard" hidden style="position:sticky;top:calc(var(--hdr, 96px) + 14px);z-index:4;margin-bottom:12px"><div class="seg" style="justify-content:flex-end;margin-bottom:8px"><button type="button" data-vpclose="1" aria-label="Hide the video">&#10005; Hide video</button></div>' +
+    return '<div class="card" id="vpCard" hidden style="position:sticky;top:calc(var(--hdr, 96px) + 14px);z-index:4;margin-bottom:12px"><div class="vpxrow"><button type="button" class="vpx" data-vpclose="1" aria-label="Hide the video" title="Hide video">&#10005;</button></div>' +
       '<div id="vpStage"><div class="ytbox" id="vpBox"></div><div id="vpTap" data-step="p" role="button" aria-label="Tap the video to play or pause"></div>' +
       '<div id="vpBar"><div class="vprow"><span class="vptime" id="vpT0">0:00</span><input type="range" id="vpSeek" min="0" max="10" step="0.05" value="0" aria-label="Where you are in the clip"><span class="vptime" id="vpT1">0:10</span></div>' +
       '<div class="vpbtns seg vpmain"><button type="button" data-step="-1" aria-label="Back one second">&minus;1s</button><button type="button" data-step="-0.0334" aria-label="Back one frame">Frame<br>back</button><button type="button" data-step="p" id="vpPP">Pause</button><button type="button" data-step="0.0334" aria-label="Forward one frame">Frame<br>next</button><button type="button" data-step="1" aria-label="Forward one second">+1s</button></div><div class="vpbtns seg vpsub"><button type="button" data-replay="1">Replay</button><button type="button" data-vploop="1" id="vpLoop" aria-pressed="false" aria-label="Loop the clip">Loop</button><button type="button" data-vprate="1" id="vpRate" aria-label="Playback speed">1x</button><button type="button" data-vpfs="1" id="vpFs">Full</button></div></div></div>' +
@@ -3497,7 +3504,7 @@ table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
       $("rinkFMarks").innerHTML = h + m;
       MPITEMS = clipItems; PL.length = 0;
       var hvd = {}; $("mpCnt").textContent = clipItems.length ? " (" + clipItems.length + ")" : "";
-      $("mpFoc").innerHTML = FOC ? '<div class="card" style="margin-bottom:10px"><b>Showing: ' + esc(focName()) + '</b> <button class="btn" id="mpFocX" style="margin-left:8px">Show all shots</button></div>' : "";
+      $("mpFoc").innerHTML = FOC ? '<div class="card focbar" style="margin-bottom:10px"><b>Showing: ' + esc(focName()) + '</b><button class="btn" id="mpFocX">Show all shots</button></div>' : "";
       if ($("mpFocX")) $("mpFocX").addEventListener("click", function () { FOC = null; draw(); });
       $("mpClips").innerHTML = clipItems.length ? '<div class="card">' + clipItems.slice(0, 80).map(function (it) {
         if (hvd[it.date] === undefined) { var sy = syncOf(it.date); hvd[it.date] = !!ytId(D.videos[it.date] || lget(VK)[it.date] || "") || !!(sy && sy.a && sy.a.length); }
