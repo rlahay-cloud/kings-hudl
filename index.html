@@ -302,6 +302,7 @@ input[type=checkbox] { width: 20px; height: 20px; flex: none; accent-color: var(
 table.sp th.gh { text-align: center; color: #fff; background: rgba(155,124,255,.16); border-left: 2px solid var(--line); border-right: 2px solid var(--line); border-bottom: 0; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; }
 table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
 @media (max-width: 600px) { table.sp th { font-size: 11px; letter-spacing: .02em; white-space: normal; line-height: 1.15; vertical-align: bottom; } .card.scroll table.gbg.sp td, .card.scroll table.gbg.sp th { padding: 8px 4px; } }
+@media (max-width: 600px) { .card.scroll table.gbg td:first-child, .card.scroll table.gbg th:first-child { white-space: normal; min-width: 0; } .card.scroll table.gbg td:nth-child(2) { padding-left: 0; padding-right: 0; text-align: center; } .card.scroll table.gbg .pill { margin: 0; } }
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Barlow+Condensed:wght@600;700&family=Oswald:wght@600;700&display=swap">
 </head>
@@ -794,9 +795,9 @@ table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
 
   function gameTable(list) {
     if (!list.length) return '<div class="card note">No games yet.</div>';
-    return '<div class="card scroll"><table><thead><tr><th>Game</th><th></th><th>Score</th><th>Shots</th></tr></thead><tbody>' +
+    return '<div class="card scroll"><table class="gbg"><thead><tr><th>Game</th><th></th><th class="num">Score</th><th class="num">Shots</th></tr></thead><tbody>' +
       list.map(function (g) {
-        return '<tr class="click" onclick="location.hash=\'#/game/' + g.id + '\'"><td>' + fmtDate(g.date) + " vs " + esc(g.away) + '</td><td><span class="pill ' + g.result + '">' + g.result + "</span></td><td>" + g.hs + " - " + g.as + "</td><td>" + g.hShots + " - " + g.aShots + "</td></tr>";
+        return '<tr class="click" onclick="location.hash=\'#/game/' + g.id + '\'"><td>' + fmtDate(g.date) + " vs " + esc(g.away) + '</td><td><span class="pill ' + g.result + '">' + g.result + "</span></td><td class='num'>" + g.hs + " - " + g.as + "</td><td class='num'>" + g.hShots + " - " + g.aShots + "</td></tr>";
       }).join("") + "</tbody></table></div>";
   }
   function vGames() { return "<h2>All games</h2>" + gameTable(D.games.slice().reverse()); }
