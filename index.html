@@ -14,7 +14,7 @@
   --bg: #07060f; --panel: #120e24; --panel2: #1c1636; --line: #3a2f6b;
   --fg: #f3f4fb; --muted: #a9a9b8; --accent: #9b7cff; --accent-ink: #12062b;
   --good: #3ddc97; --bad: #ff6b6b; --blue: #a995ff;
-  --kings: #4a3487; --silver: #98989c;
+  --kings: #4a3487; --silver: #98989c; --opp: #ffb02e;
   --font: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
   --display: "Barlow Condensed", "Barlow", system-ui, sans-serif;
 }
@@ -140,7 +140,7 @@ iframe.gsteam { height: 1000px; } @media (max-width: 1100px) { iframe.gsteam { h
 .cmp.fo { display: flex; justify-content: center; align-items: baseline; gap: 10px; text-align: center; }
 .cmp.fo b { white-space: nowrap; }
 .bars { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--panel2); margin-top: 4px; grid-column: 1 / -1; }
-.bars i { display: block; background: var(--accent); } .bars i + i { background: var(--blue); }
+.bars i { display: block; background: var(--accent); } .bars i + i { background: var(--opp); }
 .insight { padding: 8px 0 8px 12px; border-left: 3px solid var(--accent); margin: 8px 0; }
 .empty { text-align: center; padding: 36px 16px; }
 .empty .btn { margin-top: 10px; }
@@ -600,7 +600,7 @@ h3, th { color: var(--accent); }
       var pts = s.v.map(function (v, i) { return v === null ? null : [x(i), y(v)]; });
       var d = "", pen = false;
       pts.forEach(function (p) { if (!p) { pen = false; return; } d += (pen ? "L" : "M") + p[0] + " " + p[1]; pen = true; });
-      out += '<path d="' + d + '" fill="none" stroke="' + s.c + '" stroke-width="2.5" stroke-linejoin="round"/>';
+      out += '<path d="' + d + '" fill="none" stroke="' + s.c + '" stroke-width="2.5" stroke-linejoin="round"' + (s.dash ? ' stroke-dasharray="7 5"' : "") + '/>';
       pts.forEach(function (p) { if (p) out += '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="3.5" fill="' + s.c + '"/>'; });
     });
     out += "</svg>";
@@ -756,8 +756,8 @@ h3, th { color: var(--accent); }
     h += vStandings();
     h += "<h2>What stands out</h2><div class='card'>" + insights(P, G, t) + "</div>";
     h += "<h2>Trends</h2><div class='row g2'>" +
-      "<div class='card'><h3>Shots per game</h3>" + lineChart([{name: usN(), c: "var(--accent)", v: D.games.map(function (g) { return g.hShots; })}, {name: "Opponents", c: "var(--blue)", v: D.games.map(function (g) { return g.aShots; })}], labels, {label: "Shots for and against by game", step: 5}) + "</div>" +
-      "<div class='card'><h3>Goals per game</h3>" + lineChart([{name: "Scored", c: "var(--accent)", v: D.games.map(function (g) { return g.hs; })}, {name: "Allowed", c: "var(--blue)", v: D.games.map(function (g) { return g.as; })}], labels, {label: "Goals scored and allowed by game", step: 2}) + "</div></div>";
+      "<div class='card'><h3>Shots per game</h3>" + lineChart([{name: usN(), c: "var(--accent)", v: D.games.map(function (g) { return g.hShots; })}, {name: "Opponents", dash: 1, c: "var(--opp)", v: D.games.map(function (g) { return g.aShots; })}], labels, {label: "Shots for and against by game", step: 5}) + "</div>" +
+      "<div class='card'><h3>Goals per game</h3>" + lineChart([{name: "Scored", c: "var(--accent)", v: D.games.map(function (g) { return g.hs; })}, {name: "Allowed", dash: 1, c: "var(--opp)", v: D.games.map(function (g) { return g.as; })}], labels, {label: "Goals scored and allowed by game", step: 2}) + "</div></div>";
     h += "<h2>Leaders</h2><div class='row g3'>" +
       leaderboard("Points", P.map(function (p) { return {n: p.n, v: p.p}; }).sort(byV), String, 1) +
       leaderboard("Goals", P.map(function (p) { return {n: p.n, v: p.g}; }).sort(byV), String) +
