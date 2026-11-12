@@ -282,6 +282,20 @@ h2 { font-weight: 700; font-style: italic; border-left: 6px solid var(--accent);
 h2 small { font-style: normal; }
 h3, th { color: var(--accent); }
 @media (max-width: 430px) { .title { gap: 8px; } .title h1 { font-size: 20px; letter-spacing: .03em; gap: 7px; } .title h1:before { width: 36px; height: 32px; } .title .rec { font-size: 15px; padding: 0 8px; letter-spacing: .04em; } }
+
+/* ---- spacing rules for every page (keep these last so new pages inherit them) ---- */
+.back { display: inline-flex; align-items: center; min-height: 44px; margin: 6px 0 8px; padding: 0 2px; }
+.back + .phead { margin-top: 6px; }
+.phead { gap: 16px; margin: 0 0 12px; }
+.phead h2 { margin: 0 !important; }
+.back + h2 { margin-top: 8px; }
+h3 { margin-bottom: 10px; }
+.card + .card, .card + h3, .card + .kpis, .kpis + .card, .row + .card, .card + .row, .seg + .card, .card + .seg { margin-top: 12px; }
+.pill { margin: 0 0 0 6px; } .pill:first-child { margin-left: 0; } .pill + span, .pill + b { margin-left: 6px; }
+h2 + .card, h2 + .kpis, h2 + .row, h2 + .seg, h2 + .deskwrap { margin-top: 12px; }
+h2 { margin-bottom: 12px; }
+label:has(> input[type=checkbox]) { display: flex; align-items: center; gap: 10px; min-height: 44px; margin-top: 6px; }
+input[type=checkbox] { width: 20px; height: 20px; flex: none; accent-color: var(--accent); }
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Barlow+Condensed:wght@600;700&family=Oswald:wght@600;700&display=swap">
 </head>
@@ -660,7 +674,7 @@ h3, th { color: var(--accent); }
     var days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     return "<h2>Next game" + (up.length > 1 ? "s" : "") + "</h2><div class='row g2'>" + up.map(function (g, i) {
       var d = new Date(g.at), h12 = d.getHours() % 12 || 12, mm = ("0" + d.getMinutes()).slice(-2), ap = d.getHours() < 12 ? "AM" : "PM";
-      return "<a class='card' href='#/next/" + g.date + "' style='display:block;color:inherit;text-decoration:none'><h3 style='margin:0 0 4px'>" + (i === 0 ? "Up next" : "After that") + "</h3><div style='font-family:var(--display);font-weight:700;font-size:22px'>" + days[d.getDay()] + " " + fmtDate(g.date) + ", " + h12 + ":" + mm + " " + ap + "</div><div style='margin-top:4px'>" + (g.home ? "vs " : "at ") + "<b>" + esc(g.opp) + "</b></div>" + (g.venue ? "<div class='note' style='margin:4px 0 0'>" + esc(g.venue) + (g.home ? ", home" : ", away") + "</div>" : "") + "<div class='note' style='margin:6px 0 0;color:var(--accent)'>Tap to see past games against them &rarr;</div></a>";
+      return "<a class='card' href='#/next/" + g.date + "' style='display:block;color:inherit;text-decoration:none'><h3 style='margin:0 0 8px'>" + (i === 0 ? "Up next" : "After that") + "</h3><div style='font-family:var(--display);font-weight:700;font-size:22px'>" + days[d.getDay()] + " " + fmtDate(g.date) + ", " + h12 + ":" + mm + " " + ap + "</div><div style='margin-top:4px'>" + (g.home ? "vs " : "at ") + "<b>" + esc(g.opp) + "</b></div>" + (g.venue ? "<div class='note' style='margin:4px 0 0'>" + esc(g.venue) + (g.home ? ", home" : ", away") + "</div>" : "") + "<div class='note' style='margin:6px 0 0;color:var(--accent)'>Tap to see past games against them &rarr;</div></a>";
     }).join("") + "</div>";
   }
   // GameSheet's own standings page, shown inside Kings Film Room so it is always live.
@@ -860,7 +874,7 @@ h3, th { color: var(--accent); }
       $("pcCount").textContent = f.length + (f.length === 1 ? " clip" : " clips");
       $("pcList").innerHTML = f.length ? f.map(function (x) {
         var url = D.videos[x.date] || lget(VK)[x.date] || "";
-        var head = x.game !== last ? '<h3 style="margin:' + (last ? "14px" : "0") + ' 0 4px">' + esc(x.game) + "</h3>" : ""; last = x.game;
+        var head = x.game !== last ? '<h3 style="margin:' + (last ? "16px" : "0") + ' 0 8px">' + esc(x.game) + "</h3>" : ""; last = x.game;
         var role = x.cat === "Assists" ? "Assist" : x.tag.replace(/^For: /, "Shot: ").replace(/^Against: /, "Against: ");
         var extra = "";
         if ((x.tag === "Goal" || x.tag === "For: Goal") && x.assists.length) extra = x.cat === "Assists" ? "goal by " + (x.players.filter(function (p) { return x.assists.indexOf(p) < 0; }).map(function (p) { return "#" + p; }).join(" ") || "?") : "assists " + x.assists.map(function (p) { return "#" + p; }).join(" ");
@@ -1428,7 +1442,7 @@ h3, th { color: var(--accent); }
       $("vfCount").textContent = f.length + (f.length === 1 ? " clip" : " clips");
       var last = "";
       $("vfList").innerHTML = f.length ? f.map(function (x, i) {
-        var head = x.game !== last ? '<h3 style="margin:' + (last ? "14px" : "0") + ' 0 4px">' + esc(x.game) + "</h3>" : ""; last = x.game;
+        var head = x.game !== last ? '<h3 style="margin:' + (last ? "16px" : "0") + ' 0 8px">' + esc(x.game) + "</h3>" : ""; last = x.game;
         return head + '<div class="ev ' + (x.tag === "Goal" ? "goal" : "") + '"><button class="tm" style="background:none;border:0;color:var(--accent);font-family:var(--display);font-weight:700;font-size:18px;min-width:70px;text-align:left;padding:0" data-i="' + items.indexOf(x) + '">' + hms(x.sec) + '</button><span class="lb"><b>' + esc(x.disp || x.tag) + "</b> " + esc(x.label) +
           whoHtml(x) + coachSpan(x) + (hasDraws(drawKey(x.date, x.sec)) ? ' <span class="pill W">drawn on</span>' : "") + (x.lists || []).map(function (n) { return ' <span class="pill">' + esc(n) + "</span>"; }).join("") + "</span></div>";
       }).join("") : '<p class="note">Nothing matches these filters.</p>';
@@ -1968,7 +1982,7 @@ h3, th { color: var(--accent); }
       $("ccCount").textContent = f.length + (f.length === 1 ? " clip" : " clips");
       var last = "";
       $("ccList2").innerHTML = f.length ? f.map(function (x) {
-        var head = x.game !== last ? '<h3 style="margin:' + (last ? "14px" : "0") + ' 0 4px">' + esc(x.game) + "</h3>" : ""; last = x.game;
+        var head = x.game !== last ? '<h3 style="margin:' + (last ? "16px" : "0") + ' 0 8px">' + esc(x.game) + "</h3>" : ""; last = x.game;
         var has = !!ytId(D.videos[x.date] || lget(VK)[x.date] || "");
         return head + '<div class="ev ' + (x.tag === "Goal" ? "goal" : "") + '"><a class="tm" style="color:var(--accent);font-family:var(--display);font-weight:700;font-size:18px;min-width:70px" href="#/coach/clip/' + x.date + "/" + Math.floor(x.sec) + "/" + Math.floor(clipEnd(x)) + '">' + hms(x.sec) + '</a><span class="lb"><b>' + esc(x.disp || x.tag) + "</b> " + esc(x.label) + whoHtml(x) +
           (hasDraws(drawKey(x.date, x.sec)) ? ' <span class="pill W">drawn on</span>' : "") + (has ? "" : ' <span class="mut">no video link</span>') + (x.lists || []).map(function (n) { return ' <span class="pill">' + esc(n) + "</span>"; }).join("") + "</span></div>";
