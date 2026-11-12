@@ -361,6 +361,7 @@ table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
 h2.mhead small { display: block; margin: 8px 0 0; font-size: 14px; letter-spacing: .06em; white-space: normal; line-height: 1.3; }
 .oppseg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } .oppseg > * { min-width: 0; text-align: center; justify-content: center; } .oppseg > :only-child { grid-column: 1 / -1; }
 .oppdesk { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); } .oppdesk > div { min-width: 0; } .oppdesk button { flex: none; min-width: 110px; min-height: 44px; }
+.oppdesk { display: block; padding: 12px 0; } .oppdesk > b { display: block; margin-bottom: 6px; } .oppfile { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; } .oppfile > div { min-width: 0; } .oppwhat { font-family: var(--display); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; font-size: 14px; } .oppfile button { flex: none; min-width: 110px; min-height: 44px; }
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Barlow+Condensed:wght@600;700&family=Oswald:wght@600;700&display=swap">
 </head>
@@ -861,54 +862,53 @@ h2.mhead small { display: block; margin: 8px 0 0; font-size: 14px; letter-spacin
   function loadOppShared(opp) {
     var slug = oppSlug(opp), got = OPP_SHARED[slug] = OPP_SHARED[slug] || {};
     return Promise.all(["players", "goalies"].map(function (k) {
-      return getText("games/opp/" + slug + "_" + k + ".csv?t=" + Date.now()).then(function (t) { if (t && t.trim() && !/^\s*</.test(t)) got[k] = {text: t, stamp: 1}; }).catch(function () {});
+      return getText("games/opp/" + slug + "_" + k + ".csv?t=" + Date.now()).then(function (t) { if (t && t.trim() && !/^\s*</.test(t)) var mm = /^#updated=(.+)$/m.exec(t); got[k] = {text: t, stamp: mm ? Date.parse(mm[1]) || 1 : 1}; }).catch(function () {});
     }));
   }
   function oppStatsBlock(opp) {
     if (!OPP_SHARED[oppSlug(opp)]) loadOppShared(opp).then(function () { if (/^#\/next\//.test(location.hash)) route(); });
     var d = oppData(opp), t = GS_TEAMS.filter(function (x) { return sameTeam(x.name, opp); })[0];
     var P = d.players ? parseTable(d.players.text) : null, G = d.goalies ? parseTable(d.goalies.text) : null, h = "";
-    if (P) h += oppTable(P, "Their skaters", "players");
-    if (G) h += oppTable(G, "Their goalies", "goalies");
+    if (P) h += oppTable(P, "Their skaters", "players") + (d.players && d.players.stamp > 1 ? "<p class='note' style='margin:6px 0 0'>Updated " + oppStampText(d.players.stamp) + "</p>" : "");
+    if (G) h += oppTable(G, "Their goalies", "goalies") + (d.goalies && d.goalies.stamp > 1 ? "<p class='note' style='margin:6px 0 0'>Updated " + oppStampText(d.goalies.stamp) + "</p>" : "");
     if (!P && !G) h += "<div class='card empty'><p>No stats for " + esc(opp) + " yet.</p><p class='note'>A coach adds them in the Game Desk.</p></div>";
     h += "<div class='seg' style='margin:12px 0'><a class='btn' href='" + esc(t ? gsTeamUrl(t.id) : gsUrl(oppQuery(opp))) + "' target='_blank' rel='noopener' style='text-decoration:none'>Open GameSheet</a></div>";
     return h;
   }
+  function oppStampText(st) { return st > 1 ? new Date(st).toLocaleString([], {month: "short", day: "numeric", hour: "numeric", minute: "2-digit"}) : st ? "added earlier" : ""; }
   function oppDeskCard() {
-    oppUpcoming().forEach(function (x) { if (!OPP_SHARED[oppSlug(x.opp)]) loadOppShared(x.opp).then(function () { if (/^#\/coach\/gamesheet/.test(location.hash) && !OPP_SHARED._r) { OPP_SHARED._r = 1; route(); OPP_SHARED._r = 0; } }); });
-    var list = oppUpcoming(), h = "<div class='card'><h3>Opponent stats</h3><p class='note' style='margin:0 0 10px'>On a team's GameSheet page tap both Export buttons (players and goalies). Then tap Add stats here and choose both files. They show on that team's game page.</p>";
+    oppUpcoming().forEach(function (x) { if (!OPP_SHARED[oppSlug(x.opp)]) loadOppShared(x.opp).then(function () { if (/^#\/coach\/gamesheet/.test(location.hash)) route(); }); });
+    var list = oppUpcoming(), h = "<div class='card'><h3>Opponent stats</h3><p class='note' style='margin:0 0 10px'>On a team's GameSheet page tap the Export buttons. Then add the players file and the goalies file here. They show on that team's game page.</p>";
     if (!list.length) return h + "<p class='note'>No upcoming games on the schedule.</p></div>";
     h += list.map(function (x, i) {
-      var d = oppData(x.opp), when = Math.max(d.players ? d.players.stamp : 0, d.goalies ? d.goalies.stamp : 0);
-      return "<div class='oppdesk'><div><b>" + esc(x.opp) + "</b><div class='note' style='margin:2px 0 0'>" + (when ? "Added " + new Date(when).toLocaleDateString([], {month: "short", day: "numeric"}) + (d.players && d.goalies ? "" : " (" + (d.players ? "skaters only" : "goalies only") + ")") : "No stats yet") + "</div></div><button type='button' data-opp='" + i + "'>" + (when ? "Replace" : "Add stats") + "</button></div>";
-    }).join("") + "<input type='file' id='oppFile' accept='.csv,text/csv' multiple hidden><p class='note' id='oppNote' aria-live='polite' style='margin:10px 0 0'></p>";
+      var d = oppData(x.opp);
+      var row = function (k, label) { var st = d[k] ? d[k].stamp : 0; return "<div class='oppfile'><div><span class='oppwhat'>" + label + "</span><div class='note' style='margin:2px 0 0'>" + (st ? "Updated " + oppStampText(st) : "Not added yet") + "</div></div><button type='button' data-opp='" + i + "' data-which='" + k + "'>" + (st ? "Replace" : "Add") + "</button></div>"; };
+      return "<div class='oppdesk'><b>" + esc(x.opp) + "</b>" + row("players", "Players") + row("goalies", "Goalies") + "</div>";
+    }).join("") + "<input type='file' id='oppFile' accept='.csv,text/csv' hidden><p class='note' id='oppNote' aria-live='polite' style='margin:10px 0 0'></p>";
     return h + "</div>";
   }
   function bindOppDesk() {
-    var f = $("oppFile"); if (!f) return; var list = oppUpcoming(), cur = null;
-    Array.prototype.forEach.call(document.querySelectorAll("[data-opp]"), function (b) { b.onclick = function () { cur = list[+b.getAttribute("data-opp")]; f.value = ""; f.click(); }; });
+    var f = $("oppFile"); if (!f) return; var list = oppUpcoming(), cur = null, which = "";
+    Array.prototype.forEach.call(document.querySelectorAll("[data-opp]"), function (b) { b.onclick = function () { cur = list[+b.getAttribute("data-opp")]; which = b.getAttribute("data-which"); f.value = ""; f.click(); }; });
     f.onchange = function () {
-      if (!cur) return; var opp = cur.opp, files = Array.prototype.slice.call(f.files || []), d = lget(oppKey(opp)), left = files.length, bad = 0, sends = [];
-      files.forEach(function (file) {
-        var rd = new FileReader();
-        rd.onload = function () {
-          var text = String(rd.result || ""), t = parseTable(text);
-          if (!t) bad++; else d[tableKind(t)] = {text: text, stamp: Date.now()};
-          if (!t) { /* skipped */ } else { var kind = tableKind(t); sends.push([kind, text]); }
-          if (--left === 0) {
-            lset(oppKey(opp), d); route(); var n2 = $("oppNote"), cfg = D.cfg || {}, c = coachCfg();
-            if (n2) n2.textContent = bad ? bad + " file" + (bad > 1 ? "s" : "") + " did not look like a GameSheet export." : "Saved on this device.";
-            if (n2 && !bad && cfg.submitUrl && c.pass.trim() && sends.length) {
-              var url = /^https?:\/\//.test(cfg.submitUrl) ? cfg.submitUrl : "https://" + cfg.submitUrl;
-              n2.textContent = "Sending to everyone...";
-              Promise.all(sends.map(function (sd) { return fetch(url, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({passcode: c.pass, coach: c.name, date: todayStr(), kind: "oppstats", opp: opp, which: sd[0], text: sd[1]})}).then(function (r) { return r.json().catch(function () { return {ok: false}; }); }); }))
-                .then(function (rs) { var bd = rs.filter(function (j) { return !j.ok; })[0]; var n3 = $("oppNote"); if (n3) n3.textContent = bd ? "Saved here, but not shared: " + (bd.error || "unknown problem") + ". The helper in Cloudflare may need the new version." : "Shared with everyone. It can take a minute to show on other phones."; })
-                .catch(function () { var n3 = $("oppNote"); if (n3) n3.textContent = "Saved here, but not shared (no connection). Try again later."; });
-            }
-          }
-        };
-        rd.readAsText(file);
-      });
+      var file = f.files && f.files[0]; if (!cur || !file) return; var opp = cur.opp, kind = which, note = $("oppNote");
+      var rd = new FileReader();
+      rd.onload = function () {
+        var text = String(rd.result || "").replace(/^\ufeff/, "").replace(/\r/g, ""), t = parseTable(text);
+        if (!t) { note.textContent = "That does not look like a GameSheet export file."; return; }
+        if (tableKind(t) !== kind) { note.textContent = "That looks like the " + (kind === "players" ? "goalies" : "players") + " file. Use the " + (kind === "players" ? "Goalies" : "Players") + " button for it."; return; }
+        var stamp = Date.now(), clean = "#updated=" + new Date(stamp).toISOString() + "\n" + text.split("\n").filter(function (l) { return l.charAt(0) !== "#"; }).join("\n").trim() + "\n", d = lget(oppKey(opp));
+        d[kind] = {text: clean, stamp: stamp}; lset(oppKey(opp), d); route();
+        var n2 = $("oppNote"), cfg = D.cfg || {}, c = coachCfg(); if (!n2) return; n2.textContent = "Saved on this device.";
+        if (cfg.submitUrl && c.pass.trim()) {
+          var url = /^https?:\/\//.test(cfg.submitUrl) ? cfg.submitUrl : "https://" + cfg.submitUrl; n2.textContent = "Sending to everyone...";
+          fetch(url, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({passcode: c.pass, coach: c.name, date: todayStr(), kind: "oppstats", opp: opp, which: kind, text: clean})})
+            .then(function (r) { return r.json().catch(function () { return {ok: false}; }); })
+            .then(function (j) { var n3 = $("oppNote"); if (n3) n3.textContent = j.ok ? "Shared with everyone. It can take a minute to show on other phones." : "Saved here, but not shared: " + (j.error || "unknown problem") + "."; })
+            .catch(function () { var n3 = $("oppNote"); if (n3) n3.textContent = "Saved here, but not shared (no connection). Try again later."; });
+        } else n2.textContent += " Add the coach passcode in Coach's Corner to share it with everyone.";
+      };
+      rd.readAsText(file);
     };
   }
   function vMatchup(date) {
