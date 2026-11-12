@@ -324,6 +324,9 @@ table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
   #app .card.scroll table.ptbl td:nth-child(10), #app .card.scroll table.ptbl th:nth-child(10), #app .card.scroll table.ptbl td:nth-child(11), #app .card.scroll table.ptbl th:nth-child(11) { display: none; }
 }
 @media (max-width: 600px) { .card.scroll table:not(.gbg) th, .card.scroll table:not(.gbg) td { padding: 8px 3px; font-size: 13px; } table.sp th, table.sp td { padding: 8px 3px; } }
+.seg label.heatchk { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin: 0; padding: 0 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel2); font-family: var(--display); font-weight: 600; letter-spacing: .06em; font-size: 17px; color: var(--fg); cursor: pointer; }
+.seg[aria-label="Zoom the rink"] { margin: 10px 0; }
+@media (max-width: 600px) { .seg[aria-label="Zoom the rink"] { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; } .seg[aria-label="Zoom the rink"] > button, .seg[aria-label="Zoom the rink"] > label { min-width: 0; padding: 0 4px; font-size: 15px; letter-spacing: .02em; justify-content: center; white-space: nowrap; } .seg label.heatchk { gap: 6px; } }
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Barlow+Condensed:wght@600;700&family=Oswald:wght@600;700&display=swap">
 </head>
@@ -3329,8 +3332,7 @@ table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
       '<div class="fld"><label for="mpTeam">Team</label><select id="mpTeam"><option value="">Both teams</option><option value="H">' + esc(usN()) + '</option><option value="A">Opponents</option></select></div>' +
       '<div class="fld"><label for="mpSit">Situation</label><select id="mpSit"><option value="">All situations</option><option value="E">Even strength</option><option value="PP">Power play</option><option value="SH">Penalty kill</option></select></div>' +
       '<div class="fld"><label for="mpCoach">Marked by</label><select id="mpCoach"><option value="">Everyone</option>' + coachesWithShots().map(function (c) { return "<option>" + esc(c) + "</option>"; }).join("") + "</select></div></div>" +
-      '<label class="note"><input type="checkbox" id="mpHeat" checked> Show heat</label>' +
-      '<div class="kpis" id="mpKpi"></div>' + '<div class="seg" role="group" aria-label="Zoom the rink"><button id="mpZin">Zoom in</button><button id="mpZout">Zoom out</button><button id="mpZreset">Reset view</button></div>' + fullRink() +
+      '<div class="kpis" id="mpKpi"></div>' + '<div class="seg" role="group" aria-label="Zoom the rink"><button id="mpZin">Zoom in</button><button id="mpZout">Zoom out</button><button id="mpZreset">Reset</button><label class="heatchk"><input type="checkbox" id="mpHeat" checked> Heat</label></div>' + fullRink() +
       '<div class="leg"><span><i style="background:#a974ff;border-radius:50%"></i>' + esc(usN()) + ' goal</span><span><i style="background:#e5484d;border-radius:50%"></i>Opponent goal</span><span><i style="border:2px solid #1e5fd0;border-radius:50%"></i>' + esc(usN()) + ' shot</span><span><i style="border:2px dashed #e5484d;border-radius:50%"></i>Opponent shot</span></div>' +
       '<div id="mpZones"></div>' +
       '<h2 id="mpClipsHead" style="margin-top:18px">Video clips for these shots<small id="mpCnt"></small></h2><div id="mpFoc"></div><p class="note" style="margin-top:0">Tap a shot on the map, or a time below, to watch it here. It follows the filters above.</p>' + playCard() + '<div id="mpClips"></div>' +
