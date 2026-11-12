@@ -334,6 +334,11 @@ table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
 .row:has(> .ngcard), .row.g3 { grid-auto-rows: 1fr; }
 .row > *, .kpis > *, .pcards > * { margin-top: 0 !important; }
 @media (max-width: 600px) { #posChips { display: grid; grid-template-columns: repeat(5, auto); gap: 6px; } #posChips button { min-width: 0; padding: 0 4px; font-size: 14px; letter-spacing: 0; white-space: nowrap; } }
+@media (max-width: 600px) {
+  #app .card.scroll table.ptbl.ptx th, #app .card.scroll table.ptbl.ptx td { white-space: nowrap; padding: 8px 10px; }
+  #app .card.scroll table.ptbl.ptx td:first-child, #app .card.scroll table.ptbl.ptx th:first-child { white-space: nowrap; min-width: 120px; }
+  #app .card.scroll table.ptbl.ptx td:nth-child(10), #app .card.scroll table.ptbl.ptx th:nth-child(10), #app .card.scroll table.ptbl.ptx td:nth-child(11), #app .card.scroll table.ptbl.ptx th:nth-child(11) { display: table-cell; }
+}
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Barlow+Condensed:wght@600;700&family=Oswald:wght@600;700&display=swap">
 </head>
@@ -850,10 +855,10 @@ table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
     var pct = function (a, b) { return has && b ? Math.round(a * 100 / b) + "%" : "-"; };
     var en = RV_MOVES.reduce(function (s0, m) { return s0 + T.en[m]; }, 0), ex = RV_MOVES.reduce(function (s0, m) { return s0 + T.ex[m]; }, 0);
     var ctlEn = pct(T.en.Carry + T.en.Pass, en), ctlEx = pct(T.ex.Carry + T.ex.Pass, ex);
-    if (grp === "F") return [["SOG", v(T.sog)], ["PP G", v(T.ppg)], ["SH G", v(T.shg)], ["FO%", pct(T.fow, T.fow + T.fol)], ["Ctrl En%", ctlEn], ["Pen", v(T.pen)], ["GF on", v(T.gf)], ["GA on", v(T.ga)]];
-    if (grp === "C") return [["FO W-L", v(T.fow + "-" + T.fol)], ["FO%", pct(T.fow, T.fow + T.fol)], ["SOG", v(T.sog)], ["Ctrl En%", ctlEn], ["Pen", v(T.pen)], ["GF on", v(T.gf)], ["GA on", v(T.ga)]];
-    if (grp === "W") return [["SOG", v(T.sog)], ["PP G", v(T.ppg)], ["SH G", v(T.shg)], ["Ctrl En%", ctlEn], ["Pen", v(T.pen)], ["GF on", v(T.gf)], ["GA on", v(T.ga)]];
-    return [["Blk", v(T.blk)], ["Ctrl Ex%", ctlEx], ["SOG", v(T.sog)], ["Pen", v(T.pen)], ["GF on", v(T.gf)], ["GA on", v(T.ga)]];
+    if (grp === "F") return [["PP G", v(T.ppg)], ["SH G", v(T.shg)], ["FO%", pct(T.fow, T.fow + T.fol)], ["Ctrl En%", ctlEn], ["Pen", v(T.pen)], ["GF on", v(T.gf)], ["GA on", v(T.ga)]];
+    if (grp === "C") return [["FO W-L", v(T.fow + "-" + T.fol)], ["FO%", pct(T.fow, T.fow + T.fol)], ["Ctrl En%", ctlEn], ["Pen", v(T.pen)], ["GF on", v(T.gf)], ["GA on", v(T.ga)]];
+    if (grp === "W") return [["PP G", v(T.ppg)], ["SH G", v(T.shg)], ["Ctrl En%", ctlEn], ["Pen", v(T.pen)], ["GF on", v(T.gf)], ["GA on", v(T.ga)]];
+    return [["Blk", v(T.blk)], ["Ctrl Ex%", ctlEx], ["Pen", v(T.pen)], ["GF on", v(T.gf)], ["GA on", v(T.ga)]];
   }
   // Ice time totals per player across every game that has shifts.
   // Ice time stats are hidden for now. Set SHOW_ICE to true to bring them back. Shift tracking in Coach's Corner keeps working.
@@ -870,7 +875,7 @@ table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
     var EX = {}; if (posFilter) { P.forEach(function (p) { EX[p.n] = posExtras(p.n, posFilter); }); }
     var exHead = P.length && posFilter ? EX[P[0].n].map(function (x) { return "<th>" + x[0] + "</th>"; }).join("") : "";
     P.sort(function (a, b) { var x = a[sortKey] === null ? -1 : a[sortKey], y = b[sortKey] === null ? -1 : b[sortKey]; return (y - x) * -sortDir || a.n - b.n; });
-    var h = "<h2>Skaters<small class='hint'>tap a heading to sort</small></h2>" + (Object.keys(D.pos).length ? '<div class="seg" id="posChips" role="group" aria-label="Position">' + [["", "All"], ["F", "Forwards"], ["C", "Centres"], ["W", "Wings"], ["D", "Defence"]].map(function (x) { return '<button data-pos="' + x[0] + '" aria-pressed="' + (posFilter === x[0]) + '">' + x[1] + "</button>"; }).join("") + "</div>" : "") + (posFilter === "C" ? "<p class='note' style='margin:10px 0 0'>Includes anyone who has taken faceoffs, even if listed at another position.</p>" : posFilter === "D" ? "<p class='note' style='margin:10px 0 0'>Includes anyone who has blocked shots, even if listed at another position.</p>" : "") + "<div class='card scroll'><table class='ptbl'><thead><tr><th>Player</th><th>Pos</th>" +
+    var h = "<h2>Skaters<small class='hint'>tap a heading to sort</small></h2>" + (Object.keys(D.pos).length ? '<div class="seg" id="posChips" role="group" aria-label="Position">' + [["", "All"], ["F", "Forwards"], ["C", "Centres"], ["W", "Wings"], ["D", "Defence"]].map(function (x) { return '<button data-pos="' + x[0] + '" aria-pressed="' + (posFilter === x[0]) + '">' + x[1] + "</button>"; }).join("") + "</div>" : "") + (posFilter === "C" ? "<p class='note' style='margin:10px 0 0'>Includes anyone who has taken faceoffs, even if listed at another position.</p>" : posFilter === "D" ? "<p class='note' style='margin:10px 0 0'>Includes anyone who has blocked shots, even if listed at another position.</p>" : "") + "<div class='card scroll'><table class='ptbl" + (posFilter ? " ptx" : "") + "'><thead><tr><th>Player</th><th>Pos</th>" +
       cols.map(function (c) { return '<th class="sort' + (c[0] === sortKey ? " on" : "") + '" data-k="' + c[0] + '">' + c[1] + "</th>"; }).join("") + (hasIce ? "<th>Shifts</th><th>TOI/GP</th>" : "") + exHead + "</tr></thead><tbody>" +
       P.map(function (p) {
         return '<tr class="click" onclick="location.hash=\'#/player/' + p.n + '\'"><td>' + esc(label(p.n)) + "</td><td>" + esc(D.pos[p.n] || "") + "</td><td>" + p.gp + "</td><td>" + p.g + "</td><td>" + p.a + "</td><td><b>" + p.p + "</b></td><td>" + p.ppg.toFixed(2) + '</td><td class="' + pmCls(p.pm) + '">' + pmText(p.pm) + "</td><td>" + p.sog + "</td><td>" + (p.shp === null ? "-" : Math.round(p.shp * 100) + "%") + "</td><td>" + p.pim + "</td>" + (hasIce ? (ICE[p.n] ? "<td>" + ICE[p.n].shifts + "</td><td>" + mss(ICE[p.n].toi / ICE[p.n].games) + "</td>" : "<td>-</td><td>-</td>") : "") + (EX[p.n] || []).map(function (x) { return "<td>" + x[1] + "</td>"; }).join("") + "</tr>";
