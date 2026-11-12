@@ -817,12 +817,33 @@ h2.mhead small { display: block; margin: 8px 0 0; font-size: 14px; letter-spacin
     return {head: head, rows: rows};
   }
   function tableKind(t) { return t.head.some(function (h) { return /^(SV%|SV|GAA|SA|SAVES|GA)$/i.test(h) || /save/i.test(h); }) ? "goalies" : "players"; }
-  function oppTable(t, title) {
+  var OPP_SORT = {};
+  function niceName(v) {
+    var x = String(v || "").trim(); if (!x) return x;
+    var m = /^([^,]+),\s*(.+)$/.exec(x); if (m) x = m[2] + " " + m[1];
+    return x.toLowerCase().replace(/(^|[\s\-'’.])([a-zà-ÿ])/g, function (_, a, c) { return a + c.toUpperCase(); }).replace(/\b(Mc|Mac)([a-z])(?=[a-z]{2})/g, function (_, p2, c) { return p2 + c.toUpperCase(); });
+  }
+  function oppTable(t, title, kind) {
     var keep = t.head.map(function (h, i) { return h && t.rows.some(function (r) { return r[i] !== ""; }) ? i : -1; }).filter(function (i) { return i >= 0; });
-    var sortI = -1; ["PTS", "P", "SV%", "GP"].forEach(function (k) { if (sortI < 0) sortI = t.head.findIndex(function (h) { return h.toUpperCase() === k; }); });
-    var rows = t.rows.slice(); if (sortI >= 0) rows.sort(function (a, b) { return (parseFloat(b[sortI]) || 0) - (parseFloat(a[sortI]) || 0); });
+    var isName = function (i) { return /^(player|name|goalie|goaltender|skater)$/i.test(t.head[i]); };
     var isNum = function (v) { return /^[-+]?[\d.]+%?$/.test(v); };
-    return "<h2>" + title + "</h2><div class='swrap'><div class='card scroll'><table class='ptbl ptx'><thead><tr>" + keep.map(function (i, k) { return "<th" + (k ? " class='num'" : "") + ">" + esc(t.head[i]) + "</th>"; }).join("") + "</tr></thead><tbody>" + rows.map(function (r) { return "<tr>" + keep.map(function (i, k) { return "<td" + (k && isNum(r[i]) ? " class='num'" : "") + ">" + esc(r[i]) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table></div><p class='swhint'>Swipe the table sideways to see more</p></div>";
+    var cur = OPP_SORT[kind];
+    if (!cur) { var si = -1; ["PTS", "P", "SV%", "GP"].forEach(function (k) { if (si < 0) si = t.head.findIndex(function (h) { return h.toUpperCase() === k; }); }); cur = {i: si, dir: -1}; }
+    var rows = t.rows.slice();
+    if (cur.i >= 0) rows.sort(function (a, b) {
+      var x = a[cur.i], y = b[cur.i], nx = parseFloat(x), ny = parseFloat(y);
+      var r = isNum(x) && isNum(y) ? (nx - ny) : String(x).toLowerCase() < String(y).toLowerCase() ? -1 : String(x).toLowerCase() > String(y).toLowerCase() ? 1 : 0;
+      return r * cur.dir;
+    });
+    return "<h2>" + title + "<small class='hint'>tap a heading to sort</small></h2><div class='swrap'><div class='card scroll'><table class='ptbl ptx'><thead><tr>" + keep.map(function (i, k) { return "<th class='sort" + (i === cur.i ? " on" : "") + (k ? " num" : "") + "' data-ot='" + kind + "' data-oi='" + i + "'>" + esc(t.head[i]) + "</th>"; }).join("") + "</tr></thead><tbody>" + rows.map(function (r) { return "<tr>" + keep.map(function (i, k) { var v = isName(i) ? niceName(r[i]) : r[i]; return "<td" + (k && isNum(r[i]) ? " class='num'" : "") + ">" + esc(v) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table></div><p class='swhint'>Swipe the table sideways to see more</p></div>";
+  }
+  function bindOppSort() {
+    Array.prototype.forEach.call(document.querySelectorAll("th[data-ot]"), function (th) {
+      th.onclick = function () {
+        var k = th.getAttribute("data-ot"), i = +th.getAttribute("data-oi"), c = OPP_SORT[k], name = /^(player|name|goalie|goaltender|skater)$/i.test(th.textContent);
+        OPP_SORT[k] = c && c.i === i ? {i: i, dir: -c.dir} : {i: i, dir: name ? 1 : -1}; route();
+      };
+    });
   }
   function oppUpcoming() {
     var now = Date.now(), seen = {}, out = [];
@@ -847,8 +868,8 @@ h2.mhead small { display: block; margin: 8px 0 0; font-size: 14px; letter-spacin
     if (!OPP_SHARED[oppSlug(opp)]) loadOppShared(opp).then(function () { if (/^#\/next\//.test(location.hash)) route(); });
     var d = oppData(opp), t = GS_TEAMS.filter(function (x) { return sameTeam(x.name, opp); })[0];
     var P = d.players ? parseTable(d.players.text) : null, G = d.goalies ? parseTable(d.goalies.text) : null, h = "";
-    if (P) h += oppTable(P, "Their skaters");
-    if (G) h += oppTable(G, "Their goalies");
+    if (P) h += oppTable(P, "Their skaters", "players");
+    if (G) h += oppTable(G, "Their goalies", "goalies");
     if (!P && !G) h += "<div class='card empty'><p>No stats for " + esc(opp) + " yet.</p><p class='note'>A coach adds them in the Game Desk.</p></div>";
     h += "<div class='seg' style='margin:12px 0'><a class='btn' href='" + esc(t ? gsTeamUrl(t.id) : gsUrl(oppQuery(opp))) + "' target='_blank' rel='noopener' style='text-decoration:none'>Open GameSheet</a></div>";
     return h;
@@ -4155,6 +4176,7 @@ h2.mhead small { display: block; margin: 8px 0 0; font-size: 14px; letter-spacin
     else h += vOverview();
     $("app").innerHTML = h;
     if (base === "coach" && needLock()) bindLock();
+    else if (base === "next") bindOppSort();
     else if (base === "coach") { if (parts[1] === "gamesheet") { bindStandings(); bindOppDesk(); } else if (parts[1] === "players") bindPlayersEditor(); else if (parts[1] === "shifts") bindShifts(parts[2]); else if (parts[1] === "setup") bindSetup(parts[2]); else if (parts[1] === "clip") bindClipEditor(parts[2], +parts[3], +parts[4]); else if (parts[1] === "analysis" || /^\d{4}-\d{2}-\d{2}$/.test(parts[1] || "")) bindReview(); else if (parts[1] === "fixit") bindFixIt(); else bindCoachClips(); }
     if (base === "video") bindVideo();
     if (base === "player") bindPlayerClips(+parts[1]);
