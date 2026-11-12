@@ -1545,7 +1545,7 @@ h2.mhead small { display: block; margin: 8px 0 0; font-size: 14px; letter-spacin
   var vpCtl = {
     t: 0, playing: false, ping: null, start: 0, end: 0, armed: false, loop: false, rate: 1,
     endClip: function () { var f = this.frame(); if (!f) return; if (this.loop && this.end) { this.replay(); return; } this.armed = false; this.playing = false; ytCmd(f, "pauseVideo"); vpWake(); },
-    replay: function () { var f = this.frame(); if (!f || !this.end) return; clearTimeout(ytTimer); this.armed = true; this.t = this.start; this.playing = true; ytCmd(f, "seekTo", [this.start, true]); ytCmd(f, "playVideo"); var s = this; ytTimer = setTimeout(function () { if (document.body.contains(f) && s.armed && s.rate === 1) s.endClip(); }, (this.end - this.start) * 1000 + 600); },
+    replay: function () { var f = this.frame(); if (!f || !this.end) return; if (tele) { tele.done = {}; tele.busy = false; tele.last = undefined; } clearTimeout(ytTimer); this.armed = true; this.t = this.start; this.playing = true; ytCmd(f, "seekTo", [this.start, true]); ytCmd(f, "playVideo"); var s = this; ytTimer = setTimeout(function () { if (document.body.contains(f) && s.armed && s.rate === 1) s.endClip(); }, (this.end - this.start) * 1000 + 600); },
     frame: function () { return $("vpBox") && $("vpBox").querySelector("iframe"); },
     step: function (d) { var f = this.frame(); if (!f) return; clearTimeout(ytTimer); this.armed = false; ytCmd(f, "pauseVideo"); this.t = Math.max(0, this.t + d); this.playing = false; ytCmd(f, "seekTo", [this.t, true]); },
     toggle: function () { var f = this.frame(); if (!f) return; clearTimeout(ytTimer); if (this.playing) { ytCmd(f, "pauseVideo"); this.playing = false; } else { if (this.end && this.t >= this.end - 0.3) { this.replay(); return; } this.armed = !!this.end; ytCmd(f, "playVideo"); this.playing = true; } }
@@ -2127,6 +2127,9 @@ h2.mhead small { display: block; margin: 8px 0 0; font-size: 14px; letter-spacin
     var T = tele;
     T.ping = setInterval(function () { if (!document.body.contains(f)) { teleStop(); return; } try { f.contentWindow.postMessage(JSON.stringify({event: "listening", id: 1, channel: "widget"}), "*"); } catch (e) {} }, 1500);
     T.tick = function (t) {
+      // the clip went back to an earlier time (loop, replay or scrub): show every drawing again on this pass
+      if (T.last !== undefined && t < T.last - 0.8) { T.done = {}; }
+      T.last = t;
       if (T.busy) return;
       for (var i = 0; i < T.frames.length; i++) {
         var fr = T.frames[i];
