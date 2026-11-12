@@ -367,6 +367,22 @@ h2.mhead small { display: block; margin: 8px 0 0; font-size: 14px; letter-spacin
 #vpStage.full.nohud #vpBar, #vpStage.full.nohud #teBar, #vpStage.full.nohud #vpNow { display: none !important; }
 #vpStage.full.nohud #vpShow { display: flex; position: absolute; right: max(10px, env(safe-area-inset-right)); bottom: max(10px, env(safe-area-inset-bottom)); z-index: 5; min-height: 44px; padding: 0 14px; align-items: center; background: rgba(0,0,0,.45); color: #fff; border: 1px solid rgba(255,255,255,.35); border-radius: 22px; font-size: 13px; opacity: .35; }
 #vpStage.full.nohud #vpShow:active, #vpStage.full.nohud #vpShow:focus-visible { opacity: 1; }
+/* Full screen controls: one tidy panel, three rows, every button centred and the same height */
+#vpBar .vpbtns button { display: flex; align-items: center; justify-content: center; text-align: center; }
+#vpStage.full #vpBar { display: flex; flex-direction: column; gap: 10px; align-items: stretch; padding-top: 36px; }
+#vpStage.full #vpBar > * { width: 100%; max-width: 720px; margin-left: auto; margin-right: auto; }
+#vpStage.full #vpBar .vprow { flex-wrap: nowrap; gap: 12px; }
+#vpStage.full #vpBar .vprow input[type=range] { flex: 1 1 auto; min-width: 0; }
+#vpStage.full #vpBar .vptime { font-size: 14px; min-width: 40px; }
+#vpStage.full #vpBar .vpbtns { margin-top: 0; gap: 8px; }
+#vpStage.full #vpBar .vpmain { grid-template-columns: 1fr 1fr 1.5fr 1fr 1fr; }
+#vpStage.full #vpBar .vpsub { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+#vpStage.full #vpBar .vpbtns button { min-height: 48px; border-radius: 14px; font-size: 14px; padding: 0 4px; }
+#vpStage.full #vpBar .vpmain #vpPP { font-size: 16px; font-weight: 800; background: rgba(255,255,255,.28); }
+#vpStage.full #vpBar .vpsub button { font-size: 14px; }
+@media (max-height: 460px) { #vpStage.full #vpBar { gap: 6px; padding-top: 26px; } #vpStage.full #vpBar .vpbtns button { min-height: 42px; } }
+#vpStage.full #teBar select { width: 120px; max-width: 100%; min-width: 0; } #vpStage.full #teBar { padding-right: max(14px, env(safe-area-inset-right)); }
+#vpStage.full #teBar #teCols { display: flex; flex-wrap: wrap; gap: 8px; max-width: 100%; } #vpStage.full #teBar #teCols button[data-col] { min-width: 40px !important; flex: 0 0 auto; }
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Barlow+Condensed:wght@600;700&family=Oswald:wght@600;700&display=swap">
 </head>
@@ -1743,7 +1759,18 @@ h2.mhead small { display: block; margin: 8px 0 0; font-size: 14px; letter-spacin
     var sent = (D.clips[date] || {})[ev ? "game" : mySlug()];
     return sent ? sent.map(function (x) { return {sec: x.sec, end: x.end || 0, tag: normTag(x.tag), players: (x.players || []).slice(), assists: (x.assists || []).slice(), label: x.label || "", lists: (x.lists || []).slice()}; }) : [];
   }
-  function putClips(date, list, ev) { var k = ev ? EK : CK, l = lget(k); l[date] = list; lset(k, l); markDirty(ev ? "e" : "c", date); }
+  function putClips(date, list, ev) {
+    var k = ev ? EK : CK, l = lget(k), before = l[date] ? l[date].length : ((D.clips[date] || {})[ev ? "game" : mySlug()] || []).length;
+    l[date] = list; lset(k, l); markDirty(ev ? "e" : "c", date);
+    if (list.length < before) autoSendRemoval("clips", date, fmtClips(list), ev);
+  }
+  // Taking a mark away used to stay on this phone until the coach tapped Share again, so it kept showing in the highlights.
+  // Now a removal is sent to the site right away (only when the helper and the coach passcode are set up).
+  var sendQ = Promise.resolve();
+  function autoSendRemoval(kind, date, text, asGame) {
+    var cfg = D.cfg || {}, c = coachCfg(); if (!cfg.submitUrl || !c.pass.trim()) return;
+    sendQ = sendQ.then(function () { return submitFile(kind, date, text, {textContent: ""}, asGame); }).catch(function () {});
+  }
   function getMyShots(date) { var l = lget(SK); return l[date] ? l[date].slice() : []; }
   function putShots(date, list) { var l = lget(SK); l[date] = list; lset(SK, l); }
   function mergeBy(sent, mine, key) {
@@ -2895,7 +2922,11 @@ h2.mhead small { display: block; margin: 8px 0 0; font-size: 14px; letter-spacin
     var sent = (D.review[date] || {}).game;
     return sent ? sent.map(function (x) { return {sec: x.sec, tag: x.tag, players: x.players.slice(), assists: x.assists.slice(), ice: (x.ice || []).slice(), until: x.until == null ? null : x.until, from: x.from == null ? null : x.from, lists: (x.lists || []).slice(), infr: x.infr || "", x: x.x, y: x.y, p: x.p}; }) : [];
   }
-  function putReview(date, list) { var l = lget(RK); l[date] = list; lset(RK, l); markDirty("r", date); }
+  function putReview(date, list) {
+    var l = lget(RK), before = l[date] ? l[date].length : ((D.review[date] || {}).game || []).length;
+    l[date] = list; lset(RK, l); markDirty("r", date);
+    if (list.length < before) autoSendRemoval("review", date, fmtReview(list), true);
+  }
   function allReview(date) {
     var sent = D.review[date] || {}, others = {};
     Object.keys(sent).forEach(function (k) { if (k !== "game") others[k] = sent[k]; });
