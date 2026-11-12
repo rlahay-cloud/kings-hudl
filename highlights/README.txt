@@ -16,3 +16,7 @@ Every game
    (a minus number like -12 if the clips start too late, a plus number if they start too early) and test again.
 5. Press "Make the highlight video". It opens when done.
 Videos are saved in Documents\KingsHighlights.
+
+Files for the Download buttons
+Press "Make a file for every clip (for downloads)". Each goal, save and highlight gets its own small video
+in Documents\KingsHighlights\clips_DATE, with a clips.json list. Running it again skips clips already cut.

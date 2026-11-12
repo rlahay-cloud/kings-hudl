@@ -68,6 +68,8 @@ class App(tk.Tk):
         self.b_test.pack(side="left")
         self.b_all = ttk.Button(f4, text="Make the highlight video", command=lambda: self.go(False))
         self.b_all.pack(side="left", padx=8)
+        self.b_each = ttk.Button(f4, text="Make a file for every clip (for downloads)", command=lambda: self.go(False, True))
+        self.b_each.pack(side="left")
         self.bar = ttk.Progressbar(self, mode="determinate", maximum=100)
         self.bar.pack(fill="x", padx=12, pady=(6, 2))
         self.log = tk.Text(self, height=10, state="disabled", wrap="word", font=("Consolas", 9))
@@ -96,7 +98,7 @@ class App(tk.Tk):
         except Exception as e:
             self.q.put(("dates_err", str(e)))
 
-    def go(self, test):
+    def go(self, test, each=False):
         if self.busy:
             return
         if not self.video:
@@ -111,18 +113,19 @@ class App(tk.Tk):
         except ValueError:
             messagebox.showinfo("Highlight video", "Seconds to add must be a number, like 0 or -12.", parent=self)
             return
-        out = os.path.join(DOCS, "Kings_highlights_%s%s.mp4" % (date, "_test" if test else ""))
+        out = os.path.join(DOCS, "clips_" + date) if each else os.path.join(DOCS, "Kings_highlights_%s%s.mp4" % (date, "_test" if test else ""))
         self.busy = True
         self.bar["value"] = 0
         self.b_test.config(state="disabled")
         self.b_all.config(state="disabled")
+        self.b_each.config(state="disabled")
         keep_awake(True)
-        threading.Thread(target=self.work, args=(date, off, test, out, self.saves.get()), daemon=True).start()
+        threading.Thread(target=self.work, args=(date, off, test, out, self.saves.get(), each), daemon=True).start()
 
-    def work(self, date, off, test, out, saves=True):
+    def work(self, date, off, test, out, saves=True, each=False):
         try:
             import highlights
-            highlights.make_video(self.video, date, out, off, test, None,
+            (highlights.make_each if each else highlights.make_video)(self.video, date, out, off, test, None,
                                   log=lambda t: self.q.put(("line", t)), saves=saves,
                                   progress=lambda i, n: self.q.put(("bar", 100.0 * i / n)))
             self.q.put(("done", out))
@@ -149,6 +152,7 @@ class App(tk.Tk):
                     keep_awake(False)
                     self.b_test.config(state="normal")
                     self.b_all.config(state="normal")
+                    self.b_each.config(state="normal")
                     if kind == "done":
                         self.bar["value"] = 100
                         self.add_log("Opening the video.")

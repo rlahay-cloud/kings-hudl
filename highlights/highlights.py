@@ -282,6 +282,57 @@ def make_video(video, date, out, offset=0.0, test=False, local_dir=None, log=pri
     return out
 
 
+def clip_name(date, sec):
+    """File name for one clip, from the game date and the mark's second in the game video."""
+    return "%s_%d.mp4" % (date, int(round(sec)))
+
+
+def one_segment(it, offset=0.0, video_len=None):
+    """Start and end of one clip in the video file's time, or None if it falls outside the video."""
+    s = segments([it], offset, video_len)
+    return s[0] if s else None
+
+
+def make_each(video, date, outdir, offset=0.0, test=False, local_dir=None, log=print, progress=None, saves=True):
+    """Cuts every clip of the game into its own file in outdir, plus clips.json listing them.
+    Clips already cut are skipped, so running it again only does new ones."""
+    files = fetch_game_files(date, local_dir)
+    items = [i for i in collect(files) if saves or i["kind"] != "save"]
+    if not items:
+        raise RuntimeError("Kings Film Room has no goals or highlight clips for %s yet." % date)
+    ffmpeg = find_ffmpeg(log)
+    dur = video_length(ffmpeg, video)
+    font = find_font()
+    os.makedirs(outdir, exist_ok=True)
+    todo = []
+    for it in items:
+        seg = one_segment(it, offset, dur)
+        if seg:
+            seg["label"] = it["label"]
+            todo.append((it, seg))
+    if not todo:
+        raise RuntimeError("None of the clips fall inside this video. Check the offset.")
+    if test:
+        todo = todo[:1]
+    manifest = []
+    for i, (it, seg) in enumerate(todo):
+        name = clip_name(date, it["sec"])
+        out = os.path.join(outdir, name)
+        if os.path.exists(out) and os.path.getsize(out) > 1000:
+            log("Already cut: %s" % it["label"])
+        else:
+            log("Cutting clip %d of %d: %s" % (i + 1, len(todo), it["label"]))
+            cut_one(ffmpeg, video, seg, out, it["label"], font, log)
+        manifest.append({"file": name, "sec": int(round(it["sec"])), "label": it["label"],
+                         "bytes": os.path.getsize(out)})
+        if progress:
+            progress(i + 1, len(todo))
+    with open(os.path.join(outdir, "clips.json"), "w", encoding="utf-8") as f:
+        json.dump({"date": date, "clips": manifest}, f, indent=1)
+    log("Done. %d clips are in %s" % (len(manifest), outdir))
+    return outdir
+
+
 def main():
     ap = argparse.ArgumentParser(description="Make a Kings highlight video from Kings Film Room clips.")
     ap.add_argument("date", help="Game date, like 2026-10-18")
@@ -289,9 +340,14 @@ def main():
     ap.add_argument("--offset", type=float, default=0.0, help="Seconds to add to every Kings Film Room time")
     ap.add_argument("--test", action="store_true", help="Only make the first clip, to check the timing")
     ap.add_argument("--no-saves", action="store_true", help="Leave out the saves (shots against)")
+    ap.add_argument("--each", action="store_true", help="Cut every clip into its own file (for the Download buttons)")
     ap.add_argument("--out", default=None)
     ap.add_argument("--local-dir", default=None, help="Read the game files from a folder instead of GitHub")
     a = ap.parse_args()
+    if a.each:
+        d = a.out or os.path.join(os.path.expanduser("~"), "Documents", "KingsHighlights", "clips_" + a.date)
+        make_each(a.video, a.date, d, a.offset, a.test, a.local_dir, saves=not a.no_saves)
+        return
     out = a.out or os.path.join(os.path.expanduser("~"), "Documents", "KingsHighlights",
                                 "Kings_highlights_%s%s.mp4" % (a.date, "_test" if a.test else ""))
     make_video(a.video, a.date, out, a.offset, a.test, a.local_dir, saves=not a.no_saves)
