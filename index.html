@@ -3951,7 +3951,7 @@ h2.mhead small { display: block; margin: 8px 0 0; font-size: 14px; letter-spacin
         if (/^(For|Against): (Goal|Shot on goal|Missed shot|Blocked shot)$/.test(t) && (c.x == null || c.y == null)) add(t.replace(": ", " ") + " has no spot on the rink", c, "nospot");
         if (/^Faceoff:/.test(t) && !(c.players || []).length) add("Faceoff has no taker picked", c, "pick");
         if (/^For: (Shot on goal|Missed shot|Blocked shot)$/.test(t) && !(c.players || []).length) add("Our " + t.replace("For: ", "").toLowerCase() + " has no shooter picked", c, "pick");
-        if (/^Against: (Goal|Shot on goal)$/.test(t) && !(c.players || []).length) add((t === "Against: Goal" ? "Goal against" : "Shot against") + " has no goalie picked", c, "pick");
+        if (/^Against: (Goal|Shot on goal)$/.test(t) && !(c.players || []).length && (c.lists || []).indexOf("Empty net") < 0) add((t === "Against: Goal" ? "Goal against" : "Shot against") + " has no goalie picked", c, "pick");
       });
     });
     return out;
