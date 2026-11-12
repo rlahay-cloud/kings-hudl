@@ -30,7 +30,7 @@
 0:16:27|Faceoff: NZ Win|17|,,2,f
 0:17:54|Faceoff: NZ Loss|38|,,2,f
 0:18:20|Penalty|93|,,2,f,s1160,e1415
-0:18:20|Away Penalty||,,2,f,s1160
+0:18:20|Away Penalty||,,2,f,s1160,e1415
 0:19:21|Faceoff: OZ Win|97|,,2,f
 0:19:41|Against: Goal|33 i13 i72 i19 i97 i11|0.105,0.443,2,f
 0:20:12|Faceoff: NZ Loss|97|,,2,f
