@@ -30,7 +30,7 @@ header.top { overflow-x: clip; max-width: 100vw; }
 .navarrow { position: absolute; bottom: 12px; width: 26px; height: 26px; border: 1px solid var(--line); border-radius: 50%; background: var(--panel2); color: var(--fg); font-size: 18px; font-weight: 600; line-height: 1; display: none; align-items: center; justify-content: center; padding: 0 0 2px; box-shadow: 0 0 10px 6px rgba(11,18,32,.9); z-index: 2; opacity: .95; }
 .navarrow.r { right: 8px; } .navarrow.l { left: 8px; } .navarrow.show { display: flex; }
 .title small, h2 small { white-space: nowrap; }
-.title { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.title { display: flex; align-items: center; gap: 12px; flex-wrap: nowrap; }
 .title h1 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 26px; letter-spacing: .05em; text-transform: uppercase; }
 .title .rec { font-family: var(--display); font-weight: 600; font-size: 18px; letter-spacing: .08em; color: var(--accent); }
 nav { display: flex; gap: 4px; overflow-x: auto; overscroll-behavior-x: none; -webkit-overflow-scrolling: touch; margin-top: 6px; scrollbar-width: none; }
@@ -271,7 +271,7 @@ header.top:after { content: ""; position: absolute; right: 0; top: 0; bottom: 0;
 .title h1, h2, .kpi b { font-family: "Oswald", var(--display); }
 .title h1 { font-weight: 700; font-style: italic; letter-spacing: .05em; text-shadow: 0 2px 0 #2a1560; display: flex; align-items: center; gap: 10px; }
 .title h1:before { content: ""; flex: none; width: 46px; height: 40px; background: url(photos/kings-logo.png) center/contain no-repeat; filter: drop-shadow(0 2px 4px rgba(0,0,0,.6)); }
-.title .rec { color: #fff; background: linear-gradient(90deg, var(--kings), var(--silver)); padding: 0 12px; border-radius: 4px; transform: skew(-12deg); font-weight: 700; }
+.title h1 { white-space: nowrap; margin: 0; } .title .rec { white-space: nowrap; flex: none; color: #fff; background: linear-gradient(90deg, var(--kings), var(--silver)); padding: 0 12px; border-radius: 4px; transform: skew(-12deg); font-weight: 700; }
 nav a[aria-current="page"] { color: #fff; background: linear-gradient(180deg, transparent, rgba(155,124,255,.22)); }
 .card, .kpi { background: linear-gradient(160deg, #1a1340, #0c0a1c); border: 1px solid #4a3487; border-left: 4px solid var(--accent); border-radius: 6px; }
 .kpi { clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px)); }
@@ -281,12 +281,13 @@ h2 { font-weight: 700; font-style: italic; border-left: 6px solid var(--accent);
 @media (max-width: 600px) { h2 small { display: block; margin: 2px 0 0; white-space: normal; } }
 h2 small { font-style: normal; }
 h3, th { color: var(--accent); }
+@media (max-width: 430px) { .title { gap: 8px; } .title h1 { font-size: 20px; letter-spacing: .03em; gap: 7px; } .title h1:before { width: 36px; height: 32px; } .title .rec { font-size: 15px; padding: 0 8px; letter-spacing: .04em; } }
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Barlow+Condensed:wght@600;700&family=Oswald:wght@600;700&display=swap">
 </head>
 <body>
 <header class="top"><div class="in">
-  <div class="title"><h1 id="team">Kings Film Room</h1><span class="rec" id="rec"></span><span class="note" id="sub" style="flex-basis:100%"></span></div>
+  <div class="title"><h1 id="team">Kings Film Room</h1><span class="rec" id="rec"></span></div>
   <nav id="nav" aria-label="Sections"></nav>
 </div></header>
 <main class="wrap" id="app" aria-live="polite"><p class="note" style="margin-top:24px">Loading stats...</p></main>
@@ -3941,7 +3942,7 @@ h3, th { color: var(--accent); }
       edges(); setTimeout(edges, 300); })();
     var t = team();
     $("team").textContent = "Kings Film Room";
-    $("sub").textContent = D.home || "";
+    
     $("rec").textContent = D.games.length ? t.w + "-" + t.l + "-" + t.t + (D.sample ? " (sample)" : "") : "";
     document.title = "Kings Film Room";
     var h = D.sample ? '<div class="banner">This is sample data to show how the site looks. It is not real.</div>' : "";
