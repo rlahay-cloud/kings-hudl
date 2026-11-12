@@ -362,6 +362,11 @@ h2.mhead small { display: block; margin: 8px 0 0; font-size: 14px; letter-spacin
 .oppseg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } .oppseg > * { min-width: 0; text-align: center; justify-content: center; } .oppseg > :only-child { grid-column: 1 / -1; }
 .oppdesk { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); } .oppdesk > div { min-width: 0; } .oppdesk button { flex: none; min-width: 110px; min-height: 44px; }
 .oppdesk { display: block; padding: 12px 0; } .oppdesk > b { display: block; margin-bottom: 6px; } .oppfile { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; } .oppfile > div { min-width: 0; } .oppwhat { font-family: var(--display); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; font-size: 14px; } .oppfile button { flex: none; min-width: 110px; min-height: 44px; }
+.vpfsonly { display: none; } #vpStage.full .vpfsonly { display: inline-flex; }
+#vpShow { display: none; }
+#vpStage.full.nohud #vpBar, #vpStage.full.nohud #teBar, #vpStage.full.nohud #vpNow { display: none !important; }
+#vpStage.full.nohud #vpShow { display: flex; position: absolute; right: max(10px, env(safe-area-inset-right)); bottom: max(10px, env(safe-area-inset-bottom)); z-index: 5; min-height: 44px; padding: 0 14px; align-items: center; background: rgba(0,0,0,.45); color: #fff; border: 1px solid rgba(255,255,255,.35); border-radius: 22px; font-size: 13px; opacity: .35; }
+#vpStage.full.nohud #vpShow:active, #vpStage.full.nohud #vpShow:focus-visible { opacity: 1; }
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Barlow+Condensed:wght@600;700&family=Oswald:wght@600;700&display=swap">
 </head>
@@ -1472,7 +1477,7 @@ h2.mhead small { display: block; margin: 8px 0 0; font-size: 14px; letter-spacin
   function vpFull(on) {
     var st = $("vpStage"); if (!st) return;
     if (on === undefined) on = !st.classList.contains("full");
-    vpIsFull = on; vpZoomReset(); st.classList.toggle("full", on); st.classList.remove("idle"); document.body.style.overflow = on ? "hidden" : "";
+    vpIsFull = on; if (!on) st.classList.remove("nohud"); vpZoomReset(); st.classList.toggle("full", on); st.classList.remove("idle"); document.body.style.overflow = on ? "hidden" : "";
     // iPhone cannot do real full screen for a page element, so the stage is pinned over the whole page: lift its card above the header and hide the header
     document.body.classList.toggle("vpfull", on); var vc = $("vpCard"); if (vc) vc.style.zIndex = on ? "100000" : "";
     var fb = $("vpFs"); if (fb) fb.textContent = on ? "Exit" : "Full"; fb.setAttribute("aria-label", on ? "Exit full screen" : "Full screen");
@@ -1492,6 +1497,12 @@ h2.mhead small { display: block; margin: 8px 0 0; font-size: 14px; letter-spacin
     vpUpdate();
   }, 250);
   document.addEventListener("click", function (e) { if (e.target.closest && e.target.closest("button[data-vpfs]")) vpFull(); });
+  // Full screen: hide every control so only the picture (and any drawings) show; a faint "Controls" button brings them back
+  document.addEventListener("click", function (e) {
+    var st = $("vpStage"); if (!st || !e.target.closest) return;
+    if (e.target.closest("button[data-vphide]")) { st.classList.add("nohud"); e.stopPropagation(); }
+    else if (e.target.closest("button[data-vpshow]")) { st.classList.remove("nohud"); vpWake(); e.stopPropagation(); }
+  }, true);
   // Never leave the page locked from scrolling: if nothing is in full screen, give scrolling back
   function unlockScroll() {
     var sf = document.querySelector("#vpStage.full"); if (sf && !vpIsFull && !document.fullscreenElement) { sf.classList.remove("full", "idle"); sf = null; }
@@ -1582,7 +1593,7 @@ h2.mhead small { display: block; margin: 8px 0 0; font-size: 14px; letter-spacin
     return '<div class="card" id="vpCard" hidden style="position:sticky;top:calc(var(--hdr, 96px) + 14px);z-index:30;margin-bottom:12px"><div class="vpxrow"><button type="button" class="vpx" data-vpclose="1" aria-label="Hide the video" title="Hide video">&#10005;</button></div>' +
       '<div id="vpStage"><div class="ytbox" id="vpBox"></div><div id="vpTap" data-step="p" role="button" aria-label="Tap the video to play or pause"></div>' +
       '<div id="vpBar"><div class="vprow"><span class="vptime" id="vpT0">0:00</span><input type="range" id="vpSeek" min="0" max="10" step="0.05" value="0" aria-label="Where you are in the clip"><span class="vptime" id="vpT1">0:10</span></div>' +
-      '<div class="vpbtns seg vpmain"><button type="button" data-step="-1" aria-label="Back one second">&minus;1s</button><button type="button" data-step="-0.0334" aria-label="Back one frame">Frame<br>back</button><button type="button" data-step="p" id="vpPP">Pause</button><button type="button" data-step="0.0334" aria-label="Forward one frame">Frame<br>next</button><button type="button" data-step="1" aria-label="Forward one second">+1s</button></div><div class="vpbtns seg vpsub"><button type="button" data-replay="1">Replay</button><button type="button" data-vploop="1" id="vpLoop" aria-pressed="false" aria-label="Loop the clip">Loop</button><button type="button" data-vprate="1" id="vpRate" aria-label="Playback speed">1x</button><button type="button" data-vpfs="1" id="vpFs">Full</button></div></div></div>' +
+      '<div class="vpbtns seg vpmain"><button type="button" data-step="-1" aria-label="Back one second">&minus;1s</button><button type="button" data-step="-0.0334" aria-label="Back one frame">Frame<br>back</button><button type="button" data-step="p" id="vpPP">Pause</button><button type="button" data-step="0.0334" aria-label="Forward one frame">Frame<br>next</button><button type="button" data-step="1" aria-label="Forward one second">+1s</button></div><div class="vpbtns seg vpsub"><button type="button" data-replay="1">Replay</button><button type="button" data-vploop="1" id="vpLoop" aria-pressed="false" aria-label="Loop the clip">Loop</button><button type="button" data-vprate="1" id="vpRate" aria-label="Playback speed">1x</button><button type="button" data-vpfs="1" id="vpFs">Full</button><button type="button" data-vphide="1" id="vpHide" class="vpfsonly" aria-label="Hide the controls">Hide</button></div></div><button type="button" id="vpShow" data-vpshow="1" aria-label="Show the controls">Controls</button></div>' +
       '<p class="note" id="vpNow" style="margin:8px 0 0"></p></div>';
   }
   function timeBtn(it, hasVideo) {
