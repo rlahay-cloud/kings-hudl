@@ -830,7 +830,7 @@ h2.mhead small { display: block; margin: 8px 0 0; font-size: 14px; letter-spacin
     if (G) h += oppTable(G, "Their goalies");
     var when = Math.max(d.players ? d.players.stamp : 0, d.goalies ? d.goalies.stamp : 0);
     h += "<div class='card' style='margin-top:12px'>" + (!P && !G ? "<p style='margin:0 0 8px'>No stats for " + esc(opp) + " yet.</p>" : "<p class='note' style='margin:0 0 8px'>Added " + new Date(when).toLocaleDateString([], {month: "short", day: "numeric"}) + " on this device.</p>") +
-      "<div class='seg oppseg' style='margin:0'>" + (coach ? "<button type='button' id='oppAdd'>" + (P || G ? "Replace stats" : "Add stats") + "</button>" : "") + "<a class='btn' href='" + esc(t ? gsTeamUrl(t.id) : gsUrl(oppQuery(opp))) + "' target='_blank' rel='noopener' style='text-decoration:none'>GameSheet page</a></div>" +
+      "<div class='seg oppseg' style='margin:0'>" + (coach ? "<button type='button' id='oppAdd'>" + (P || G ? "Replace stats" : "Add stats") + "</button>" : "") + "<a class='btn' href='" + esc(t ? gsTeamUrl(t.id) : gsUrl(oppQuery(opp))) + "' target='_blank' rel='noopener' style='text-decoration:none'>GameSheet</a></div>" +
       "<input type='file' id='oppFile' accept='.csv,text/csv' multiple hidden><p class='note' id='oppNote' style='margin:12px 0 0'>" + (coach ? "On their GameSheet page tap both Export buttons (players and goalies), then choose both files here." : "A coach adds these from their phone or computer.") + "</p></div>";
     return h;
   }
