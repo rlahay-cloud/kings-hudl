@@ -22,7 +22,10 @@ a { color: var(--blue); }
 button { font: inherit; color: inherit; cursor: pointer; }
 .wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px 80px; }
 header.top { position: sticky; top: 0; z-index: 5; background: rgba(11,18,32,.96); border-bottom: 1px solid var(--line); padding: env(safe-area-inset-top) 0 0; }
-.top .in { max-width: 1040px; margin: 0 auto; padding: 10px 16px 0; }
+.top .in { max-width: 1040px; margin: 0 auto; padding: 10px 16px 0; position: relative; }
+.navarrow { position: absolute; bottom: 4px; width: 34px; height: 40px; border: 0; border-radius: 10px; background: var(--accent); color: var(--accent-ink); font-size: 22px; font-weight: 700; line-height: 1; display: none; align-items: center; justify-content: center; padding: 0; box-shadow: 0 0 14px 6px rgba(11,18,32,.95); z-index: 2; }
+.navarrow.r { right: 6px; } .navarrow.l { left: 6px; } .navarrow.show { display: flex; }
+.title small, h2 small { white-space: nowrap; }
 .title { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
 .title h1 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 26px; letter-spacing: .05em; text-transform: uppercase; }
 .title .rec { font-family: var(--display); font-weight: 600; font-size: 18px; letter-spacing: .08em; color: var(--accent); }
@@ -3906,7 +3909,10 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
     var cur = base === "player" ? "players" : base === "game" ? "games" : base === "next" ? "" : base === "coach" && parts[1] && ["analysis", "players", "shifts", "setup", "gaps", "gamesheet", "fixit", "shots"].indexOf(parts[1]) >= 0 ? "coach/analysis" : base;
     $("nav").innerHTML = tabs.map(function (t) { return '<a href="#/' + t[0] + '"' + (t[0] === cur ? ' aria-current="page"' : "") + ">" + t[1] + "</a>"; }).join("");
     (function () { var nv = $("nav"); if (!nv) return;
-      function edges() { nv.classList.toggle("more-r", nv.scrollLeft + nv.clientWidth < nv.scrollWidth - 4); nv.classList.toggle("more-l", nv.scrollLeft > 4); }
+      var host = nv.parentNode, ar = host.querySelector(".navarrow.r"), al = host.querySelector(".navarrow.l");
+      if (!ar) { ar = document.createElement("button"); ar.type = "button"; ar.className = "navarrow r"; ar.setAttribute("aria-label", "More sections"); ar.innerHTML = "&#8250;"; host.appendChild(ar); ar.onclick = function () { nv.scrollBy({left: nv.clientWidth * 0.7, behavior: "smooth"}); };
+        al = document.createElement("button"); al.type = "button"; al.className = "navarrow l"; al.setAttribute("aria-label", "Earlier sections"); al.innerHTML = "&#8249;"; host.appendChild(al); al.onclick = function () { nv.scrollBy({left: -nv.clientWidth * 0.7, behavior: "smooth"}); }; }
+      function edges() { var mr = nv.scrollLeft + nv.clientWidth < nv.scrollWidth - 4, ml = nv.scrollLeft > 4; nv.classList.toggle("more-r", mr); nv.classList.toggle("more-l", ml); ar.classList.toggle("show", mr); al.classList.toggle("show", ml); }
       if (!nv._kfEdges) { nv._kfEdges = true; nv.addEventListener("scroll", edges, {passive: true}); window.addEventListener("resize", edges); }
       var a = nv.querySelector('[aria-current="page"]'); if (a && (a.offsetLeft < nv.scrollLeft || a.offsetLeft + a.offsetWidth > nv.scrollLeft + nv.clientWidth)) nv.scrollLeft = Math.max(0, a.offsetLeft - 24); else if (a && a.offsetLeft < 80) nv.scrollLeft = 0;
       edges(); setTimeout(edges, 300); })();
