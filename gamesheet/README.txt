@@ -6,6 +6,10 @@ division standings, then each team page. It clicks every Export button, saves th
 files into the "exports" folder, and sends the division standings to Kings Film Room.
 Leave the window alone while it works.
 
+On a Mac
+Double click Update_GameSheet.command instead. The first time, macOS may say it cannot
+be opened: right click it, choose Open, then Open again. Python 3 from python.org is needed.
+
 First time
 1. Install Python from python.org if you do not have it. Tick "Add Python to PATH".
 2. Double click Update_GameSheet.bat. The first run installs what it needs.
