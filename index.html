@@ -383,6 +383,26 @@ h2.mhead small { display: block; margin: 8px 0 0; font-size: 14px; letter-spacin
 @media (max-height: 460px) { #vpStage.full #vpBar { gap: 6px; padding-top: 26px; } #vpStage.full #vpBar .vpbtns button { min-height: 42px; } }
 #vpStage.full #teBar select { width: 120px; max-width: 100%; min-width: 0; } #vpStage.full #teBar { padding-right: max(14px, env(safe-area-inset-right)); }
 #vpStage.full #teBar #teCols { display: flex; flex-wrap: wrap; gap: 8px; max-width: 100%; } #vpStage.full #teBar #teCols button[data-col] { min-width: 40px !important; flex: 0 0 auto; }
+/* Full screen: exactly two rows (slider, then one row of buttons) and an X in the top corner to leave */
+.vpall { display: block; } .vpmain .sh { display: none; }
+#vpExit { display: none; }
+#vpStage.full #vpExit { display: flex; align-items: center; justify-content: center; position: absolute; top: max(10px, env(safe-area-inset-top)); right: max(10px, env(safe-area-inset-right)); z-index: 6; width: 44px; height: 44px; padding: 0; font-size: 20px; line-height: 1; background: rgba(0,0,0,.55); color: #fff; border: 1px solid rgba(255,255,255,.5); border-radius: 50%; }
+#vpStage.full #vpFs { display: none !important; }
+#vpStage.full #teBar { padding-right: calc(max(14px, env(safe-area-inset-right)) + 56px); }
+#vpStage.full .vpall { display: flex; gap: 6px; width: 100%; }
+#vpStage.full .vpall .vpbtns { display: contents; }
+#vpStage.full #vpBar .vpall button { flex: 1 1 0; min-width: 0; min-height: 48px; padding: 0 2px; font-size: 14px; white-space: nowrap; }
+#vpStage.full #vpBar .vpall #vpPP { flex: 1.5 1 0; }
+#vpStage.full.nohud #vpExit { opacity: .45; }
+@media (max-width: 600px) {
+  #vpStage.full .vpall { gap: 3px; }
+  #vpStage.full #vpBar .vpall button { font-size: 12px; min-height: 46px; letter-spacing: 0; }
+  #vpStage.full .vpmain .lg { display: none; } #vpStage.full .vpmain .sh { display: inline; }
+}
+#vpStage.full #teBar { padding-right: calc(max(14px, env(safe-area-inset-right)) + 58px) !important; }
+.vpsub .sh { display: none; }
+@media (max-width: 600px) { #vpStage.full .vpsub .lg { display: none; } #vpStage.full .vpsub .sh { display: inline; font-size: 20px; } #vpStage.full #vpBar .vpall #vpPP { font-size: 13px !important; } }
+@media (max-width: 600px) { #vpStage.full #teBar #teRowDraw { max-width: calc(100% - 56px); flex-wrap: wrap; } }
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Barlow+Condensed:wght@600;700&family=Oswald:wght@600;700&display=swap">
 </head>
@@ -1609,7 +1629,7 @@ h2.mhead small { display: block; margin: 8px 0 0; font-size: 14px; letter-spacin
     return '<div class="card" id="vpCard" hidden style="position:sticky;top:calc(var(--hdr, 96px) + 14px);z-index:30;margin-bottom:12px"><div class="vpxrow"><button type="button" class="vpx" data-vpclose="1" aria-label="Hide the video" title="Hide video">&#10005;</button></div>' +
       '<div id="vpStage"><div class="ytbox" id="vpBox"></div><div id="vpTap" data-step="p" role="button" aria-label="Tap the video to play or pause"></div>' +
       '<div id="vpBar"><div class="vprow"><span class="vptime" id="vpT0">0:00</span><input type="range" id="vpSeek" min="0" max="10" step="0.05" value="0" aria-label="Where you are in the clip"><span class="vptime" id="vpT1">0:10</span></div>' +
-      '<div class="vpbtns seg vpmain"><button type="button" data-step="-1" aria-label="Back one second">&minus;1s</button><button type="button" data-step="-0.0334" aria-label="Back one frame">Frame<br>back</button><button type="button" data-step="p" id="vpPP">Pause</button><button type="button" data-step="0.0334" aria-label="Forward one frame">Frame<br>next</button><button type="button" data-step="1" aria-label="Forward one second">+1s</button></div><div class="vpbtns seg vpsub"><button type="button" data-replay="1">Replay</button><button type="button" data-vploop="1" id="vpLoop" aria-pressed="false" aria-label="Loop the clip">Loop</button><button type="button" data-vprate="1" id="vpRate" aria-label="Playback speed">1x</button><button type="button" data-vpfs="1" id="vpFs">Full</button><button type="button" data-vphide="1" id="vpHide" class="vpfsonly" aria-label="Hide the controls">Hide</button></div></div><button type="button" id="vpShow" data-vpshow="1" aria-label="Show the controls">Controls</button></div>' +
+      '<div class="vpall"><div class="vpbtns seg vpmain"><button type="button" data-step="-1" aria-label="Back one second">&minus;1s</button><button type="button" data-step="-0.0334" aria-label="Back one frame"><span class="lg">Frame<br>back</span><span class="sh">&lsaquo;F</span></button><button type="button" data-step="p" id="vpPP">Pause</button><button type="button" data-step="0.0334" aria-label="Forward one frame"><span class="lg">Frame<br>next</span><span class="sh">F&rsaquo;</span></button><button type="button" data-step="1" aria-label="Forward one second">+1s</button></div><div class="vpbtns seg vpsub"><button type="button" data-replay="1" aria-label="Replay the clip"><span class="lg">Replay</span><span class="sh">&#8635;</span></button><button type="button" data-vploop="1" id="vpLoop" aria-pressed="false" aria-label="Loop the clip">Loop</button><button type="button" data-vprate="1" id="vpRate" aria-label="Playback speed">1x</button><button type="button" data-vpfs="1" id="vpFs">Full</button><button type="button" data-vphide="1" id="vpHide" class="vpfsonly" aria-label="Hide the controls">Hide</button></div></div></div><button type="button" id="vpExit" data-vpfs="1" aria-label="Exit full screen">&#10005;</button><button type="button" id="vpShow" data-vpshow="1" aria-label="Show the controls">Controls</button></div>' +
       '<p class="note" id="vpNow" style="margin:8px 0 0"></p></div>';
   }
   function timeBtn(it, hasVideo) {
