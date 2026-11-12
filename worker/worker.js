@@ -138,6 +138,17 @@ export default {
       if (!same(body.passcode, env.PASSCODE || "")) return reply(env, 401, {ok: false, error: "Wrong passcode"});
       return reply(env, 200, {ok: true});
     }
+    if (body && body.kind === "gamesheet-run") {
+      if (!same(body.passcode, env.PASSCODE || "")) return reply(env, 401, {ok: false, error: "Wrong passcode"});
+      const g = await fetch("https://api.github.com/repos/" + env.REPO + "/actions/workflows/gamesheet.yml/dispatches", {
+        method: "POST",
+        headers: {"Authorization": "Bearer " + env.GITHUB_TOKEN, "Accept": "application/vnd.github+json", "User-Agent": "kings-hudl-submit", "X-GitHub-Api-Version": "2022-11-28", "Content-Type": "application/json"},
+        body: JSON.stringify({ref: "main"}),
+      });
+      if (g.status === 204) return reply(env, 200, {ok: true});
+      const hint = g.status === 403 || g.status === 404 ? " (the GitHub key needs Actions read and write, and Workflows read and write)" : "";
+      return reply(env, 502, {ok: false, error: "Could not start the update, GitHub said " + g.status + hint});
+    }
     const r = check(body, env);
     if (r.error) return reply(env, r.error === "Wrong passcode" ? 401 : 400, {ok: false, error: r.error});
     try {
