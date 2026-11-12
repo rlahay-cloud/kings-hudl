@@ -327,6 +327,11 @@ table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
 .seg label.heatchk { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin: 0; padding: 0 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel2); font-family: var(--display); font-weight: 600; letter-spacing: .06em; font-size: 17px; color: var(--fg); cursor: pointer; }
 .seg[aria-label="Zoom the rink"] { margin: 10px 0; }
 @media (max-width: 600px) { .seg[aria-label="Zoom the rink"] { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; } .seg[aria-label="Zoom the rink"] > button, .seg[aria-label="Zoom the rink"] > label { min-width: 0; padding: 0 4px; font-size: 15px; letter-spacing: .02em; justify-content: center; white-space: nowrap; } .seg label.heatchk { gap: 6px; } }
+.ngcard { display: flex; flex-direction: column; }
+.ngcard .ngopp { min-height: 2.8em; }
+.ngcard .note:last-child { margin-top: auto !important; padding-top: 6px; }
+.row.g2 > .card, .row.g3 > .card { height: 100%; }
+.row:has(> .ngcard), .row.g3 { grid-auto-rows: 1fr; }
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Barlow+Condensed:wght@600;700&family=Oswald:wght@600;700&display=swap">
 </head>
@@ -705,7 +710,7 @@ table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
     var days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     return "<h2>Next game" + (up.length > 1 ? "s" : "") + "</h2><div class='row g2'>" + up.map(function (g, i) {
       var d = new Date(g.at), h12 = d.getHours() % 12 || 12, mm = ("0" + d.getMinutes()).slice(-2), ap = d.getHours() < 12 ? "AM" : "PM";
-      return "<a class='card' href='#/next/" + g.date + "' style='display:block;color:inherit;text-decoration:none'><h3 style='margin:0 0 8px'>" + (i === 0 ? "Up next" : "After that") + "</h3><div style='font-family:var(--display);font-weight:700;font-size:22px'>" + days[d.getDay()] + " " + fmtDate(g.date) + ", " + h12 + ":" + mm + " " + ap + "</div><div style='margin-top:4px'>" + (g.home ? "vs " : "at ") + "<b>" + esc(g.opp) + "</b></div>" + (g.venue ? "<div class='note' style='margin:4px 0 0'>" + esc(g.venue) + (g.home ? ", home" : ", away") + "</div>" : "") + "<div class='note' style='margin:6px 0 0;color:var(--accent)'>Tap to see past games against them &rarr;</div></a>";
+      return "<a class='card ngcard' href='#/next/" + g.date + "' style='color:inherit;text-decoration:none'><h3 style='margin:0 0 8px'>" + (i === 0 ? "Up next" : "After that") + "</h3><div style='font-family:var(--display);font-weight:700;font-size:22px'>" + days[d.getDay()] + " " + fmtDate(g.date) + ", " + h12 + ":" + mm + " " + ap + "</div><div class='ngopp' style='margin-top:4px'>" + (g.home ? "vs " : "at ") + "<b>" + esc(g.opp) + "</b></div>" + (g.venue ? "<div class='note' style='margin:4px 0 0'>" + esc(g.venue) + (g.home ? ", home" : ", away") + "</div>" : "") + "<div class='note' style='margin:6px 0 0;color:var(--accent)'>Tap to see past games against them &rarr;</div></a>";
     }).join("") + "</div>";
   }
   // GameSheet's own standings page, shown inside Kings Film Room so it is always live.
