@@ -166,16 +166,15 @@ input[type=text], input[type=url], input[type=date], input[type=time], select, t
 #vpStage .ytbox { overflow: hidden; }
 #vpStage:not(.full) .ytbox { max-height: max(30vh, 160px); width: min(100%, calc(max(30vh, 160px) * 16 / 9)); margin: 0 auto; }
 #teBar { display: none; }
-body:has(#teBox.full) header.top { display: none; } body:has(#teBox.full) { overflow: hidden; }
-#teBox.full { position: fixed !important; inset: 0; z-index: 9999; background: #000; max-width: none !important; margin: 0 !important; width: 100vw; height: 100vh; height: 100dvh; }
-#teBox.full .ytbox { position: absolute; inset: 0; max-height: none !important; width: 100%; height: 100%; aspect-ratio: auto; border-radius: 0; }
-#teBox.full #teCv { border-radius: 0 !important; }
-#teBox.full #teBar { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px 14px; position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; padding: 28px max(14px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); background: linear-gradient(transparent, rgba(0,0,0,.82) 30%); }
+#vpBox { position: relative; }
+#vpStage.te-editing #vpTap { pointer-events: none; }
+#vpStage.full #teBar { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px 14px; position: absolute; left: 0; right: 0; top: 0; z-index: 4; padding: max(10px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) 26px max(14px, env(safe-area-inset-left)); background: linear-gradient(rgba(0,0,0,.82) 70%, transparent); }
+#vpStage.full.idle:not(.te-editing) #teBar { opacity: 0; pointer-events: none; }
 #teBar .seg, #teBar .fld { margin: 0; flex-wrap: wrap; flex: 0 0 auto; } #teBar select { width: auto; min-height: 38px; } #teBar button { min-height: 38px; padding: 4px 10px; font-size: 14px; } #teBar #teTextFld { display: none; } #teBar:has([data-tool="text"][aria-pressed="true"]) #teTextFld { display: block; flex: 1 1 240px; } #teBar .fld label { color: #fff; }
-#teBox.full #teBar button:not([data-col]), #teBox.full #teBar select { background: rgba(255,255,255,.16); color: #fff; border: 1px solid rgba(255,255,255,.45); }
-#teBox.full #teBar button[aria-pressed="true"]:not([data-col]) { background: var(--accent); border-color: #fff; color: var(--accent-ink); }
-#teBox.full #teBar button[data-col][aria-pressed="true"] { border-color: #fff !important; box-shadow: 0 0 0 2px var(--accent); }
-#teBox.full #teBar input { background: rgba(0,0,0,.5); color: #fff; }
+#vpStage.full #teBar button:not([data-col]), #vpStage.full #teBar select { background: rgba(255,255,255,.16); color: #fff; border: 1px solid rgba(255,255,255,.45); }
+#vpStage.full #teBar button[aria-pressed="true"]:not([data-col]) { background: var(--accent); border-color: #fff; color: var(--accent-ink); }
+#vpStage.full #teBar button[data-col][aria-pressed="true"] { border-color: #fff !important; box-shadow: 0 0 0 2px var(--accent); }
+#vpStage.full #teBar input { background: rgba(0,0,0,.5); color: #fff; }
 #vpStage.full #vpTap { touch-action: none; }
 #vpTap { position: absolute; left: 0; right: 0; top: 0; bottom: 0; z-index: 1; cursor: pointer; }
 #vpBar { position: relative; z-index: 2; padding: 10px 2px 2px; background: transparent; }
@@ -1956,11 +1955,8 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
     var url = D.videos[date] || lget(VK)[date] || "";
     var h = '<a class="back" href="#/coach">&larr; All clips</a><h2>Clip editor<small>' + fmtDate(date) + (oppFor(date) ? " vs " + esc(oppFor(date)) : "") + ", " + esc(title) + " at " + hms(start) + "</small></h2>";
     if (!ytId(url)) return h + '<div class="card empty"><p>This game has no video link yet.</p><p class="note">Add the YouTube link in <b>Game analysis</b> first, then come back.</p></div>';
-    h += '<div class="card"><div id="teBox" style="position:relative;max-width:860px;margin:0 auto"><div class="ytbox" id="teYt" style="max-height:none"></div><canvas id="teCv" style="position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;border-radius:12px;touch-action:none"></canvas><div id="teBar"></div></div>' +
-      '<p class="note" id="teTime" style="text-align:center;margin:6px 0">Loading the video.</p>' +
-      '<div class="seg" id="teCtl" role="group" aria-label="Video controls"><button id="teBack">&larr; 2s</button><button id="tePlay">Play / Pause</button><button id="teFwd">2s &rarr;</button><button id="teRestart">Restart clip</button>' +
-      '<select id="teSpeed" aria-label="Speed"><option value="1">Normal speed</option><option value="0.5">Half speed</option><option value="0.25">Quarter speed</option></select><button id="teFull">Full screen</button></div></div>' +
-      '<div class="card" style="margin-top:12px"><h3 style="margin-top:0">Draw</h3>' +
+    h += playCard() +
+      '<div class="card" style="margin-top:12px"><h3 style="margin-top:0">Draw</h3><p class="note" style="margin:0 0 8px">Play the clip above. Pause on the frame you want, then tap Draw on this frame. Tap the Full screen button on the player to draw big, with the tools along the top.</p>' +
       '<div class="seg" id="teRowDraw"><button class="btn" id="teDraw">Draw on this frame</button><button id="teDone" disabled>Done drawing</button></div>' +
       '<p class="note" id="teNote">Pause where you want it, then tap Draw on this frame. The video freezes while you draw.</p>' +
       '<div class="seg" id="teTools" role="group" aria-label="Drawing tool">' + [["pen", "Pen"], ["arrow", "Arrow"], ["line", "Line"], ["circle", "Circle"], ["text", "Text"]].map(function (t, i) { return '<button data-tool="' + t[0] + '" aria-pressed="' + (i === 1) + '">' + t[1] + "</button>"; }).join("") + "</div>" +
@@ -1973,12 +1969,13 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
     return h;
   }
   function bindClipEditor(date, start, end) {
-    if (!$("teYt")) return;
+    var it = allVideoItems().filter(function (x) { return x.date === date && Math.floor(x.sec) === start; })[0];
+    if (!$("vpBox")) return;
     var url = D.videos[date] || lget(VK)[date] || "", id = ytId(url), key = drawKey(date, start), begin = Math.max(0, start - LEAD);
-    var frames = JSON.parse(JSON.stringify(getDraws(key))), pl = null, ready = false;
+    var frames = JSON.parse(JSON.stringify(getDraws(key))), ready = true;
     var st = {tool: "arrow", col: TE_COLORS[0], editing: null, cur: null};
-    var cv = $("teCv");
-    function now() { try { return ready ? pl.getCurrentTime() || 0 : 0; } catch (e) { return 0; } }
+    var cv = document.createElement("canvas");
+    function now() { return vpCtl.t || 0; }
     function frameAt(t, make) {
       var f = frames.filter(function (x) { return Math.abs(x.t - t) < .35; })[0];
       if (!f && make) { f = {t: Math.round(t * 100) / 100, hold: 4, strokes: []}; frames.push(f); frames.sort(function (a, b) { return a.t - b.t; }); }
@@ -1996,14 +1993,14 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
     function setSel(btns, attr, val) { Array.prototype.forEach.call(btns.children, function (b) { b.setAttribute("aria-pressed", String(b.getAttribute(attr) === val)); }); }
     function startDraw() {
       if (!ready) return;
-      try { pl.pauseVideo(); } catch (e) {}
-      var t = now(); st.editing = frameAt(t, true); cv.style.pointerEvents = "auto"; $("teDraw").disabled = true; $("teDone").disabled = false;
+      vpCtl.step(0);
+      var t = now(); st.editing = frameAt(t, true); cv.style.pointerEvents = "auto"; $("vpStage").classList.add("te-editing"); $("teDraw").disabled = true; $("teDone").disabled = false;
       $("teNote").textContent = "Drawing at " + hms(Math.floor(st.editing.t)) + ". Drag on the video to draw.";
       repaint();
     }
     function stopDraw() {
-      st.editing = null; st.cur = null; cv.style.pointerEvents = "none"; $("teDraw").disabled = false; $("teDone").disabled = true; paintFrame(cv, []);
-      frames = frames.filter(function (f) { return f.strokes.length; }); persist(); drawFramesList(); $("teNote").textContent = "Saved on this device. Tap Save drawings for everyone to share them.";
+      st.editing = null; st.cur = null; cv.style.pointerEvents = "none"; $("vpStage").classList.remove("te-editing"); $("teDraw").disabled = false; $("teDone").disabled = true; paintFrame(cv, []);
+      frames = frames.filter(function (f) { return f.strokes.length; }); persist(); drawFramesList(); $("teNote").textContent = "Saved on this device. Tap Save drawings for everyone to share them."; try { teleAttach($("vpBox"), itm); } catch (x) {}
     }
     function pt(e) { var r = cv.getBoundingClientRect(); return [Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), Math.min(1, Math.max(0, (e.clientY - r.top) / r.height))]; }
     cv.addEventListener("pointerdown", function (e) {
@@ -2030,49 +2027,11 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
     $("teClear").addEventListener("click", function () { if (st.editing) { st.editing.strokes = []; persist(); repaint(); } });
     $("teFrames").addEventListener("click", function (e) {
       var b = e.target.closest("button"); if (!b) return;
-      if (b.hasAttribute("data-go") && ready) { try { pl.seekTo(frames[+b.getAttribute("data-go")].t, true); pl.pauseVideo(); } catch (x) {} setTimeout(function () { if (!st.editing) paintFrame(cv, frames[+b.getAttribute("data-go")].strokes); }, 300); }
-      if (b.hasAttribute("data-del")) { frames.splice(+b.getAttribute("data-del"), 1); if (st.editing && frames.indexOf(st.editing) < 0) { st.editing = null; cv.style.pointerEvents = "none"; $("teDraw").disabled = false; $("teDone").disabled = true; } persist(); paintFrame(cv, []); drawFramesList(); }
+      if (b.hasAttribute("data-go") && ready) { vpCtl.t = frames[+b.getAttribute("data-go")].t; vpCtl.step(0); setTimeout(function () { if (!st.editing) paintFrame(cv, frames[+b.getAttribute("data-go")].strokes); }, 300); }
+      if (b.hasAttribute("data-del")) { frames.splice(+b.getAttribute("data-del"), 1); if (st.editing && frames.indexOf(st.editing) < 0) { st.editing = null; cv.style.pointerEvents = "none"; $("vpStage").classList.remove("te-editing"); $("teDraw").disabled = false; $("teDone").disabled = true; } persist(); paintFrame(cv, []); drawFramesList(); }
     });
     $("teFrames").addEventListener("change", function (e) { var s = e.target.getAttribute("data-hold"); if (s !== null) { frames[+s].hold = +e.target.value; persist(); } });
-    $("teBack").addEventListener("click", function () { if (ready) pl.seekTo(Math.max(0, now() - 2), true); });
-    $("teFwd").addEventListener("click", function () { if (ready) pl.seekTo(now() + 2, true); });
-    $("teRestart").addEventListener("click", function () { if (ready) { pl.seekTo(begin, true); pl.playVideo(); } });
-    $("tePlay").addEventListener("click", function () { if (!ready) return; var s = pl.getPlayerState(); if (s === 1) pl.pauseVideo(); else pl.playVideo(); });
-    $("teSpeed").addEventListener("change", function () { if (ready) pl.setPlaybackRate(+$("teSpeed").value); });
     window.addEventListener("resize", function () { if ($("teCv")) repaint(); });
-    // full screen: the controls and the drawing tools move into an overlay on the video
-    var teMoved = [];
-    function teFullOn(on) {
-      var box = $("teBox"), bar = $("teBar"); if (!box || !bar) return;
-      if (on === box.classList.contains("full")) return;
-      var ids = ["teCtl", "teRowDraw", "teTools", "teCols", "teTextFld", "teRowUndo"];
-      if (on) {
-        teMoved = ids.map(function (id) { var n = $(id), ph = document.createElement("span"); ph.hidden = true; n.parentNode.insertBefore(ph, n); bar.appendChild(n); return [n, ph]; });
-        box.classList.add("full"); $("teFull").textContent = "Exit full screen";
-      } else {
-        teMoved.forEach(function (m) { m[1].parentNode.insertBefore(m[0], m[1]); m[1].remove(); }); teMoved = [];
-        box.classList.remove("full"); $("teFull").textContent = "Full screen";
-      }
-      setTimeout(repaint, 120); setTimeout(repaint, 500);
-    }
-    $("teFull").addEventListener("click", function () { teFullOn(!$("teBox").classList.contains("full")); });
-    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && $("teBox")) teFullOn(false); });
-    window.addEventListener("hashchange", function () { document.body.style.overflow = ""; });
-    // playing back what has been drawn, so the coach can check it
-    var done = {}, busy = false;
-    var tm = setInterval(function () {
-      if (!$("teYt")) { clearInterval(tm); return; }
-      var t = now(); $("teTime").textContent = ready ? hms(Math.floor(t)) + " · clip runs " + hms(begin) + " to " + hms(end) : "Loading the video.";
-      if (!ready || st.editing || busy) return;
-      for (var i = 0; i < frames.length; i++) {
-        var f = frames[i];
-        if (f.strokes.length && !done[i] && t >= f.t - .1 && t < f.t + 1) {
-          done[i] = 1; busy = true; paintFrame(cv, f.strokes); try { pl.seekTo(f.t, true); pl.pauseVideo(); } catch (x) {}
-          setTimeout(function () { busy = false; if (!st.editing) paintFrame(cv, []); try { pl.playVideo(); } catch (x) {} }, f.hold * 1000); return;
-        }
-      }
-      if (t < begin - 1 || t > end + 30) done = {};
-    }, 150);
     $("teSave").addEventListener("click", function () {
       var note = $("teSaved"); frames = frames.filter(function (f) { return f.strokes.length; }); persist();
       if (!(D.cfg && D.cfg.submitUrl)) { note.textContent = "Saved on this device only (no helper is set up)."; return; }
@@ -2083,17 +2042,24 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
         .catch(function () { note.textContent = "No connection. Saved on this device only."; });
     });
     drawFramesList();
-    // load the video
-    function loadApi(cb) {
-      if (window.YT && window.YT.Player) return cb();
-      var prev = window.onYouTubeIframeAPIReady; window.onYouTubeIframeAPIReady = function () { if (prev) prev(); cb(); };
-      if (!document.getElementById("yt-api")) { var sc = document.createElement("script"); sc.id = "yt-api"; sc.src = "https://www.youtube.com/iframe_api"; document.head.appendChild(sc); }
-      setTimeout(function () { if (!(window.YT && window.YT.Player)) $("teTime").textContent = "YouTube did not load. Check the connection."; }, 9000);
+    // the same player as the Video tab, with a drawing layer on top
+    var itm = it || {date: date, game: fmtDate(date) + (oppFor(date) ? " vs " + oppFor(date) : ""), sec: start, start: Math.max(0, start - LEAD), end: end, tag: "Clip", players: [], lists: []};
+    cv.id = "teCv"; cv.style.cssText = "position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;touch-action:none;z-index:2";
+    playItem(itm);
+    function placeCv() { var b = $("vpBox"); if (b && cv.parentNode !== b) { b.appendChild(cv); repaint(); } }
+    var ptm = setInterval(function () { if (!$("vpBox") || !$("teRowDraw")) { clearInterval(ptm); return; } placeCv(); }, 400);
+    placeCv();
+    // full screen: the drawing tools move into a strip along the top of the video
+    var stg = $("vpStage"), bar = document.createElement("div"), moved = [];
+    bar.id = "teBar"; stg.appendChild(bar);
+    function moveTools() {
+      var on = stg.classList.contains("full"), ids = ["teRowDraw", "teTools", "teCols", "teTextFld", "teRowUndo"];
+      if (on === (moved.length > 0)) return;
+      if (on) moved = ids.map(function (id) { var n = $(id), ph = document.createElement("span"); ph.hidden = true; n.parentNode.insertBefore(ph, n); bar.appendChild(n); return [n, ph]; });
+      else { moved.forEach(function (m) { m[1].parentNode.insertBefore(m[0], m[1]); m[1].remove(); }); moved = []; }
+      setTimeout(repaint, 150); setTimeout(repaint, 600);
     }
-    loadApi(function () {
-      $("teYt").innerHTML = '<div id="teP"></div>';
-      pl = new window.YT.Player("teP", {videoId: id, width: "100%", height: "100%", playerVars: {playsinline: 1, rel: 0, start: begin}, events: {onReady: function () { ready = true; try { pl.seekTo(begin, true); } catch (e) {} }}});
-    });
+    new MutationObserver(moveTools).observe(stg, {attributes: true, attributeFilter: ["class"]});
   }
 
   // ---------- shifts: who is on the ice, and for how long ----------
