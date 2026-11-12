@@ -311,8 +311,8 @@ table.sp td.g1, table.sp th.g1 { border-left: 2px solid var(--line); }
 #vpFs { white-space: nowrap; min-width: 0; }
 @media (max-width: 600px) {
   h2 small.hint { display: none; }
-  .ev .tm, .clip .tm { position: relative; }
-  .ev .tm::after, .clip .tm::after { content: ""; position: absolute; inset: -9px -8px; }
+  /* bigger tap area for the time buttons WITHOUT making them positioned: positioned list items painted over the sticky video card in Safari */
+  .ev .tm, .clip .tm { position: static !important; padding: 9px 8px !important; margin: -9px -8px !important; }
   .card.scroll table:not(.gbg) th, .card.scroll table:not(.gbg) td { padding: 8px 5px; font-size: 14px; }
   .gstbl td:nth-child(8), .gstbl th:nth-child(8), .gstbl td:nth-child(9), .gstbl th:nth-child(9), .gstbl td:nth-child(10), .gstbl th:nth-child(10), .gstbl td:nth-child(n+12), .gstbl th:nth-child(n+12) { display: none; }
   .gstbl td:nth-child(2) { white-space: normal; }
