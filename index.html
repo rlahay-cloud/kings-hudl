@@ -825,8 +825,10 @@ h2.mhead small { display: block; margin: 8px 0 0; font-size: 14px; letter-spacin
     return x.toLowerCase().replace(/(^|[\s\-'’.])([a-zà-ÿ])/g, function (_, a, c) { return a + c.toUpperCase(); }).replace(/\b(Mc|Mac)([a-z])(?=[a-z]{2})/g, function (_, p2, c) { return p2 + c.toUpperCase(); });
   }
   function oppTable(t, title, kind) {
-    var keep = t.head.map(function (h, i) { return h && t.rows.some(function (r) { return r[i] !== ""; }) ? i : -1; }).filter(function (i) { return i >= 0; });
+    var jer = t.head.findIndex(function (h) { return /^(#|no\.?|num\.?|number|jersey|jersey ?(#|no\.?|number)|player ?(#|no\.?|number))$/i.test(h); });
+    var keep = t.head.map(function (h, i) { return h && !/^(rk|rank|#?rk)$/i.test(h) && i !== jer && t.rows.some(function (r) { return r[i] !== ""; }) ? i : -1; }).filter(function (i) { return i >= 0; });
     var isName = function (i) { return /^(player|name|goalie|goaltender|skater)$/i.test(t.head[i]); };
+    var withNum = function (r, i) { var n = jer >= 0 ? String(r[jer] || "").replace(/^#/, "").trim() : "", nm = niceName(r[i]); return n ? "#" + n + " " + nm : nm; };
     var isNum = function (v) { return /^[-+]?[\d.]+%?$/.test(v); };
     var cur = OPP_SORT[kind];
     if (!cur) { var si = -1; ["PTS", "P", "SV%", "GP"].forEach(function (k) { if (si < 0) si = t.head.findIndex(function (h) { return h.toUpperCase() === k; }); }); cur = {i: si, dir: -1}; }
@@ -836,7 +838,7 @@ h2.mhead small { display: block; margin: 8px 0 0; font-size: 14px; letter-spacin
       var r = isNum(x) && isNum(y) ? (nx - ny) : String(x).toLowerCase() < String(y).toLowerCase() ? -1 : String(x).toLowerCase() > String(y).toLowerCase() ? 1 : 0;
       return r * cur.dir;
     });
-    return "<h2>" + title + "<small class='hint'>tap a heading to sort</small></h2><div class='swrap'><div class='card scroll'><table class='ptbl ptx'><thead><tr>" + keep.map(function (i, k) { return "<th class='sort" + (i === cur.i ? " on" : "") + (k ? " num" : "") + "' data-ot='" + kind + "' data-oi='" + i + "'>" + esc(t.head[i]) + "</th>"; }).join("") + "</tr></thead><tbody>" + rows.map(function (r) { return "<tr>" + keep.map(function (i, k) { var v = isName(i) ? niceName(r[i]) : r[i]; return "<td" + (k && isNum(r[i]) ? " class='num'" : "") + ">" + esc(v) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table></div><p class='swhint'>Swipe the table sideways to see more</p></div>";
+    return "<h2>" + title + "<small class='hint'>tap a heading to sort</small></h2><div class='swrap'><div class='card scroll'><table class='ptbl ptx'><thead><tr>" + keep.map(function (i, k) { return "<th class='sort" + (i === cur.i ? " on" : "") + (k ? " num" : "") + "' data-ot='" + kind + "' data-oi='" + i + "'>" + esc(t.head[i].replace(/^'/, "")) + "</th>"; }).join("") + "</tr></thead><tbody>" + rows.map(function (r) { return "<tr>" + keep.map(function (i, k) { var v = isName(i) ? withNum(r, i) : r[i]; return "<td" + (k && isNum(r[i]) ? " class='num'" : "") + ">" + esc(v) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table></div><p class='swhint'>Swipe the table sideways to see more</p></div>";
   }
   function bindOppSort() {
     Array.prototype.forEach.call(document.querySelectorAll("th[data-ot]"), function (th) {
