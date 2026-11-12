@@ -1249,7 +1249,7 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
     // iPhone cannot do real full screen for a page element, so the stage is pinned over the whole page: lift its card above the header and hide the header
     document.body.classList.toggle("vpfull", on); var vc = $("vpCard"); if (vc) vc.style.zIndex = on ? "100000" : "";
     var fb = $("vpFs"); if (fb) fb.textContent = on ? "Exit full screen" : "Full";
-    try { if (on && st.requestFullscreen && !document.fullscreenElement) st.requestFullscreen().catch(function () {}); else if (!on && document.fullscreenElement) document.exitFullscreen(); } catch (x) {}
+    try { var inEditor = !!$("teDraw"); if (on && !inEditor && st.requestFullscreen && !document.fullscreenElement) st.requestFullscreen().catch(function () {}); else if (!on && document.fullscreenElement) document.exitFullscreen(); } catch (x) {}
     try { if (on && screen.orientation && screen.orientation.lock) screen.orientation.lock("landscape").catch(function () {}); else if (!on && screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch (x) {}
     vpWake();
   }
