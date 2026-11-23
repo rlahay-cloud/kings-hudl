@@ -73,7 +73,7 @@ class App(tk.Tk):
         self.zoom = tk.StringVar(value="No zoom")
         self.cb.bind("<<ComboboxSelected>>", lambda e: self.load_angles())
         self.cb.bind("<FocusOut>", lambda e: self.load_angles())
-        f5 = ttk.LabelFrame(self, text="Clips to include (tick the ones you want)")
+        f5 = ttk.LabelFrame(self, text="Clips to include (the opening faceoff is always added first)")
         f5.pack(fill="both", expand=True, **pad)
         top = tk.Frame(f5)
         top.pack(fill="x", padx=8, pady=(6, 2))

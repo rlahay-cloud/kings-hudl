@@ -37,6 +37,7 @@ LEAD_GOAL, TAIL_GOAL = 10.0, 5.0
 LEAD_CLIP, TAIL_CLIP = 2.0, 2.0
 LEAD_POINT, TAIL_POINT = 5.0, 8.0
 LEAD_SAVE, TAIL_SAVE = 4.0, 3.0
+LEAD_OPEN, TAIL_OPEN = 4.0, 8.0  # the opening face-off
 REPLAY_LEAD, REPLAY_TAIL = 8.0, 2.0  # the same window the Film Room plays around a mark
 SLOW_FROM = 3.0  # a slowed replay runs at normal speed, then goes to half speed this many seconds before the mark
 MAX_WIDTH = 1920
@@ -243,10 +244,33 @@ def catalog(date, local_dir=None):
     return items
 
 
+def opening_faceoff(date, local_dir=None):
+    """The first face-off of the game as a clip, or None. It is the first Faceoff mark at or after the start of
+    period 1 (from Game setup), or the earliest Faceoff mark if period starts are not set."""
+    allm = collect_all(fetch_game_files(date, local_dir))
+    p1 = fetch_sync(date, local_dir)["periods"].get(1)
+    fo = sorted([i for i in allm if i["tag"].startswith("Faceoff")], key=lambda i: i["sec"])
+    if p1 is not None:
+        later = [i for i in fo if i["sec"] >= p1 - 5]
+        fo = later or fo
+    if fo:
+        it = dict(fo[0])
+    elif p1 is not None:
+        it = {"id": "open", "sec": float(p1), "end": None, "label": "Opening faceoff", "tag": "Faceoff", "num": None,
+              "assists": [], "period": 1, "lists": [], "default": False, "kind": "clip"}
+    else:
+        return None
+    it.update(kind="opener", tag="Opening faceoff", label="Opening faceoff", period=1, replay=False)
+    return it
+
+
 def caption_for(it, roster):
     """What the lower third says for one clip: (tag, number, name, second line)."""
     nm = lambda n: roster.get(str(n), "")
     sub = None
+    if it["kind"] == "opener":
+        n = it.get("num")
+        return "Opening faceoff", n, (nm(n) if n else "Kings"), None
     if it["kind"] == "goal":
         if it["assists"]:
             sub = "Assists: " + ", ".join(("#%s %s" % (n, nm(n))).strip() for n in it["assists"])
@@ -259,6 +283,8 @@ def caption_for(it, roster):
 
 
 def bounds(it):
+    if it["kind"] == "opener":
+        return LEAD_OPEN, TAIL_OPEN
     if it["kind"] == "goal":
         return LEAD_GOAL, TAIL_GOAL
     if it["kind"] == "save":
@@ -270,7 +296,9 @@ def segments(items, offset=0.0, video_len=None):
     """Start and end of each cut, in the video file's own time. Overlaps are joined and keep their clips."""
     segs = []
     for it in items:
-        if it["kind"] == "goal":
+        if it["kind"] == "opener":
+            s, e = it["sec"] - LEAD_OPEN, it["sec"] + TAIL_OPEN
+        elif it["kind"] == "goal":
             s, e = it["sec"] - LEAD_GOAL, it["sec"] + TAIL_GOAL
         elif it["kind"] == "save":
             s, e = it["sec"] - LEAD_SAVE, it["sec"] + TAIL_SAVE
@@ -454,6 +482,12 @@ def make_video(video, date, out, offset=0.0, test=False, local_dir=None, log=pri
     info = video_info(ffmpeg, video)
     roster = fetch_roster(local_dir)
     sync = fetch_sync(date, local_dir)
+    try:
+        op = opening_faceoff(date, local_dir)
+    except Exception:
+        op = None
+    if op:  # every highlight video starts with the game's first face-off
+        items = [op] + [i for i in items if i["id"] != op["id"]]
     for it in items:
         if not it.get("period"):
             it["period"] = period_at(sync, it["sec"])
@@ -469,6 +503,8 @@ def make_video(video, date, out, offset=0.0, test=False, local_dir=None, log=pri
     segs = segments(items, offset, info[0])
     if not segs:
         raise RuntimeError("None of the clips fall inside this video. Check the offset.")
+    if op:  # keep the opening face-off first even if a picked clip starts earlier
+        segs.sort(key=lambda x: (not any(i is op for i in x["items"]), x["start"]))
     if test:
         segs = segs[:1]
     target = fit_size(info[1], info[2])
