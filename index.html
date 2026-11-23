@@ -1237,24 +1237,36 @@ body:has(#teDraw) .vpxrow { display: none; }
     return '<div class="cmp"><b class="l">' + l + '</b><span class="c">' + c + "</span><b>" + r + '</b><div class="bars"><i style="width:' + (lv * 100 / tot) + '%"></i><i style="width:' + (rv * 100 / tot) + '%"></i></div></div>';
   }
   // One game's shot map for the game page: every shot on goal and goal marked for that game, we attack the net on the right.
+  var GMITEMS = [];
+  document.addEventListener("click", function (e) {
+    var d = e.target.closest && e.target.closest("#gmRink [data-gk]"); if (!d) return;
+    var it = GMITEMS[+d.getAttribute("data-gk")]; if (it && $("vpCard")) playItem(it);
+  });
   function gameShotMap(g) {
     var pts = shotPoints(g.date).filter(function (p) { return p.r === "G" || p.r === "S"; });
     if (!pts.length) return "";
     var m = "", cnt = {H: {sog: 0, g: 0}, A: {sog: 0, g: 0}};
+    GMITEMS = [];
     pts.forEach(function (p) {
-      var x = (p.x * 200).toFixed(1), y = (p.y * 85).toFixed(1), them = p.t === "A";
+      var x = (p.x * 200).toFixed(1), y = (p.y * 85).toFixed(1), them = p.t === "A", tap = p.sec != null;
       cnt[p.t].sog++; if (p.r === "G") cnt[p.t].g++;
+      if (tap) {
+        var who = them ? themN(g.date) : usN();
+        GMITEMS.push({date: g.date, game: fmtDate(g.date) + (oppFor(g.date) ? " vs " + oppFor(g.date) : ""), sec: p.sec, start: Math.max(0, p.sec - LEAD), end: p.sec + TAIL, mark: p.sec, tag: p.r === "G" ? (them ? "Goal against" : "Goal") : "Shot on goal", disp: who + (p.r === "G" ? " goal" : " shot on goal"), players: p.n != null ? [p.n] : [], s0: p});
+        m += '<g data-gk="' + (GMITEMS.length - 1) + '" style="cursor:pointer"><title>' + esc(who) + (p.r === "G" ? " goal" : " shot on goal") + ', tap to watch</title><circle cx="' + x + '" cy="' + y + '" r="4.6" fill="transparent"/>';
+      }
       if (p.r === "G") m += '<circle cx="' + x + '" cy="' + y + '" r="2.8" fill="' + (them ? "#e5484d" : "#a974ff") + '" stroke="#fff" stroke-width=".8"/>';
       else m += '<circle cx="' + x + '" cy="' + y + '" r="2.1" fill="none" stroke="' + (them ? "#e5484d" : "#1e5fd0") + '" stroke-width="1"' + (them ? ' stroke-dasharray="1.2 .8"' : "") + "/>";
+      if (tap) m += "</g>";
     });
     var rink = fullRink()
       .replace('id="rinkF"', 'id="gmRink"').replace('Tap to choose a spot and a zone.', 'Shots on goal and goals for this game.')
       .replace('<text class="cn" id="cntL" x="14" y="80"></text>', "").replace('<text class="cn" id="cntR" x="186" y="80" text-anchor="end"></text>', "")
       .replace('<g id="rinkFMarks"></g>', "<g>" + m + "</g>");
-    var tally = '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px;font-weight:700"><span>' + esc(tn(g.away)) + ' <span class="mut">' + cnt.A.sog + " SOG, " + cnt.A.g + ' G</span></span><span>' + esc(usN()) + ' <span class="mut">' + cnt.H.sog + " SOG, " + cnt.H.g + " G</span></span></div>";
+    var tally = '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px;font-weight:700"><span>' + esc(g.away) + ' <span class="mut">' + cnt.A.sog + " SOG, " + cnt.A.g + ' G</span></span><span>' + esc(usN()) + ' <span class="mut">' + cnt.H.sog + " SOG, " + cnt.H.g + " G</span></span></div>";
     return "<h2>Shot map<small><a href='#/shots'>all games and filters</a></small></h2><div class='card'>" + tally + rink +
       '<div class="leg"><span><i style="background:#a974ff;border-radius:50%"></i>' + esc(usN()) + ' goal</span><span><i style="background:#e5484d;border-radius:50%"></i>Opponent goal</span><span><i style="border:2px solid #1e5fd0;border-radius:50%"></i>' + esc(usN()) + ' shot on goal</span><span><i style="border:2px dashed #e5484d;border-radius:50%"></i>Opponent shot on goal</span></div>' +
-      '<p class="note">We attack the net on the right. Only shots on goal and goals are shown.</p></div>';
+      '<p class="note">We attack the net on the right. Only shots on goal and goals are shown. Tap a shot to watch its clip.</p></div>';
   }
   function vGame(id) {
     var g = D.games.filter(function (x) { return x.id === id; })[0];
