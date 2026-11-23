@@ -1,3 +1,10 @@
+P|1|20.3
+E|1|741.1
+P|2|804.9
+E|2|1761.7
+P|3|1830.3
+E|3|2933.5
 G|Ottawa Valley Silver Seven White|H|12:30|Cardinal
 L|10,10,12
 X|2,38
+A|Home Cam|https://youtu.be/vANxzA_qLpU|1.9
