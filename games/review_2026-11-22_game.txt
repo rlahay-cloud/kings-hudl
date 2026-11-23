@@ -30,7 +30,7 @@
 0:23:19|Against: Shot on goal||0.049,0.608,2,f
 0:24:05|Against: Shot on goal|33|0.215,0.763,2,f
 0:24:33|Faceoff: DZ Loss|97|,,2,f
-0:25:06|Against: Goal||0.118,0.447,2,f
+0:25:06|Against: Goal|33 i4 i91 i93 i97 i19|0.118,0.447,2,f
 0:25:34|Faceoff: NZ Win|97|,,2,f
 0:26:06|Faceoff: NZ Win|17|,,2,f
 0:26:20|Away Penalty||,,2,f,s1615,e1680
