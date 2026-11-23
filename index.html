@@ -3105,13 +3105,19 @@ body:has(#teDraw) .vpxrow { display: none; }
     if (g.k === "ag") return chipRow("Goalie", goalies.length ? goalies : all, c, "any", inP) + (c.tag === "Against: Goal" ? iceRow() : "");
     return chipRow(g.k === "for" ? "Shooter" : g.k === "fo" ? "Taker" : "Player", skaters, c, "any", inP);
   }
+  function iceCount(c) {
+    // count each skater once: the scorer and assists are on the ice automatically, and may also sit in the ice list
+    var seen = {}, k = 0;
+    (c.ice || []).concat(c.tag === "For: Goal" ? c.players : []).forEach(function (x) { if (!seen[x]) { seen[x] = 1; k++; } });
+    return k;
+  }
   function applyPick(c, role, n) {
     var as = c.assists = c.assists || [], isA = as.indexOf(n) >= 0, isP = c.players.indexOf(n) >= 0;
     if (role === "ice") {
       var ic = c.ice = c.ice || [];
       if (c.tag === "For: Goal" && isP) return "The scorer and assists are already counted as on the ice.";
       if (ic.indexOf(n) >= 0) ic.splice(ic.indexOf(n), 1);
-      else if (ic.length + (c.tag === "For: Goal" ? c.players.length : 0) >= 5) return "Up to 5 skaters can be on the ice.";
+      else if (iceCount(c) >= 5) return "Up to 5 skaters can be on the ice.";
       else ic.push(n);
       return "";
     }
