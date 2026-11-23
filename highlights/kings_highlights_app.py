@@ -31,8 +31,8 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Kings Highlight Video")
-        self.geometry("640x560")
-        self.minsize(560, 480)
+        self.geometry("660x720")
+        self.minsize(600, 600)
         self.q = queue.Queue()
         self.busy = False
         pad = {"padx": 12, "pady": 6}
@@ -60,6 +60,18 @@ class App(tk.Tk):
         self.off.insert(0, "0")
         self.off.pack(side="left")
         tk.Label(f3, text="  (use a minus, like -12, if the clips start too late)").pack(side="left")
+        self.f_ang = ttk.LabelFrame(self, text="Extra camera angles (optional)")
+        self.f_ang.pack(fill="x", **pad)
+        self.ang_info = tk.Label(self.f_ang, anchor="w", justify="left", wraplength=580,
+                                 text="Pick a game and its extra cameras show here.")
+        self.ang_info.pack(fill="x", padx=8, pady=6)
+        self.ang_rows = tk.Frame(self.f_ang)
+        self.ang_rows.pack(fill="x", padx=8)
+        self.ang_files = {}
+        self.attack = tk.StringVar()
+        self.all_ang = tk.BooleanVar(value=False)
+        self.cb.bind("<<ComboboxSelected>>", lambda e: self.load_angles())
+        self.cb.bind("<FocusOut>", lambda e: self.load_angles())
         self.saves = tk.BooleanVar(value=True)
         ttk.Checkbutton(self, text="Include saves (shots against), as short clips", variable=self.saves).pack(anchor="w", padx=12)
         f4 = tk.Frame(self)
@@ -72,7 +84,7 @@ class App(tk.Tk):
         self.b_each.pack(side="left")
         self.bar = ttk.Progressbar(self, mode="determinate", maximum=100)
         self.bar.pack(fill="x", padx=12, pady=(6, 2))
-        self.log = tk.Text(self, height=10, state="disabled", wrap="word", font=("Consolas", 9))
+        self.log = tk.Text(self, height=8, state="disabled", wrap="word", font=("Consolas", 9))
         self.log.pack(fill="both", expand=True, padx=12, pady=(6, 12))
         threading.Thread(target=self.load_dates, daemon=True).start()
         self.after(150, self.pump)
@@ -90,6 +102,55 @@ class App(tk.Tk):
         if p:
             self.video = p
             self.lbl.config(text=os.path.basename(p))
+
+    def load_angles(self):
+        date = self.date.get().strip()
+        if re.match(r"^\d{4}-\d{2}-\d{2}$", date) and date != getattr(self, "ang_date", None):
+            self.ang_date = date
+            threading.Thread(target=self.fetch_angles, args=(date,), daemon=True).start()
+
+    def fetch_angles(self, date):
+        try:
+            import highlights
+            self.q.put(("angles", (date, highlights.fetch_sync(date)["angles"])))
+        except Exception:
+            self.q.put(("angles", (date, [])))
+
+    def show_angles(self, date, angles):
+        if date != self.date.get().strip():
+            return
+        for w in self.ang_rows.winfo_children():
+            w.destroy()
+        self.ang_files = {}
+        angles = [a for a in angles if a["off"]]
+        if not angles:
+            self.ang_info.config(text="This game has no matched extra cameras. Goals will use the main camera only.")
+            return
+        self.ang_info.config(text="Choose each camera's video file and every goal is shown again from the camera behind "
+                                  "the net the Kings scored on. Skip any you do not have.")
+        for a in angles:
+            row = tk.Frame(self.ang_rows)
+            row.pack(fill="x", pady=2)
+            lbl = tk.Label(row, text="No file chosen", anchor="w")
+            ttk.Button(row, text="Choose %s video..." % a["name"], width=26,
+                       command=lambda a=a, lbl=lbl: self.pick_angle(a["name"], lbl)).pack(side="left")
+            lbl.pack(side="left", padx=8)
+        if len(angles) > 1:
+            row = tk.Frame(self.ang_rows)
+            row.pack(fill="x", pady=(6, 2))
+            tk.Label(row, text="In period 1 the Kings attack the end with:").pack(side="left")
+            self.attack.set(angles[0]["name"])
+            ttk.Combobox(row, textvariable=self.attack, values=[a["name"] for a in angles], width=16,
+                         state="readonly").pack(side="left", padx=8)
+        ttk.Checkbutton(self.ang_rows, text="Also replay highlight clips and saves from the other angles",
+                        variable=self.all_ang).pack(anchor="w", pady=(4, 6))
+
+    def pick_angle(self, name, lbl):
+        p = filedialog.askopenfilename(title="Choose the %s video" % name,
+                                       filetypes=[("Video", "*.mov *.mp4 *.mkv *.m4v *.avi"), ("All files", "*.*")])
+        if p:
+            self.ang_files[name] = p
+            lbl.config(text=os.path.basename(p))
 
     def load_dates(self):
         try:
@@ -120,14 +181,17 @@ class App(tk.Tk):
         self.b_all.config(state="disabled")
         self.b_each.config(state="disabled")
         keep_awake(True)
-        threading.Thread(target=self.work, args=(date, off, test, out, self.saves.get(), each), daemon=True).start()
+        angles = [{"name": n, "file": f} for n, f in self.ang_files.items()]
+        threading.Thread(target=self.work, args=(date, off, test, out, self.saves.get(), each, angles,
+                                                 self.attack.get() or None, self.all_ang.get()), daemon=True).start()
 
-    def work(self, date, off, test, out, saves=True, each=False):
+    def work(self, date, off, test, out, saves=True, each=False, angles=None, attack=None, all_ang=False):
         try:
             import highlights
+            kw = {} if each else {"angles": angles, "attack": attack, "all_angles": all_ang}
             (highlights.make_each if each else highlights.make_video)(self.video, date, out, off, test, None,
                                   log=lambda t: self.q.put(("line", t)), saves=saves,
-                                  progress=lambda i, n: self.q.put(("bar", 100.0 * i / n)))
+                                  progress=lambda i, n: self.q.put(("bar", 100.0 * i / n)), **kw)
             self.q.put(("done", out))
         except Exception as e:
             self.q.put(("fail", str(e)))
@@ -140,11 +204,14 @@ class App(tk.Tk):
                     self.add_log(val)
                 elif kind == "bar":
                     self.bar["value"] = val
+                elif kind == "angles":
+                    self.show_angles(*val)
                 elif kind == "dates":
                     self.cb["values"] = val
                     if val and not self.date.get():
                         self.date.set(val[0])
                     self.lbl_dates.config(text="Pick the game, or type a date.")
+                    self.load_angles()
                 elif kind == "dates_err":
                     self.lbl_dates.config(text="Could not load the list (no internet?). Type the date, like 2026-10-18.")
                 elif kind in ("done", "fail"):

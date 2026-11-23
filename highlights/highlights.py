@@ -7,9 +7,14 @@ computer, and joins them into one video. Nothing is uploaded.
 Times in Kings Film Room are seconds into the main game video. If your video file starts at a
 different moment than that one, use the offset (seconds to add to every time, can be negative).
 
+Each clip gets a Kings lower third with the player's number and name. When the game has extra camera
+angles in Kings Film Room and you give their video files, every goal is shown again from the camera behind
+the net the Kings scored on.
+
 Command line:
     python highlights.py 2026-10-18 "C:\\Videos\\game.mp4"
     python highlights.py 2026-10-18 game.mp4 --offset -12 --test
+    python highlights.py 2026-10-18 game.mp4 --angle "Home Cam=home.mp4" --angle "Away Cam=away.mp4" --attack "Home Cam"
 """
 import argparse
 import json
@@ -21,12 +26,18 @@ import sys
 import tempfile
 import urllib.request
 
+try:
+    import graphic
+except Exception:  # Pillow missing: clips are still cut, just without the graphic
+    graphic = None
+
 REPO = "rlahay-cloud/kings-hudl"
 RAW = "https://raw.githubusercontent.com/%s/main/games/" % REPO
 LEAD_GOAL, TAIL_GOAL = 10.0, 5.0
 LEAD_CLIP, TAIL_CLIP = 2.0, 2.0
 LEAD_POINT, TAIL_POINT = 5.0, 8.0
 LEAD_SAVE, TAIL_SAVE = 4.0, 3.0
+REPLAY_LEAD, REPLAY_TAIL = 7.0, 4.0
 MAX_WIDTH = 1920
 
 
@@ -93,32 +104,89 @@ def short_tag(tag):
     return re.sub(r"^(For|Against): ", "", tag).strip() or "Highlight"
 
 
+# ---------- roster and camera angles from Kings Film Room ----------
+def fetch_roster(local_dir=None):
+    """{"17": "Camden Hudson", ...} for skaters and goalies. Empty if it cannot be read."""
+    try:
+        if local_dir:
+            text = open(os.path.join(os.path.dirname(os.path.abspath(local_dir)), "roster.json"), encoding="utf-8").read()
+        else:
+            text = _get("https://raw.githubusercontent.com/%s/main/roster.json" % REPO)
+        d = json.loads(text)
+        return {str(p["n"]): p.get("name", "") for p in (d.get("roster", []) + d.get("goalies", []))}
+    except Exception:
+        return {}
+
+
+def parse_sync(text):
+    """Period starts and extra angles from the game's sync file."""
+    periods, angles = {}, []
+    for line in (text or "").splitlines():
+        a = line.strip().split("|")
+        try:
+            if a[0] == "P" and len(a) >= 3:
+                periods[int(a[1])] = float(a[2])
+            elif a[0] == "A" and len(a) >= 4:
+                angles.append({"name": a[1].strip(), "url": a[2].strip(), "off": float(a[3])})
+        except ValueError:
+            continue
+    return {"periods": periods, "angles": angles}
+
+
+def fetch_sync(date, local_dir=None):
+    try:
+        if local_dir:
+            text = open(os.path.join(local_dir, "sync_%s.txt" % date), encoding="utf-8").read()
+        else:
+            text = _get(RAW + "sync_%s.txt" % date)
+    except Exception:
+        text = ""
+    return parse_sync(text)
+
+
+def period_at(sync, sec):
+    p = 0
+    for k, v in sorted((sync or {}).get("periods", {}).items()):
+        if sec >= v - 5:
+            p = k
+    return p or None
+
+
 def collect(files):
-    """Turns the files into a list of {sec, end, label, kind}."""
+    """Turns the files into a list of clips: {sec, end, label, kind, tag, num, assists, period}."""
     items = []
+
+    def add(kind, sec, end, tag, main, assists, period=None, label=None):
+        num = None
+        if kind == "goal":
+            scorer = [n for n in main if n not in assists]
+            num = scorer[0] if scorer else None
+        elif main:
+            num = main[0]
+        lab = label or (tag + (" #" + num if num else ""))
+        if kind == "goal":
+            lab = "Goal" + (" #" + num if num else "") + (" (A " + ", ".join("#" + n for n in assists) + ")" if assists else "")
+        items.append({"sec": float(sec), "end": end, "label": lab, "kind": kind, "tag": tag, "num": num,
+                      "assists": list(assists), "period": period})
+
     for text in files.get("review", []):
         for line in text.splitlines():
             a = line.split("|")
             if len(a) < 4:
                 continue
             sec = hms(a[0])
-            if sec is not None and a[1].strip() == "Against: Shot on goal":
-                main, _ = players_text(a[2])
-                items.append({"sec": float(sec), "end": None, "label": "Save" + (" #" + main[0] if main else ""), "kind": "save"})
+            if sec is None:
                 continue
-            if sec is not None and len(a) > 4 and in_highlight_list(a[4]) and a[1].strip() not in ("For: Goal", "Against: Shot on goal"):
-                main, _ = players_text(a[2])
-                items.append({"sec": float(sec), "end": None, "label": short_tag(a[1]) + (" #" + main[0] if main else ""), "kind": "clip"})
-                continue
-            if sec is not None and a[1].strip() == "For: Goal":
-                main, assists = players_text(a[2])
-                scorer = [n for n in main if n not in assists]
-                label = "Goal"
-                if scorer:
-                    label += " #" + scorer[0]
-                if assists:
-                    label += " (A " + ", ".join("#" + n for n in assists) + ")"
-                items.append({"sec": float(sec), "end": None, "label": label, "kind": "goal"})
+            tag = a[1].strip()
+            main, assists = players_text(a[2])
+            m = re.match(r"^[^,]*,[^,]*,(\d+)", a[3])
+            period = int(m.group(1)) if m else None
+            if tag == "Against: Shot on goal":
+                add("save", sec, None, "Save", main, [], period)
+            elif len(a) > 4 and in_highlight_list(a[4]) and tag != "For: Goal":
+                add("clip", sec, None, short_tag(tag), main, [], period)
+            elif tag == "For: Goal":
+                add("goal", sec, None, "Goal", main, assists, period)
     for text in files.get("clips", []):
         for line in text.splitlines():
             a = line.split("|")
@@ -133,24 +201,41 @@ def collect(files):
             lab = a[3].strip()
             if len(a) > 4 and re.match(r"^\d{1,7}$", a[4].strip()):
                 end = float(a[4].strip())
+            if end is not None and end <= sec:
+                end = None
             main, assists = players_text(a[2])
-            if tag not in ("Goal", "Highlight"):
-                items.append({"sec": float(sec), "end": end if end and end > sec else None,
-                              "label": lab or short_tag(tag), "kind": "clip"})
-            elif tag == "Goal":
-                scorer = [n for n in main if n not in assists]
-                label = "Goal" + (" #" + scorer[0] if scorer else "")
-                if assists:
-                    label += " (A " + ", ".join("#" + n for n in assists) + ")"
-                items.append({"sec": float(sec), "end": None, "label": label, "kind": "goal"})
+            if tag == "Goal":
+                add("goal", sec, None, "Goal", main, assists)
+            elif tag == "Highlight":
+                add("clip", sec, end, lab or "Highlight", main, [], label=lab or "Highlight")
             else:
-                items.append({"sec": float(sec), "end": end if end and end > sec else None,
-                              "label": lab or "Highlight", "kind": "clip"})
+                add("clip", sec, end, lab or short_tag(tag), main, [], label=lab or short_tag(tag))
     return items
 
 
+def caption_for(it, roster):
+    """What the lower third says for one clip: (tag, number, name, second line)."""
+    nm = lambda n: roster.get(str(n), "")
+    sub = None
+    if it["kind"] == "goal":
+        if it["assists"]:
+            sub = "Assists: " + ", ".join(("#%s %s" % (n, nm(n))).strip() for n in it["assists"])
+        else:
+            sub = "Unassisted"
+    num = it.get("num")
+    return it.get("tag") or "Highlight", num, (nm(num) if num else None), sub
+
+
+def bounds(it):
+    if it["kind"] == "goal":
+        return LEAD_GOAL, TAIL_GOAL
+    if it["kind"] == "save":
+        return LEAD_SAVE, TAIL_SAVE
+    return None
+
+
 def segments(items, offset=0.0, video_len=None):
-    """Start and end of each cut, in the video file's own time. Overlaps are joined."""
+    """Start and end of each cut, in the video file's own time. Overlaps are joined and keep their clips."""
     segs = []
     for it in items:
         if it["kind"] == "goal":
@@ -164,13 +249,15 @@ def segments(items, offset=0.0, video_len=None):
         s, e = s + offset, e + offset
         if e <= 0 or (video_len and s >= video_len):
             continue
-        segs.append({"start": max(0.0, s), "end": min(e, video_len) if video_len else e, "label": it["label"]})
+        segs.append({"start": max(0.0, s), "end": min(e, video_len) if video_len else e, "label": it["label"],
+                     "items": [it]})
     segs.sort(key=lambda x: x["start"])
     merged = []
     for s in segs:
         if merged and s["start"] <= merged[-1]["end"] + 1.0:
             m = merged[-1]
             m["end"] = max(m["end"], s["end"])
+            m["items"] += s["items"]
             if s["label"] not in m["label"]:
                 m["label"] += " / " + s["label"]
         else:
@@ -178,7 +265,36 @@ def segments(items, offset=0.0, video_len=None):
     return merged
 
 
-# ---------- cutting and joining ----------
+# ---------- which camera shows a goal ----------
+def pick_cam(angles, attack, period):
+    """The camera behind the net the Kings scored on. attack is the name of the camera at the Kings' attacking end
+    in period 1; teams swap ends every period, so even periods use the other camera."""
+    if not angles:
+        return None
+    atk = next((a for a in angles if a["name"] == attack), angles[0])
+    others = [a for a in angles if a is not atk]
+    pref = [a for a in others if re.search(r"home|away", a["name"], re.I)] or others
+    other = pref[0] if pref else None
+    if period and period % 2 == 0 and other:
+        return other
+    return atk
+
+
+def replay_segment(it, angle, offset):
+    """Start and end of a replay in the angle video's own time (angle time = main time + its sync offset)."""
+    lead, tail = (REPLAY_LEAD, REPLAY_TAIL) if it["kind"] == "goal" else (None, None)
+    if lead is None:
+        b = bounds(it)
+        if b:
+            lead, tail = b
+        elif it["end"]:
+            return {"start": max(0.0, it["sec"] - LEAD_CLIP + angle["off"] + offset), "end": it["end"] + TAIL_CLIP + angle["off"] + offset}
+        else:
+            lead, tail = LEAD_POINT, TAIL_POINT
+    s = it["sec"] - lead + angle["off"] + offset
+    return {"start": max(0.0, s), "end": it["sec"] + tail + angle["off"] + offset}
+
+
 def find_ffmpeg(log=print):
     exe = shutil.which("ffmpeg")
     if exe:
@@ -198,82 +314,167 @@ def find_ffmpeg(log=print):
         raise RuntimeError("Could not get the video cutting program: %s" % e)
 
 
-def find_font():
-    for p in ("C:/Windows/Fonts/arial.ttf", "C:/Windows/Fonts/segoeui.ttf",
-              "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", "/System/Library/Fonts/Helvetica.ttc"):
-        if os.path.exists(p):
-            return p
-    return None
-
-
-def safe_text(t):
-    return re.sub(r"[^A-Za-z0-9 #().,&/+-]", " ", t)[:70].strip()
-
-
-def video_length(ffmpeg, video):
+def video_info(ffmpeg, video):
+    """(seconds, width, height, has_audio) of a video file."""
     p = subprocess.run([ffmpeg, "-i", video], stderr=subprocess.PIPE, stdout=subprocess.DEVNULL, text=True,
                        encoding="utf-8", errors="replace", creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     m = re.search(r"Duration: (\d+):(\d+):(\d+\.?\d*)", p.stderr)
-    return int(m.group(1)) * 3600 + int(m.group(2)) * 60 + float(m.group(3)) if m else None
+    dur = int(m.group(1)) * 3600 + int(m.group(2)) * 60 + float(m.group(3)) if m else None
+    v = re.search(r"Video:.*?(\d{3,5})x(\d{3,5})", p.stderr)
+    w, h = (int(v.group(1)), int(v.group(2))) if v else (1920, 1080)
+    return dur, w, h, "Audio:" in p.stderr
 
 
-def cut_one(ffmpeg, video, seg, out, caption, font, log):
-    vf = "scale='min(%d,iw)':-2" % MAX_WIDTH
-    base = [ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-ss", "%.2f" % seg["start"], "-i", video,
-            "-t", "%.2f" % (seg["end"] - seg["start"])]
+def fit_size(w, h):
+    """Output size for a video: at most MAX_WIDTH wide, even numbers."""
+    ow = min(w, MAX_WIDTH)
+    ow -= ow % 2
+    oh = int(round(h * ow / float(w)))
+    return ow, oh - oh % 2
+
+
+def video_length(ffmpeg, video):
+    return video_info(ffmpeg, video)[0]
+
+
+def _run(cmd):
+    return subprocess.run(cmd, stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace",
+                          creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+
+
+def cut_one(ffmpeg, video, seg, out, cap, info, tmp, log, chip=None, item_sec=None, target=None):
+    """Cuts one clip. cap is the lower third text (tag, number, name, sub) or None. chip is
+    (text, is_replay) for the camera tag in the top left, or None. info is video_info(video)."""
+    dur_s, w, h, has_audio = info
+    out_w, out_h = target or fit_size(w, h)
+    fit = "scale=%d:%d:force_original_aspect_ratio=decrease,pad=%d:%d:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=24" % (out_w, out_h, out_w, out_h)
+    scale = out_w / 1920.0
+    length = seg["end"] - seg["start"]
+    base = [ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-ss", "%.2f" % seg["start"], "-i", video]
     enc = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "22", "-pix_fmt", "yuv420p", "-r", "24",
-           "-c:a", "aac", "-b:a", "128k", "-ar", "44100", "-ac", "2", out]
-    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-    if caption and font:
-        ff = font.replace("\\", "/").replace(":", "\\:")
-        dt = ("drawtext=fontfile='%s':text='%s':fontcolor=white:fontsize=44:box=1:boxcolor=black@0.55:"
-              "boxborderw=12:x=40:y=h-th-50" % (ff, safe_text(caption)))
-        r = subprocess.run(base + ["-vf", vf + "," + dt] + enc, stderr=subprocess.PIPE, text=True,
-                           encoding="utf-8", errors="replace", creationflags=flags)
-        if r.returncode == 0:
-            return
-        log("Could not add the caption, cutting without it.")
-    r = subprocess.run(base + ["-vf", vf] + enc, stderr=subprocess.PIPE, text=True,
-                       encoding="utf-8", errors="replace", creationflags=flags)
+           "-c:a", "aac", "-b:a", "128k", "-ar", "44100", "-ac", "2", "-t", "%.2f" % length, out]
+    audio_in, amap = [], ["-map", "0:a:0"]
+    if not has_audio:
+        audio_in = ["-f", "lavfi", "-t", "%.2f" % length, "-i", "anullsrc=r=44100:cl=stereo"]
+        amap = None
+    if (cap or chip) and graphic is not None:
+        try:
+            inputs, chain, last, n = [], [], "[v0]", 1
+            chain.append("[0:v]%s[v0]" % fit)
+            if cap:
+                lt = os.path.join(tmp, "lt_%d.png" % (abs(hash(out)) % 10 ** 8))
+                lw, lh = graphic.lower_third(lt, scale, *cap)
+                t0 = max(0.3, (item_sec - seg["start"] - 3.0) if item_sec is not None else 0.5)
+                t0 = min(t0, max(0.3, length - 2.0))
+                d = max(1.0, length - t0)
+                x0, y0 = int(60 * scale), out_h - lh - int(60 * scale)
+                inputs += ["-loop", "1", "-framerate", "24", "-t", "%.2f" % d, "-i", lt]
+                chain.append("[%d:v]format=rgba,fade=t=in:st=0:d=0.3:alpha=1,fade=t=out:st=%.2f:d=0.4:alpha=1,setpts=PTS+%.2f/TB[g%d]"
+                             % (n, d - 0.5, t0, n))
+                chain.append("%s[g%d]overlay=x='if(lt(t-%.2f,0.35),-overlay_w+(%d+overlay_w)*(t-%.2f)/0.35,%d)':y=%d:eof_action=pass[v%d]"
+                             % (last, n, t0, x0, t0, x0, y0, n))
+                last = "[v%d]" % n
+                n += 1
+            if chip:
+                cp = os.path.join(tmp, "chip_%d.png" % (abs(hash(out)) % 10 ** 8))
+                cw, ch = graphic.angle_chip(cp, scale, chip[0], chip[1])
+                d = max(1.0, length - 0.3)
+                inputs += ["-loop", "1", "-framerate", "24", "-t", "%.2f" % d, "-i", cp]
+                chain.append("[%d:v]format=rgba,fade=t=in:st=0:d=0.3:alpha=1,fade=t=out:st=%.2f:d=0.4:alpha=1,setpts=PTS+0.3/TB[g%d]"
+                             % (n, d - 0.5, n))
+                chain.append("%s[g%d]overlay=x=%d:y=%d:eof_action=pass[v%d]" % (last, n, int(60 * scale), int(50 * scale), n))
+                last = "[v%d]" % n
+            # input numbering: 0 video, then each png (8 arguments per png), then the silent audio if used
+            amap_cmd = amap if amap else ["-map", "%d:a" % (1 + len(inputs) // 8)]
+            cmd = base + inputs + audio_in + ["-filter_complex", ";".join(chain), "-map", last] + amap_cmd + enc
+            r = _run(cmd)
+            if r.returncode == 0:
+                return
+            log("Could not add the graphic, cutting without it. " + r.stderr.strip()[-200:])
+        except Exception as e:
+            log("Could not draw the graphic, cutting without it. %s" % e)
+    cmd = base + audio_in + ["-vf", fit, "-map", "0:v"] + \
+        (amap if amap else ["-map", "1:a"]) + enc
+    r = _run(cmd)
     if r.returncode != 0:
         raise RuntimeError("The cutting program stopped: " + r.stderr.strip()[-300:])
 
 
-def make_video(video, date, out, offset=0.0, test=False, local_dir=None, log=print, progress=None, saves=True):
+def make_video(video, date, out, offset=0.0, test=False, local_dir=None, log=print, progress=None, saves=True,
+               angles=None, attack=None, all_angles=False):
+    """angles: [{"name": "Home Cam", "file": "C:\\home.mp4"}]. Each goal is then shown again from the camera behind
+    the net the Kings scored on. all_angles also replays highlight clips and saves from every angle."""
     files = fetch_game_files(date, local_dir)
     items = [i for i in collect(files) if saves or i["kind"] != "save"]
     if not items:
         raise RuntimeError("Kings Film Room has no goals or highlight clips for %s yet." % date)
     ffmpeg = find_ffmpeg(log)
-    dur = video_length(ffmpeg, video)
-    segs = segments(items, offset, dur)
+    info = video_info(ffmpeg, video)
+    roster = fetch_roster(local_dir)
+    sync = fetch_sync(date, local_dir)
+    for it in items:
+        if not it.get("period"):
+            it["period"] = period_at(sync, it["sec"])
+    cams = []
+    for a in (angles or []):
+        base = next((x for x in sync["angles"] if x["name"] == a["name"]), None)
+        if not a.get("file") or not base:
+            continue
+        if not base["off"]:
+            log("Skipping %s: it is not matched to the main video yet (Game Desk, Game setup)." % a["name"])
+            continue
+        cams.append({"name": a["name"], "off": base["off"], "file": a["file"], "info": video_info(ffmpeg, a["file"])})
+    segs = segments(items, offset, info[0])
     if not segs:
         raise RuntimeError("None of the clips fall inside this video. Check the offset.")
     if test:
         segs = segs[:1]
-    total = sum(s["end"] - s["start"] for s in segs)
-    log("%d clips, %d minutes %d seconds in all." % (len(segs), total // 60, total % 60))
-    font = find_font()
+    target = fit_size(info[1], info[2])
+    plan = []
+    for s in segs:
+        plan.append(("main", s, video, info, None, s["items"][0]["sec"] + offset))
+        done = set()
+        for it in s["items"]:
+            if it["kind"] == "goal":
+                pick = [pick_cam(cams, attack, it.get("period"))] if cams else []
+            elif all_angles:
+                pick = cams
+            else:
+                pick = []
+            for c in pick:
+                if c and (c["name"], it["sec"]) not in done:
+                    done.add((c["name"], it["sec"]))
+                    rs = replay_segment(it, c, offset)
+                    if c["info"][0]:
+                        rs["end"] = min(rs["end"], c["info"][0])
+                    if rs["end"] - rs["start"] > 2:
+                        rs["items"] = [it]
+                        rs["label"] = "Replay " + c["name"] + " " + it["label"]
+                        plan.append(("replay", rs, c["file"], c["info"], c["name"], it["sec"] + c["off"] + offset))
+    total = sum(p[1]["end"] - p[1]["start"] for p in plan)
+    log("%d clips, %d minutes %d seconds in all." % (len(plan), total // 60, total % 60))
     tmp = tempfile.mkdtemp(prefix="kings_hl_")
     try:
         names = []
-        for i, s in enumerate(segs):
-            log("Cutting clip %d of %d: %s" % (i + 1, len(segs), s["label"]))
+        for i, (kind, s, vid, vinfo, camname, moment) in enumerate(plan):
+            log("Cutting clip %d of %d: %s" % (i + 1, len(plan), s["label"]))
             fn = os.path.join(tmp, "c%03d.mp4" % i)
-            cut_one(ffmpeg, video, s, fn, s["label"], font, log)
+            first = s["items"][0]
+            chip = None
+            if cams:
+                chip = (camname, True) if kind == "replay" else ("Main Cam", False)
+            cut_one(ffmpeg, vid, s, fn, caption_for(first, roster), vinfo, tmp, log, chip, moment, target)
             names.append(fn)
             if progress:
-                progress(i + 1, len(segs))
+                progress(i + 1, len(plan))
         lst = os.path.join(tmp, "list.txt")
         with open(lst, "w", encoding="utf-8") as f:
             for n in names:
                 f.write("file '%s'\n" % n.replace("\\", "/").replace("'", "'\\''"))
         os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
         log("Joining the clips.")
-        r = subprocess.run([ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-f", "concat", "-safe", "0",
-                            "-i", lst, "-c", "copy", "-movflags", "+faststart", out], stderr=subprocess.PIPE,
-                           text=True, encoding="utf-8", errors="replace",
-                           creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        r = _run([ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-f", "concat", "-safe", "0",
+                  "-i", lst, "-c", "copy", "-movflags", "+faststart", out])
         if r.returncode != 0:
             raise RuntimeError("Could not join the clips: " + r.stderr.strip()[-300:])
     finally:
@@ -301,32 +502,35 @@ def make_each(video, date, outdir, offset=0.0, test=False, local_dir=None, log=p
     if not items:
         raise RuntimeError("Kings Film Room has no goals or highlight clips for %s yet." % date)
     ffmpeg = find_ffmpeg(log)
-    dur = video_length(ffmpeg, video)
-    font = find_font()
-    os.makedirs(outdir, exist_ok=True)
+    info = video_info(ffmpeg, video)
+    roster = fetch_roster(local_dir)
     todo = []
     for it in items:
-        seg = one_segment(it, offset, dur)
+        seg = one_segment(it, offset, info[0])
         if seg:
-            seg["label"] = it["label"]
             todo.append((it, seg))
     if not todo:
         raise RuntimeError("None of the clips fall inside this video. Check the offset.")
     if test:
         todo = todo[:1]
+    os.makedirs(outdir, exist_ok=True)
+    tmp = tempfile.mkdtemp(prefix="kings_hl_")
     manifest = []
-    for i, (it, seg) in enumerate(todo):
-        name = clip_name(date, it["sec"])
-        out = os.path.join(outdir, name)
-        if os.path.exists(out) and os.path.getsize(out) > 1000:
-            log("Already cut: %s" % it["label"])
-        else:
-            log("Cutting clip %d of %d: %s" % (i + 1, len(todo), it["label"]))
-            cut_one(ffmpeg, video, seg, out, it["label"], font, log)
-        manifest.append({"file": name, "sec": int(round(it["sec"])), "label": it["label"],
-                         "bytes": os.path.getsize(out)})
-        if progress:
-            progress(i + 1, len(todo))
+    try:
+        for i, (it, seg) in enumerate(todo):
+            name = clip_name(date, it["sec"])
+            out = os.path.join(outdir, name)
+            if os.path.exists(out) and os.path.getsize(out) > 1000:
+                log("Already cut: %s" % it["label"])
+            else:
+                log("Cutting clip %d of %d: %s" % (i + 1, len(todo), it["label"]))
+                cut_one(ffmpeg, video, seg, out, caption_for(it, roster), info, tmp, log, None, it["sec"] + offset)
+            manifest.append({"file": name, "sec": int(round(it["sec"])), "label": it["label"],
+                             "bytes": os.path.getsize(out)})
+            if progress:
+                progress(i + 1, len(todo))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
     with open(os.path.join(outdir, "clips.json"), "w", encoding="utf-8") as f:
         json.dump({"date": date, "clips": manifest}, f, indent=1)
     log("Done. %d clips are in %s" % (len(manifest), outdir))
@@ -341,6 +545,9 @@ def main():
     ap.add_argument("--test", action="store_true", help="Only make the first clip, to check the timing")
     ap.add_argument("--no-saves", action="store_true", help="Leave out the saves (shots against)")
     ap.add_argument("--each", action="store_true", help="Cut every clip into its own file (for the Download buttons)")
+    ap.add_argument("--angle", action="append", default=[], help='Extra camera video, like "Home Cam=C:\\home.mp4"')
+    ap.add_argument("--attack", default=None, help="Name of the camera at the end the Kings attack in period 1")
+    ap.add_argument("--all-angles", action="store_true", help="Replay highlight clips and saves from every angle too")
     ap.add_argument("--out", default=None)
     ap.add_argument("--local-dir", default=None, help="Read the game files from a folder instead of GitHub")
     a = ap.parse_args()
@@ -350,7 +557,9 @@ def main():
         return
     out = a.out or os.path.join(os.path.expanduser("~"), "Documents", "KingsHighlights",
                                 "Kings_highlights_%s%s.mp4" % (a.date, "_test" if a.test else ""))
-    make_video(a.video, a.date, out, a.offset, a.test, a.local_dir, saves=not a.no_saves)
+    angles = [{"name": x.split("=", 1)[0], "file": x.split("=", 1)[1]} for x in a.angle if "=" in x]
+    make_video(a.video, a.date, out, a.offset, a.test, a.local_dir, saves=not a.no_saves, angles=angles,
+               attack=a.attack, all_angles=a.all_angles)
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 Kings Highlight Video
 
 Makes one highlight video for a game. It uses every Kings goal plus the clips you tagged Highlight in
-Coach's Corner, in game order, with a short caption on each. The clip list comes from Kings Film Room.
+Coach's Corner, in game order, with a Kings graphic on each showing the player's number and name (goals also show the assists). The clip list comes from Kings Film Room.
 The video is cut on this computer from your full game video. Nothing is uploaded.
 
 First time only
@@ -11,7 +11,7 @@ First time only
 Every game
 1. Double click Kings Highlight Video.
 2. Choose the full game video.
-3. Pick the game date.
+3. Pick the game date. If the game has extra cameras, choose each camera's video file (skip any you don't have). Every goal is then shown again from the camera behind the net the Kings scored on, marked REPLAY. Say which camera is at the end the Kings attack in period 1; the program swaps it each period.
 4. Press "Test the first clip" and watch it. If it starts at the wrong moment, change "Seconds to add"
    (a minus number like -12 if the clips start too late, a plus number if they start too early) and test again.
 5. Press "Make the highlight video". It opens when done.
