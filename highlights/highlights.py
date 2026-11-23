@@ -37,8 +37,8 @@ LEAD_GOAL, TAIL_GOAL = 10.0, 5.0
 LEAD_CLIP, TAIL_CLIP = 2.0, 2.0
 LEAD_POINT, TAIL_POINT = 5.0, 8.0
 LEAD_SAVE, TAIL_SAVE = 4.0, 3.0
-REPLAY_LEAD, REPLAY_TAIL = 3.0, 2.0  # a short replay of just the goal
-SLOW_LEAD, SLOW_TAIL = 2.0, 1.5  # a slowed replay shows this much real time, twice as long on screen
+REPLAY_LEAD, REPLAY_TAIL = 8.0, 2.0  # the same window the Film Room plays around a mark
+SLOW_FROM = 3.0  # a slowed replay runs at normal speed, then goes to half speed this many seconds before the mark
 MAX_WIDTH = 1920
 
 
@@ -311,19 +311,15 @@ def pick_cam(angles, attack, period, kings_scored=True):
     return other if flip and other else atk
 
 
-def replay_segment(it, angle, offset, slow=False):
-    """Start and end of a replay in the angle video's own time (angle time = main time + its sync offset)."""
-    lead, tail = ((SLOW_LEAD, SLOW_TAIL) if slow else (REPLAY_LEAD, REPLAY_TAIL)) if it["kind"] == "goal" else (None, None)
-    if lead is None:
-        b = bounds(it)
-        if b:
-            lead, tail = b
-        elif it["end"]:
-            return {"start": max(0.0, it["sec"] - LEAD_CLIP + angle["off"] + offset), "end": it["end"] + TAIL_CLIP + angle["off"] + offset}
-        else:
-            lead, tail = LEAD_POINT, TAIL_POINT
-    s = it["sec"] - lead + angle["off"] + offset
-    return {"start": max(0.0, s), "end": it["sec"] + tail + angle["off"] + offset}
+def replay_segment(it, angle):
+    """Start and end of a replay in the angle video's own time. This is the Film Room's own window around the mark
+    (8 seconds before, 2 after) moved by the angle's sync offset (angle time = main time + offset).
+    The computer's "seconds to add" is for the main video file only and is not used here."""
+    if it["kind"] != "goal" and it.get("end") and it["end"] > it["sec"]:
+        s, e = it["sec"] - LEAD_CLIP, it["end"] + TAIL_CLIP
+    else:
+        s, e = it["sec"] - REPLAY_LEAD, it["sec"] + REPLAY_TAIL
+    return {"start": max(0.0, s + angle["off"]), "end": e + angle["off"]}
 
 
 def find_ffmpeg(log=print):
@@ -377,6 +373,8 @@ def cut_one(ffmpeg, video, seg, out, cap, info, tmp, log, chip=None, item_sec=No
     """Cuts one clip. cap is the lower third text (tag, number, name, sub) or None. chip is
     (text, is_replay) for the camera tag in the top left, or None. info is video_info(video)."""
     dur_s, w, h, has_audio = info
+    if slow:
+        has_audio = False  # slowed sound is garbled, so slow motion is silent
     out_w, out_h = target or fit_size(w, h)
     fit = "scale=%d:%d:force_original_aspect_ratio=decrease,pad=%d:%d:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=24" % (out_w, out_h, out_w, out_h)
     scale = out_w / 1920.0
@@ -421,7 +419,7 @@ def cut_one(ffmpeg, video, seg, out, cap, info, tmp, log, chip=None, item_sec=No
                 last = "[v%d]" % n
             # input numbering: 0 video, then each png (8 arguments per png), then the silent audio if used
             amap_cmd = amap if amap else ["-map", "%d:a" % (1 + len(inputs) // 8)]
-            cmd = base + inputs + audio_in + ["-filter_complex", ";".join(chain), "-map", last] + amap_cmd + (["-af", "atempo=0.5"] if slow and has_audio else []) + enc
+            cmd = base + inputs + audio_in + ["-filter_complex", ";".join(chain), "-map", last] + amap_cmd + enc
             r = _run(cmd)
             if r.returncode == 0:
                 return
@@ -429,7 +427,7 @@ def cut_one(ffmpeg, video, seg, out, cap, info, tmp, log, chip=None, item_sec=No
         except Exception as e:
             log("Could not draw the graphic, cutting without it. %s" % e)
     cmd = base + audio_in + ["-vf", fit, "-map", "0:v"] + \
-        (amap if amap else ["-map", "1:a"]) + (["-af", "atempo=0.5"] if slow and has_audio else []) + enc
+        (amap if amap else ["-map", "1:a"]) + enc
     r = _run(cmd)
     if r.returncode != 0:
         raise RuntimeError("The cutting program stopped: " + r.stderr.strip()[-300:])
@@ -471,7 +469,7 @@ def make_video(video, date, out, offset=0.0, test=False, local_dir=None, log=pri
     target = fit_size(info[1], info[2])
     plan = []
     for s in segs:
-        plan.append(("main", s, video, info, None, s["items"][0]["sec"] + offset))
+        plan.append(("main", s, video, info, None, s["items"][0]["sec"] + offset, False))
         done = set()
         for it in s["items"]:
             want = it.get("replay", it["kind"] == "goal")
@@ -479,27 +477,32 @@ def make_video(video, date, out, offset=0.0, test=False, local_dir=None, log=pri
             for c in pick:
                 if c and (c["name"], it["sec"]) not in done:
                     done.add((c["name"], it["sec"]))
-                    rs = replay_segment(it, c, offset, slow)
+                    rs = replay_segment(it, c)
                     if c["info"][0]:
                         rs["end"] = min(rs["end"], c["info"][0])
                     if rs["end"] - rs["start"] > 2:
-                        rs["items"] = [it]
-                        rs["label"] = "Replay " + c["name"] + " " + it["label"]
-                        plan.append(("replay", rs, c["file"], c["info"], c["name"], it["sec"] + c["off"] + offset))
-    total = sum(p[1]["end"] - p[1]["start"] for p in plan)
+                        lab = "Replay " + c["name"] + " " + it["label"]
+                        mark = it["sec"] + c["off"]
+                        if slow and rs["start"] + 1.0 < mark - SLOW_FROM < rs["end"] - 1.0:
+                            cut = mark - SLOW_FROM
+                            plan.append(("replay", {"start": rs["start"], "end": cut, "items": [it], "label": lab}, c["file"], c["info"], c["name"], mark, False))
+                            plan.append(("replay", {"start": cut, "end": rs["end"], "items": [it], "label": lab + " (half speed)"}, c["file"], c["info"], c["name"], mark, True))
+                        else:
+                            plan.append(("replay", dict(rs, items=[it], label=lab), c["file"], c["info"], c["name"], mark, slow))
+    total = sum((p[1]["end"] - p[1]["start"]) * (2 if p[6] else 1) for p in plan)
     log("%d clips, %d minutes %d seconds in all." % (len(plan), total // 60, total % 60))
     tmp = tempfile.mkdtemp(prefix="kings_hl_")
     try:
         names = []
-        for i, (kind, s, vid, vinfo, camname, moment) in enumerate(plan):
+        for i, (kind, s, vid, vinfo, camname, moment, is_slow) in enumerate(plan):
             log("Cutting clip %d of %d: %s" % (i + 1, len(plan), s["label"]))
             fn = os.path.join(tmp, "c%03d.mp4" % i)
             first = s["items"][0]
             chip = None
             if cams:
-                chip = ((camname + (" 0.5x" if slow else "") + (" zoom" if zoom > 1.0 else ""), True) if kind == "replay" else ("Main Cam", False))
+                chip = ((camname + (" 0.5x" if is_slow else "") + (" zoom" if zoom > 1.0 else ""), True) if kind == "replay" else ("Main Cam", False))
             cut_one(ffmpeg, vid, s, fn, caption_for(first, roster) if kind == "main" else None, vinfo, tmp, log, chip, moment, target,
-                    slow and kind == "replay", zoom if kind == "replay" else 1.0)
+                    is_slow, zoom if kind == "replay" else 1.0)
             names.append(fn)
             if progress:
                 progress(i + 1, len(plan))
