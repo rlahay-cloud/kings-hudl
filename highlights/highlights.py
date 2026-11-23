@@ -37,8 +37,8 @@ LEAD_GOAL, TAIL_GOAL = 10.0, 5.0
 LEAD_CLIP, TAIL_CLIP = 2.0, 2.0
 LEAD_POINT, TAIL_POINT = 5.0, 8.0
 LEAD_SAVE, TAIL_SAVE = 4.0, 3.0
-REPLAY_LEAD, REPLAY_TAIL = 7.0, 4.0
-SLOW_LEAD, SLOW_TAIL = 4.0, 3.0  # a slowed replay shows this much real time, twice as long on screen
+REPLAY_LEAD, REPLAY_TAIL = 3.0, 2.0  # a short replay of just the goal
+SLOW_LEAD, SLOW_TAIL = 2.0, 1.5  # a slowed replay shows this much real time, twice as long on screen
 MAX_WIDTH = 1920
 
 
@@ -153,11 +153,17 @@ def period_at(sync, sec):
     return p or None
 
 
-def collect(files):
-    """Turns the files into a list of clips: {sec, end, label, kind, tag, num, assists, period}."""
+def _lists(field):
+    return [p.strip() for p in (field or "").split(";") if p.strip()]
+
+
+def collect_all(files):
+    """Every mark Kings Film Room has for the game as a pickable clip:
+    {id, sec, end, label, kind, tag, num, assists, period, lists, default}. default is True for goals and
+    anything in a playlist whose name starts with Highlight."""
     items = []
 
-    def add(kind, sec, end, tag, main, assists, period=None, label=None):
+    def add(kind, sec, end, tag, main, assists, period, lists, label=None, mine_goal=False):
         num = None
         if kind == "goal":
             scorer = [n for n in main if n not in assists]
@@ -167,8 +173,9 @@ def collect(files):
         lab = label or (tag + (" #" + num if num else ""))
         if kind == "goal":
             lab = "Goal" + (" #" + num if num else "") + (" (A " + ", ".join("#" + n for n in assists) + ")" if assists else "")
-        items.append({"sec": float(sec), "end": end, "label": lab, "kind": kind, "tag": tag, "num": num,
-                      "assists": list(assists), "period": period})
+        items.append({"id": "%d|%s" % (sec, tag), "sec": float(sec), "end": end, "label": lab, "kind": kind, "tag": tag,
+                      "num": num, "assists": list(assists), "period": period, "lists": lists,
+                      "default": kind == "goal" or any(p.lower().startswith("highlight") for p in lists)})
 
     for text in files.get("review", []):
         for line in text.splitlines():
@@ -176,18 +183,21 @@ def collect(files):
             if len(a) < 4:
                 continue
             sec = hms(a[0])
-            if sec is None:
+            if sec is None or not a[1].strip():
                 continue
             tag = a[1].strip()
             main, assists = players_text(a[2])
             m = re.match(r"^[^,]*,[^,]*,(\d+)", a[3])
             period = int(m.group(1)) if m else None
+            lists = _lists(a[4]) if len(a) > 4 else []
             if tag == "Against: Shot on goal":
-                add("save", sec, None, "Save", main, [], period)
-            elif len(a) > 4 and in_highlight_list(a[4]) and tag != "For: Goal":
-                add("clip", sec, None, short_tag(tag), main, [], period)
+                add("save", sec, None, "Save", main, [], period, lists)
             elif tag == "For: Goal":
-                add("goal", sec, None, "Goal", main, assists, period)
+                add("goal", sec, None, "Goal", main, assists, period, lists)
+            else:
+                add("clip", sec, None, tag.replace("For: ", ""), main, [], period, lists)
+    seen = {(round(i["sec"]), i["tag"]) for i in items}
+    goal_secs = [i["sec"] for i in items if i["kind"] == "goal"]
     for text in files.get("clips", []):
         for line in text.splitlines():
             a = line.split("|")
@@ -195,8 +205,7 @@ def collect(files):
                 continue
             sec = hms(a[0])
             tag = a[1].strip()
-            listed = len(a) > 5 and in_highlight_list(a[5])
-            if sec is None or (tag not in ("Goal", "Highlight") and not listed):
+            if sec is None or not tag:
                 continue
             end = None
             lab = a[3].strip()
@@ -205,12 +214,32 @@ def collect(files):
             if end is not None and end <= sec:
                 end = None
             main, assists = players_text(a[2])
+            lists = _lists(a[5]) if len(a) > 5 else []
             if tag == "Goal":
-                add("goal", sec, None, "Goal", main, assists)
-            elif tag == "Highlight":
-                add("clip", sec, end, lab or "Highlight", main, [], label=lab or "Highlight")
+                if any(abs(g - sec) <= 4 for g in goal_secs):
+                    continue
+                add("goal", sec, None, "Goal", main, assists, None, lists)
             else:
-                add("clip", sec, end, lab or short_tag(tag), main, [], label=lab or short_tag(tag))
+                name = lab or (tag if tag != "Highlight" else "Highlight")
+                if (round(sec), tag.replace("For: ", "")) in seen:
+                    continue
+                add("clip", sec, end, name, main, [], None, lists, label=name)
+    items.sort(key=lambda i: i["sec"])
+    return items
+
+
+def collect(files):
+    """The usual clips: goals, anything in a Highlight playlist, and saves."""
+    return [i for i in collect_all(files) if i["default"] or i["kind"] == "save"]
+
+
+def catalog(date, local_dir=None):
+    """All marks of a game for the picking list, with periods filled in."""
+    items = collect_all(fetch_game_files(date, local_dir))
+    sync = fetch_sync(date, local_dir)
+    for it in items:
+        if not it.get("period"):
+            it["period"] = period_at(sync, it["sec"])
     return items
 
 
@@ -224,7 +253,9 @@ def caption_for(it, roster):
         else:
             sub = "Unassisted"
     num = it.get("num")
-    return it.get("tag") or "Highlight", num, (nm(num) if num else None), sub
+    if it["kind"] == "goal" or it["kind"] == "save" or num:
+        return it.get("tag") or "Highlight", num, (nm(num) if num else None), sub
+    return "Highlight", None, it.get("tag") or "Highlight", sub
 
 
 def bounds(it):
@@ -267,7 +298,7 @@ def segments(items, offset=0.0, video_len=None):
 
 
 # ---------- which camera shows a goal ----------
-def pick_cam(angles, attack, period):
+def pick_cam(angles, attack, period, kings_scored=True):
     """The camera behind the net the Kings scored on. attack is the name of the camera at the Kings' attacking end
     in period 1; teams swap ends every period, so even periods use the other camera."""
     if not angles:
@@ -276,9 +307,8 @@ def pick_cam(angles, attack, period):
     others = [a for a in angles if a is not atk]
     pref = [a for a in others if re.search(r"home|away", a["name"], re.I)] or others
     other = pref[0] if pref else None
-    if period and period % 2 == 0 and other:
-        return other
-    return atk
+    flip = bool(period and period % 2 == 0) != (not kings_scored)
+    return other if flip and other else atk
 
 
 def replay_segment(it, angle, offset, slow=False):
@@ -406,14 +436,17 @@ def cut_one(ffmpeg, video, seg, out, cap, info, tmp, log, chip=None, item_sec=No
 
 
 def make_video(video, date, out, offset=0.0, test=False, local_dir=None, log=print, progress=None, saves=True,
-               angles=None, attack=None, all_angles=False, slow=False, zoom=1.0):
+               angles=None, attack=None, slow=False, zoom=1.0, picks=None):
     """angles: [{"name": "Home Cam", "file": "C:\\home.mp4"}]. Each goal is then shown again from the camera behind
-    the net the Kings scored on. all_angles also replays highlight clips and saves from every angle.
+    the net the Kings scored on (one replay, not every angle). picks is the list of clips to use (from catalog());
+    a clip with replay set to True also gets a replay, goals do by default.
     slow plays the replays at half speed and zoom (like 1.5) crops in on the middle of the replay picture."""
-    files = fetch_game_files(date, local_dir)
-    items = [i for i in collect(files) if saves or i["kind"] != "save"]
+    if picks is not None:
+        items = sorted(picks, key=lambda i: i["sec"])
+    else:
+        items = [i for i in collect(fetch_game_files(date, local_dir)) if saves or i["kind"] != "save"]
     if not items:
-        raise RuntimeError("Kings Film Room has no goals or highlight clips for %s yet." % date)
+        raise RuntimeError("Nothing is picked for %s yet." % date)
     ffmpeg = find_ffmpeg(log)
     info = video_info(ffmpeg, video)
     roster = fetch_roster(local_dir)
@@ -441,12 +474,8 @@ def make_video(video, date, out, offset=0.0, test=False, local_dir=None, log=pri
         plan.append(("main", s, video, info, None, s["items"][0]["sec"] + offset))
         done = set()
         for it in s["items"]:
-            if it["kind"] == "goal":
-                pick = [pick_cam(cams, attack, it.get("period"))] if cams else []
-            elif all_angles:
-                pick = cams
-            else:
-                pick = []
+            want = it.get("replay", it["kind"] == "goal")
+            pick = [pick_cam(cams, attack, it.get("period"), not it["tag"].startswith("Against: Goal"))] if (cams and want) else []
             for c in pick:
                 if c and (c["name"], it["sec"]) not in done:
                     done.add((c["name"], it["sec"]))
@@ -469,7 +498,7 @@ def make_video(video, date, out, offset=0.0, test=False, local_dir=None, log=pri
             chip = None
             if cams:
                 chip = ((camname + (" 0.5x" if slow else "") + (" zoom" if zoom > 1.0 else ""), True) if kind == "replay" else ("Main Cam", False))
-            cut_one(ffmpeg, vid, s, fn, caption_for(first, roster), vinfo, tmp, log, chip, moment, target,
+            cut_one(ffmpeg, vid, s, fn, caption_for(first, roster) if kind == "main" else None, vinfo, tmp, log, chip, moment, target,
                     slow and kind == "replay", zoom if kind == "replay" else 1.0)
             names.append(fn)
             if progress:
@@ -554,7 +583,6 @@ def main():
     ap.add_argument("--each", action="store_true", help="Cut every clip into its own file (for the Download buttons)")
     ap.add_argument("--angle", action="append", default=[], help='Extra camera video, like "Home Cam=C:\\home.mp4"')
     ap.add_argument("--attack", default=None, help="Name of the camera at the end the Kings attack in period 1")
-    ap.add_argument("--all-angles", action="store_true", help="Replay highlight clips and saves from every angle too")
     ap.add_argument("--slow", action="store_true", help="Play the replays at half speed")
     ap.add_argument("--zoom", type=float, default=1.0, help="Zoom the replays in, like 1.5")
     ap.add_argument("--out", default=None)
@@ -568,7 +596,7 @@ def main():
                                 "Kings_highlights_%s%s.mp4" % (a.date, "_test" if a.test else ""))
     angles = [{"name": x.split("=", 1)[0], "file": x.split("=", 1)[1]} for x in a.angle if "=" in x]
     make_video(a.video, a.date, out, a.offset, a.test, a.local_dir, saves=not a.no_saves, angles=angles,
-               attack=a.attack, all_angles=a.all_angles, slow=a.slow, zoom=a.zoom)
+               attack=a.attack, slow=a.slow, zoom=a.zoom)
 
 
 if __name__ == "__main__":

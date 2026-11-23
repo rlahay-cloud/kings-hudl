@@ -31,8 +31,8 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Kings Highlight Video")
-        self.geometry("660x780")
-        self.minsize(600, 660)
+        self.geometry("700x900")
+        self.minsize(640, 780)
         self.q = queue.Queue()
         self.busy = False
         pad = {"padx": 12, "pady": 6}
@@ -69,13 +69,36 @@ class App(tk.Tk):
         self.ang_rows.pack(fill="x", padx=8)
         self.ang_files = {}
         self.attack = tk.StringVar()
-        self.all_ang = tk.BooleanVar(value=False)
         self.slow = tk.BooleanVar(value=False)
         self.zoom = tk.StringVar(value="No zoom")
         self.cb.bind("<<ComboboxSelected>>", lambda e: self.load_angles())
         self.cb.bind("<FocusOut>", lambda e: self.load_angles())
-        self.saves = tk.BooleanVar(value=True)
-        ttk.Checkbutton(self, text="Include saves (shots against), as short clips", variable=self.saves).pack(anchor="w", padx=12)
+        f5 = ttk.LabelFrame(self, text="Clips to include (tick the ones you want)")
+        f5.pack(fill="both", expand=True, **pad)
+        top = tk.Frame(f5)
+        top.pack(fill="x", padx=8, pady=(6, 2))
+        tk.Label(top, text="Show:").pack(side="left")
+        self.flt = tk.StringVar(value="Goals and highlights")
+        self.flt_cb = ttk.Combobox(top, textvariable=self.flt, state="readonly", width=24,
+                                   values=["Goals and highlights", "Everything", "Goals", "Saves", "Shots"])
+        self.flt_cb.pack(side="left", padx=6)
+        self.flt_cb.bind("<<ComboboxSelected>>", lambda e: self.draw_picks())
+        ttk.Button(top, text="Tick all shown", command=lambda: self.tick_shown(True)).pack(side="left", padx=(8, 2))
+        ttk.Button(top, text="Clear shown", command=lambda: self.tick_shown(False)).pack(side="left")
+        self.pick_count = tk.Label(top, text="", anchor="e")
+        self.pick_count.pack(side="right")
+        cols = ("use", "replay", "time", "what", "who", "lists")
+        self.tree = ttk.Treeview(f5, columns=cols, show="headings", height=9, selectmode="none")
+        for c, t, w in (("use", "Use", 44), ("replay", "Replay", 56), ("time", "Time", 70), ("what", "What", 170),
+                        ("who", "Player", 170), ("lists", "Playlist", 100)):
+            self.tree.heading(c, text=t)
+            self.tree.column(c, width=w, anchor="w", stretch=(c in ("who", "lists")))
+        sb = ttk.Scrollbar(f5, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscrollcommand=sb.set)
+        sb.pack(side="right", fill="y", padx=(0, 8), pady=(0, 8))
+        self.tree.pack(side="left", fill="both", expand=True, padx=(8, 0), pady=(0, 8))
+        self.tree.bind("<Button-1>", self.click_pick)
+        self.items, self.sel = [], {}
         f4 = tk.Frame(self)
         f4.pack(fill="x", **pad)
         self.b_test = ttk.Button(f4, text="Test the first clip", command=lambda: self.go(True))
@@ -110,6 +133,7 @@ class App(tk.Tk):
         if re.match(r"^\d{4}-\d{2}-\d{2}$", date) and date != getattr(self, "ang_date", None):
             self.ang_date = date
             threading.Thread(target=self.fetch_angles, args=(date,), daemon=True).start()
+            threading.Thread(target=self.fetch_items, args=(date,), daemon=True).start()
 
     def fetch_angles(self, date):
         try:
@@ -144,14 +168,88 @@ class App(tk.Tk):
             self.attack.set(angles[0]["name"])
             ttk.Combobox(row, textvariable=self.attack, values=[a["name"] for a in angles], width=16,
                          state="readonly").pack(side="left", padx=8)
-        ttk.Checkbutton(self.ang_rows, text="Also replay highlight clips and saves from the other angles",
-                        variable=self.all_ang).pack(anchor="w", pady=(4, 0))
+        tk.Label(self.ang_rows, anchor="w", justify="left", wraplength=580,
+                 text="Goals get one short replay from the camera behind the net they were scored on. "
+                      "Use the Replay column in the list below to add one to any other clip.").pack(fill="x", pady=(4, 0))
         ttk.Checkbutton(self.ang_rows, text="Play the replays at half speed", variable=self.slow).pack(anchor="w")
         zr = tk.Frame(self.ang_rows)
         zr.pack(fill="x", pady=(0, 6))
         tk.Label(zr, text="Zoom in on the replays:").pack(side="left")
         ttk.Combobox(zr, textvariable=self.zoom, values=["No zoom", "1.25x", "1.5x", "2x"], width=9,
                      state="readonly").pack(side="left", padx=8)
+
+    def fetch_items(self, date):
+        try:
+            import highlights
+            self.q.put(("items", (date, highlights.catalog(date))))
+        except Exception as e:
+            self.q.put(("items_err", str(e)))
+
+    def show_items(self, date, items):
+        if date != self.date.get().strip():
+            return
+        self.items = items
+        self.sel = {i["id"]: {"use": bool(i["default"]), "replay": i["kind"] == "goal"} for i in items}
+        lists = sorted({l for i in items for l in i["lists"]})
+        self.flt_cb["values"] = ["Goals and highlights", "Everything", "Goals", "Saves", "Shots"] + ["Playlist: " + l for l in lists]
+        self.draw_picks()
+
+    def shown(self):
+        f = self.flt.get()
+        out = []
+        for i in self.items:
+            if f == "Everything":
+                ok = True
+            elif f == "Goals":
+                ok = i["kind"] == "goal"
+            elif f == "Saves":
+                ok = i["kind"] == "save"
+            elif f == "Shots":
+                ok = "shot" in i["tag"].lower() or i["kind"] == "save"
+            elif f.startswith("Playlist: "):
+                ok = f[10:] in i["lists"]
+            else:
+                ok = i["default"] or self.sel.get(i["id"], {}).get("use")
+            if ok:
+                out.append(i)
+        return out
+
+    def draw_picks(self):
+        import highlights
+        self.tree.delete(*self.tree.get_children())
+        roster = getattr(self, "roster", None)
+        if roster is None:
+            roster = self.roster = highlights.fetch_roster()
+        for i in self.shown():
+            s = self.sel[i["id"]]
+            sec = int(i["sec"])
+            who = ("#%s %s" % (i["num"], roster.get(str(i["num"]), ""))).strip() if i["num"] else ""
+            what = i["tag"] + (" (" + i["label"] + ")" if i["kind"] == "clip" and i["label"] not in (i["tag"], "") and i["label"] != i["tag"] + (" #" + i["num"] if i["num"] else "") else "")
+            self.tree.insert("", "end", iid=i["id"], values=("[x]" if s["use"] else "[ ]", "[x]" if s["replay"] else "[ ]",
+                             "%d:%02d:%02d" % (sec // 3600, sec % 3600 // 60, sec % 60), what, who, ", ".join(i["lists"])))
+        self.count_picks()
+
+    def count_picks(self):
+        n = sum(1 for s in self.sel.values() if s["use"])
+        self.pick_count.config(text="%d picked" % n)
+
+    def click_pick(self, e):
+        row, col = self.tree.identify_row(e.y), self.tree.identify_column(e.x)
+        if not row or col not in ("#1", "#2"):
+            return
+        key = "use" if col == "#1" else "replay"
+        s = self.sel[row]
+        s[key] = not s[key]
+        if key == "replay" and s[key]:
+            s["use"] = True
+        self.tree.set(row, "use", "[x]" if s["use"] else "[ ]")
+        self.tree.set(row, "replay", "[x]" if s["replay"] else "[ ]")
+        self.count_picks()
+
+    def tick_shown(self, on):
+        for i in self.shown():
+            self.sel[i["id"]]["use"] = on
+        self.draw_picks()
 
     def pick_angle(self, name, lbl):
         p = filedialog.askopenfilename(title="Choose the %s video" % name,
@@ -183,27 +281,34 @@ class App(tk.Tk):
             messagebox.showinfo("Highlight video", "Seconds to add must be a number, like 0 or -12.", parent=self)
             return
         out = os.path.join(DOCS, "clips_" + date) if each else os.path.join(DOCS, "Kings_highlights_%s%s.mp4" % (date, "_test" if test else ""))
+        angles = [{"name": n, "file": f} for n, f in self.ang_files.items()]
+        picks = []
+        for i in self.items:
+            s = self.sel.get(i["id"])
+            if s and s["use"]:
+                picks.append(dict(i, replay=s["replay"]))
+        if not each and not picks:
+            messagebox.showinfo("Highlight video", "Tick at least one clip in the list first.", parent=self)
+            return
         self.busy = True
         self.bar["value"] = 0
         self.b_test.config(state="disabled")
         self.b_all.config(state="disabled")
         self.b_each.config(state="disabled")
         keep_awake(True)
-        angles = [{"name": n, "file": f} for n, f in self.ang_files.items()]
-        threading.Thread(target=self.work, args=(date, off, test, out, self.saves.get(), each, angles,
-                                                 self.attack.get() or None, self.all_ang.get(),
-                                                 self.slow.get(), self.zoom_value()), daemon=True).start()
+        threading.Thread(target=self.work, args=(date, off, test, out, each, angles, self.attack.get() or None,
+                                                 self.slow.get(), self.zoom_value(), picks), daemon=True).start()
 
     def zoom_value(self):
         m = re.match(r"^([\d.]+)x$", self.zoom.get())
         return float(m.group(1)) if m else 1.0
 
-    def work(self, date, off, test, out, saves=True, each=False, angles=None, attack=None, all_ang=False, slow=False, zoom=1.0):
+    def work(self, date, off, test, out, each=False, angles=None, attack=None, slow=False, zoom=1.0, picks=None):
         try:
             import highlights
-            kw = {} if each else {"angles": angles, "attack": attack, "all_angles": all_ang, "slow": slow, "zoom": zoom}
+            kw = {} if each else {"angles": angles, "attack": attack, "slow": slow, "zoom": zoom, "picks": picks}
             (highlights.make_each if each else highlights.make_video)(self.video, date, out, off, test, None,
-                                  log=lambda t: self.q.put(("line", t)), saves=saves,
+                                  log=lambda t: self.q.put(("line", t)),
                                   progress=lambda i, n: self.q.put(("bar", 100.0 * i / n)), **kw)
             self.q.put(("done", out))
         except Exception as e:
@@ -217,6 +322,10 @@ class App(tk.Tk):
                     self.add_log(val)
                 elif kind == "bar":
                     self.bar["value"] = val
+                elif kind == "items":
+                    self.show_items(*val)
+                elif kind == "items_err":
+                    self.add_log("Could not load the clip list: " + val)
                 elif kind == "angles":
                     self.show_angles(*val)
                 elif kind == "dates":
