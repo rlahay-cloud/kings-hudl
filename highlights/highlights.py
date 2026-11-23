@@ -121,17 +121,19 @@ def fetch_roster(local_dir=None):
 
 def parse_sync(text):
     """Period starts and extra angles from the game's sync file."""
-    periods, angles = {}, []
+    periods, angles, opp = {}, [], ""
     for line in (text or "").splitlines():
         a = line.strip().split("|")
         try:
             if a[0] == "P" and len(a) >= 3:
                 periods[int(a[1])] = float(a[2])
+            elif a[0] == "G" and len(a) >= 2:
+                opp = a[1].strip()
             elif a[0] == "A" and len(a) >= 4:
                 angles.append({"name": a[1].strip(), "url": a[2].strip(), "off": float(a[3])})
         except ValueError:
             continue
-    return {"periods": periods, "angles": angles}
+    return {"periods": periods, "angles": angles, "opp": opp}
 
 
 def fetch_sync(date, local_dir=None):
@@ -241,6 +243,35 @@ def catalog(date, local_dir=None):
         if not it.get("period"):
             it["period"] = period_at(sync, it["sec"])
     return items
+
+
+def is_goal_for(it):
+    return it["kind"] == "goal"
+
+
+def is_goal_against(it):
+    return it["tag"] in ("Against: Goal", "Goal against")
+
+
+def score_map(all_items):
+    """{second of the goal: (kings, them)} after each goal, from every goal marked for the game."""
+    ev, last_against = [], None
+    for i in sorted(all_items, key=lambda x: x["sec"]):
+        if is_goal_for(i):
+            ev.append((i["sec"], "us"))
+        elif is_goal_against(i):
+            if i["tag"] == "Goal against" and any(abs(i["sec"] - t) <= 4 for t, w in ev if w == "them"):
+                continue  # the same goal from a clips file
+            ev.append((i["sec"], "them"))
+    us = them = 0
+    out = {}
+    for sec, who in sorted(ev):
+        if who == "us":
+            us += 1
+        else:
+            them += 1
+        out[round(sec)] = (us, them, who)
+    return out
 
 
 def caption_for(it, roster):
@@ -369,9 +400,16 @@ def _run(cmd):
                           creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
 
 
-def cut_one(ffmpeg, video, seg, out, cap, info, tmp, log, chip=None, item_sec=None, target=None, slow=False, zoom=1.0):
+def _fades(d, fade):
+    """ffmpeg fade pieces for a corner graphic that lasts d seconds."""
+    return ("fade=t=in:st=0:d=0.3:alpha=1," if fade[0] else "") + ("fade=t=out:st=%.2f:d=0.4:alpha=1," % max(0.0, d - 0.5) if fade[1] else "")
+
+
+def cut_one(ffmpeg, video, seg, out, cap, info, tmp, log, chip=None, item_sec=None, target=None, slow=False, zoom=1.0, bug=None, fade=(True, True)):
     """Cuts one clip. cap is the lower third text (tag, number, name, sub) or None. chip is
-    (text, is_replay) for the camera tag in the top left, or None. info is video_info(video)."""
+    (text, is_replay) for the camera tag in the top left, or None. info is video_info(video).
+    bug is {"args": (us_name, us, them_name, them, scored), "t0": seconds into this clip} for the score in the top right.
+    fade says whether the corner graphics fade in at the start and out at the end (a replay in two parts fades once)."""
     dur_s, w, h, has_audio = info
     bed = seg.get("bed") if slow else None  # slowed sound is garbled, so slow motion plays the crowd from the main video
     if slow:
@@ -395,7 +433,7 @@ def cut_one(ffmpeg, video, seg, out, cap, info, tmp, log, chip=None, item_sec=No
         else:
             audio_in = ["-f", "lavfi", "-t", "%.2f" % out_len, "-i", "anullsrc=r=44100:cl=stereo"]
         amap = None
-    if (cap or chip) and graphic is not None:
+    if (cap or chip or bug) and graphic is not None:
         try:
             inputs, chain, last, n = [], [], "[v0]", 1
             chain.append("[0:v]%s[v0]" % fit)
@@ -418,9 +456,18 @@ def cut_one(ffmpeg, video, seg, out, cap, info, tmp, log, chip=None, item_sec=No
                 cw, ch = graphic.angle_chip(cp, scale, chip[0], chip[1])
                 d = max(1.0, out_len - 0.3)
                 inputs += ["-loop", "1", "-framerate", "24", "-t", "%.2f" % d, "-i", cp]
-                chain.append("[%d:v]format=rgba,fade=t=in:st=0:d=0.3:alpha=1,fade=t=out:st=%.2f:d=0.4:alpha=1,setpts=PTS+0.3/TB[g%d]"
-                             % (n, d - 0.5, n))
+                chain.append("[%d:v]format=rgba,%ssetpts=PTS+0.3/TB[g%d]" % (n, _fades(d, fade), n))
                 chain.append("%s[g%d]overlay=x=%d:y=%d:eof_action=pass[v%d]" % (last, n, int(60 * scale), int(50 * scale), n))
+                last = "[v%d]" % n
+                n += 1
+            if bug:
+                bp = os.path.join(tmp, "bug_%d.png" % (abs(hash(out)) % 10 ** 8))
+                bw, bh = graphic.score_bug(bp, scale, *bug["args"])
+                t0 = min(max(0.3 if fade[0] else 0.0, bug["t0"]), max(0.3, out_len - 1.5))
+                d = max(1.0, out_len - t0)
+                inputs += ["-loop", "1", "-framerate", "24", "-t", "%.2f" % d, "-i", bp]
+                chain.append("[%d:v]format=rgba,%ssetpts=PTS+%.2f/TB[g%d]" % (n, _fades(d, fade), t0, n))
+                chain.append("%s[g%d]overlay=x=%d:y=%d:eof_action=pass[v%d]" % (last, n, out_w - bw - int(60 * scale), int(50 * scale), n))
                 last = "[v%d]" % n
             # input numbering: 0 video, then each png (8 arguments per png), then the silent audio if used
             amap_cmd = amap if amap else ["-map", "%d:a" % (1 + len(inputs) // 8)]
@@ -439,7 +486,7 @@ def cut_one(ffmpeg, video, seg, out, cap, info, tmp, log, chip=None, item_sec=No
 
 
 def make_video(video, date, out, offset=0.0, test=False, local_dir=None, log=print, progress=None, saves=True,
-               angles=None, attack=None, slow=False, zoom=1.0, picks=None):
+               angles=None, attack=None, slow=False, zoom=1.0, picks=None, show_score=False):
     """angles: [{"name": "Home Cam", "file": "C:\\home.mp4"}]. Each goal is then shown again from the camera behind
     the net the Kings scored on (one replay, not every angle). picks is the list of clips to use (from catalog());
     a clip with replay set to True also gets a replay, goals do by default.
@@ -457,6 +504,24 @@ def make_video(video, date, out, offset=0.0, test=False, local_dir=None, log=pri
     for it in items:
         if not it.get("period"):
             it["period"] = period_at(sync, it["sec"])
+    scores = {}
+    if show_score:
+        try:
+            scores = score_map(collect_all(fetch_game_files(date, local_dir)))
+        except Exception:
+            scores = {}
+    opp_name = sync.get("opp") or "Opponent"
+
+    def bug_for(it, t0):
+        sc = scores.get(round(it["sec"]))
+        if not (show_score and sc and (is_goal_for(it) or is_goal_against(it))):
+            return None
+        return {"args": ("Kings", sc[0], opp_name, sc[1], sc[2]), "t0": t0}
+
+    def self_bug(seg):
+        g = next((i for i in seg["items"] if is_goal_for(i) or is_goal_against(i)), None)
+        return bug_for(g, (g["sec"] + offset - seg["start"]) * (1.0) + 0.4) if g else None
+
     cams = []
     for a in (angles or []):
         base = next((x for x in sync["angles"] if x["name"] == a["name"]), None)
@@ -474,7 +539,7 @@ def make_video(video, date, out, offset=0.0, test=False, local_dir=None, log=pri
     target = fit_size(info[1], info[2])
     plan = []
     for s in segs:
-        plan.append(("main", s, video, info, None, s["items"][0]["sec"] + offset, False))
+        plan.append(("main", s, video, info, None, s["items"][0]["sec"] + offset, False, None, (True, True)))
         done = set()
         for it in s["items"]:
             want = it.get("replay", it["kind"] == "goal")
@@ -490,18 +555,18 @@ def make_video(video, date, out, offset=0.0, test=False, local_dir=None, log=pri
                         mark = it["sec"] + c["off"]
                         if slow and rs["start"] + 1.0 < mark - SLOW_FROM < rs["end"] - 1.0:
                             cut = mark - SLOW_FROM
-                            plan.append(("replay", {"start": rs["start"], "end": cut, "items": [it], "label": lab}, c["file"], c["info"], c["name"], mark, False))
+                            plan.append(("replay", {"start": rs["start"], "end": cut, "items": [it], "label": lab}, c["file"], c["info"], c["name"], mark, False, bug_for(it, 0.3), (True, False)))
                             bed = (video, it["sec"] + offset - SLOW_FROM) if info[3] else None
-                            plan.append(("replay", {"start": cut, "end": rs["end"], "items": [it], "label": lab + " (half speed)", "bed": bed}, c["file"], c["info"], c["name"], mark, True))
+                            plan.append(("replay", {"start": cut, "end": rs["end"], "items": [it], "label": lab + " (half speed)", "bed": bed}, c["file"], c["info"], c["name"], mark, True, bug_for(it, 0.0), (False, True)))
                         else:
                             bed = (video, it["sec"] + offset - SLOW_FROM) if (slow and info[3]) else None
-                            plan.append(("replay", dict(rs, items=[it], label=lab, bed=bed), c["file"], c["info"], c["name"], mark, slow))
+                            plan.append(("replay", dict(rs, items=[it], label=lab, bed=bed), c["file"], c["info"], c["name"], mark, slow, bug_for(it, 0.3), (True, True)))
     total = sum((p[1]["end"] - p[1]["start"]) * (2 if p[6] else 1) for p in plan)
     log("%d clips, %d minutes %d seconds in all." % (len(plan), total // 60, total % 60))
     tmp = tempfile.mkdtemp(prefix="kings_hl_")
     try:
         names = []
-        for i, (kind, s, vid, vinfo, camname, moment, is_slow) in enumerate(plan):
+        for i, (kind, s, vid, vinfo, camname, moment, is_slow, rbug, fade) in enumerate(plan):
             log("Cutting clip %d of %d: %s" % (i + 1, len(plan), s["label"]))
             fn = os.path.join(tmp, "c%03d.mp4" % i)
             first = s["items"][0]
@@ -509,7 +574,8 @@ def make_video(video, date, out, offset=0.0, test=False, local_dir=None, log=pri
             if cams:
                 chip = ((camname + (" 0.5x" if is_slow else "") + (" zoom" if zoom > 1.0 else ""), True) if kind == "replay" else ("Main Cam", False))
             cut_one(ffmpeg, vid, s, fn, caption_for(first, roster) if kind == "main" else None, vinfo, tmp, log, chip, moment, target,
-                    is_slow, zoom if kind == "replay" else 1.0)
+                    is_slow, zoom if kind == "replay" else 1.0,
+                    rbug if kind == "replay" else self_bug(s), fade)
             names.append(fn)
             if progress:
                 progress(i + 1, len(plan))
@@ -593,6 +659,7 @@ def main():
     ap.add_argument("--each", action="store_true", help="Cut every clip into its own file (for the Download buttons)")
     ap.add_argument("--angle", action="append", default=[], help='Extra camera video, like "Home Cam=C:\\home.mp4"')
     ap.add_argument("--attack", default=None, help="Name of the camera at the end the Kings attack in period 1")
+    ap.add_argument("--score", action="store_true", help="Show the score on goals and replays")
     ap.add_argument("--slow", action="store_true", help="Play the replays at half speed")
     ap.add_argument("--zoom", type=float, default=1.0, help="Zoom the replays in, like 1.5")
     ap.add_argument("--out", default=None)
@@ -606,7 +673,7 @@ def main():
                                 "Kings_highlights_%s%s.mp4" % (a.date, "_test" if a.test else ""))
     angles = [{"name": x.split("=", 1)[0], "file": x.split("=", 1)[1]} for x in a.angle if "=" in x]
     make_video(a.video, a.date, out, a.offset, a.test, a.local_dir, saves=not a.no_saves, angles=angles,
-               attack=a.attack, slow=a.slow, zoom=a.zoom)
+               attack=a.attack, slow=a.slow, zoom=a.zoom, show_score=a.score)
 
 
 if __name__ == "__main__":

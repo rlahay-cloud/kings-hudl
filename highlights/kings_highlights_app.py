@@ -31,8 +31,8 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Kings Highlight Video")
-        self.geometry("700x900")
-        self.minsize(640, 780)
+        self.geometry("700x930")
+        self.minsize(640, 810)
         self.q = queue.Queue()
         self.busy = False
         pad = {"padx": 12, "pady": 6}
@@ -73,6 +73,9 @@ class App(tk.Tk):
         self.zoom = tk.StringVar(value="No zoom")
         self.cb.bind("<<ComboboxSelected>>", lambda e: self.load_angles())
         self.cb.bind("<FocusOut>", lambda e: self.load_angles())
+        self.score = tk.BooleanVar(value=False)
+        ttk.Checkbutton(self, text="Show the score on goals and replays (leave off for games you lost)",
+                        variable=self.score).pack(anchor="w", padx=12)
         f5 = ttk.LabelFrame(self, text="Clips to include (tick the ones you want)")
         f5.pack(fill="both", expand=True, **pad)
         top = tk.Frame(f5)
@@ -297,16 +300,16 @@ class App(tk.Tk):
         self.b_each.config(state="disabled")
         keep_awake(True)
         threading.Thread(target=self.work, args=(date, off, test, out, each, angles, self.attack.get() or None,
-                                                 self.slow.get(), self.zoom_value(), picks), daemon=True).start()
+                                                 self.slow.get(), self.zoom_value(), picks, self.score.get()), daemon=True).start()
 
     def zoom_value(self):
         m = re.match(r"^([\d.]+)x$", self.zoom.get())
         return float(m.group(1)) if m else 1.0
 
-    def work(self, date, off, test, out, each=False, angles=None, attack=None, slow=False, zoom=1.0, picks=None):
+    def work(self, date, off, test, out, each=False, angles=None, attack=None, slow=False, zoom=1.0, picks=None, score=False):
         try:
             import highlights
-            kw = {} if each else {"angles": angles, "attack": attack, "slow": slow, "zoom": zoom, "picks": picks}
+            kw = {} if each else {"angles": angles, "attack": attack, "slow": slow, "zoom": zoom, "picks": picks, "show_score": score}
             (highlights.make_each if each else highlights.make_video)(self.video, date, out, off, test, None,
                                   log=lambda t: self.q.put(("line", t)),
                                   progress=lambda i, n: self.q.put(("bar", 100.0 * i / n)), **kw)

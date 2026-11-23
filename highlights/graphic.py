@@ -128,3 +128,40 @@ def angle_chip(path, scale, text, replay=True):
     _spaced(d, (x + pad, (H - f.size) / 2 - 3 * s), label, f, WHITE + (255,), 4 * s)
     im.save(path)
     return im.size
+
+
+def score_bug(path, scale, us_name, us, them_name, them, scored="us"):
+    """Score bug for the top right corner: Kings on the left, the other team on the right.
+    scored is "us" or "them": the side that just scored gets the lit score box."""
+    s = scale
+    H = int(84 * s)
+    f_name = _font("700", 40 * s)
+    f_sc = _font("800", 64 * s)
+    d0 = ImageDraw.Draw(Image.new("RGBA", (10, 10)))
+    pad = int(20 * s)
+    max_name = int(380 * s)
+    f_opp = _fit(d0, them_name.upper(), "700", 40 * s, max_name)
+    opp_txt = them_name.upper()
+    while d0.textlength(opp_txt, font=f_opp) > max_name and len(opp_txt) > 4:
+        opp_txt = opp_txt[:-2].rstrip()
+    us_w = int(_w(d0, us_name.upper(), f_name, 2 * s) + pad * 2)
+    opp_w = int(_w(d0, opp_txt, f_opp, 2 * s) + pad * 2)
+    box = int(84 * s)
+    W = us_w + box * 2 + opp_w
+    im = Image.new("RGBA", (W, H + int(6 * s)), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    d.rectangle([0, 0, us_w, H], fill=PURPLE + (255,))
+    d.rectangle([us_w, 0, us_w + box, H], fill=(ACCENT if scored == "us" else PANEL) + (255,))
+    d.rectangle([us_w + box, 0, us_w + 2 * box, H], fill=(ACCENT if scored == "them" else PANEL) + (255,))
+    d.rectangle([us_w + 2 * box, 0, W, H], fill=PANEL + (240,))
+    d.rectangle([0, H, W, H + int(6 * s)], fill=SILVER + (255,))
+    _spaced(d, (pad, (H - f_name.size) / 2 - 4 * s), us_name.upper(), f_name, WHITE + (255,), 2 * s)
+    _spaced(d, (us_w + 2 * box + pad, (H - f_opp.size) / 2 - 4 * s), opp_txt, f_opp, WHITE + (255,), 2 * s)
+    for i, (val, lit) in enumerate(((us, scored == "us"), (them, scored == "them"))):
+        t = str(val)
+        bb = f_sc.getbbox(t)
+        x0 = us_w + i * box
+        d.text((x0 + (box - d.textlength(t, font=f_sc)) / 2, (H - (bb[3] - bb[1])) / 2 - bb[1]), t, font=f_sc,
+               fill=(PANEL if lit else WHITE) + (255,))
+    im.save(path)
+    return im.size
