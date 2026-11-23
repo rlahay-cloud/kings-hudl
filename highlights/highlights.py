@@ -38,6 +38,7 @@ LEAD_CLIP, TAIL_CLIP = 2.0, 2.0
 LEAD_POINT, TAIL_POINT = 5.0, 8.0
 LEAD_SAVE, TAIL_SAVE = 4.0, 3.0
 REPLAY_LEAD, REPLAY_TAIL = 7.0, 4.0
+SLOW_LEAD, SLOW_TAIL = 4.0, 3.0  # a slowed replay shows this much real time, twice as long on screen
 MAX_WIDTH = 1920
 
 
@@ -280,9 +281,9 @@ def pick_cam(angles, attack, period):
     return atk
 
 
-def replay_segment(it, angle, offset):
+def replay_segment(it, angle, offset, slow=False):
     """Start and end of a replay in the angle video's own time (angle time = main time + its sync offset)."""
-    lead, tail = (REPLAY_LEAD, REPLAY_TAIL) if it["kind"] == "goal" else (None, None)
+    lead, tail = ((SLOW_LEAD, SLOW_TAIL) if slow else (REPLAY_LEAD, REPLAY_TAIL)) if it["kind"] == "goal" else (None, None)
     if lead is None:
         b = bounds(it)
         if b:
@@ -342,7 +343,7 @@ def _run(cmd):
                           creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
 
 
-def cut_one(ffmpeg, video, seg, out, cap, info, tmp, log, chip=None, item_sec=None, target=None):
+def cut_one(ffmpeg, video, seg, out, cap, info, tmp, log, chip=None, item_sec=None, target=None, slow=False, zoom=1.0):
     """Cuts one clip. cap is the lower third text (tag, number, name, sub) or None. chip is
     (text, is_replay) for the camera tag in the top left, or None. info is video_info(video)."""
     dur_s, w, h, has_audio = info
@@ -350,12 +351,16 @@ def cut_one(ffmpeg, video, seg, out, cap, info, tmp, log, chip=None, item_sec=No
     fit = "scale=%d:%d:force_original_aspect_ratio=decrease,pad=%d:%d:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=24" % (out_w, out_h, out_w, out_h)
     scale = out_w / 1920.0
     length = seg["end"] - seg["start"]
+    f = 2.0 if slow else 1.0  # half speed makes the clip twice as long on screen
+    out_len = length * f
+    pre = ("crop=iw/%.3f:ih/%.3f," % (zoom, zoom) if zoom and zoom > 1.0 else "") + ("setpts=2*PTS," if slow else "")
+    fit = pre + fit
     base = [ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-ss", "%.2f" % seg["start"], "-i", video]
     enc = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "22", "-pix_fmt", "yuv420p", "-r", "24",
-           "-c:a", "aac", "-b:a", "128k", "-ar", "44100", "-ac", "2", "-t", "%.2f" % length, out]
+           "-c:a", "aac", "-b:a", "128k", "-ar", "44100", "-ac", "2", "-t", "%.2f" % out_len, out]
     audio_in, amap = [], ["-map", "0:a:0"]
     if not has_audio:
-        audio_in = ["-f", "lavfi", "-t", "%.2f" % length, "-i", "anullsrc=r=44100:cl=stereo"]
+        audio_in = ["-f", "lavfi", "-t", "%.2f" % out_len, "-i", "anullsrc=r=44100:cl=stereo"]
         amap = None
     if (cap or chip) and graphic is not None:
         try:
@@ -364,9 +369,9 @@ def cut_one(ffmpeg, video, seg, out, cap, info, tmp, log, chip=None, item_sec=No
             if cap:
                 lt = os.path.join(tmp, "lt_%d.png" % (abs(hash(out)) % 10 ** 8))
                 lw, lh = graphic.lower_third(lt, scale, *cap)
-                t0 = max(0.3, (item_sec - seg["start"] - 3.0) if item_sec is not None else 0.5)
-                t0 = min(t0, max(0.3, length - 2.0))
-                d = max(1.0, length - t0)
+                t0 = max(0.3, ((item_sec - seg["start"]) * f - 3.0) if item_sec is not None else 0.5)
+                t0 = min(t0, max(0.3, out_len - 2.0))
+                d = max(1.0, out_len - t0)
                 x0, y0 = int(60 * scale), out_h - lh - int(60 * scale)
                 inputs += ["-loop", "1", "-framerate", "24", "-t", "%.2f" % d, "-i", lt]
                 chain.append("[%d:v]format=rgba,fade=t=in:st=0:d=0.3:alpha=1,fade=t=out:st=%.2f:d=0.4:alpha=1,setpts=PTS+%.2f/TB[g%d]"
@@ -378,7 +383,7 @@ def cut_one(ffmpeg, video, seg, out, cap, info, tmp, log, chip=None, item_sec=No
             if chip:
                 cp = os.path.join(tmp, "chip_%d.png" % (abs(hash(out)) % 10 ** 8))
                 cw, ch = graphic.angle_chip(cp, scale, chip[0], chip[1])
-                d = max(1.0, length - 0.3)
+                d = max(1.0, out_len - 0.3)
                 inputs += ["-loop", "1", "-framerate", "24", "-t", "%.2f" % d, "-i", cp]
                 chain.append("[%d:v]format=rgba,fade=t=in:st=0:d=0.3:alpha=1,fade=t=out:st=%.2f:d=0.4:alpha=1,setpts=PTS+0.3/TB[g%d]"
                              % (n, d - 0.5, n))
@@ -386,7 +391,7 @@ def cut_one(ffmpeg, video, seg, out, cap, info, tmp, log, chip=None, item_sec=No
                 last = "[v%d]" % n
             # input numbering: 0 video, then each png (8 arguments per png), then the silent audio if used
             amap_cmd = amap if amap else ["-map", "%d:a" % (1 + len(inputs) // 8)]
-            cmd = base + inputs + audio_in + ["-filter_complex", ";".join(chain), "-map", last] + amap_cmd + enc
+            cmd = base + inputs + audio_in + ["-filter_complex", ";".join(chain), "-map", last] + amap_cmd + (["-af", "atempo=0.5"] if slow and has_audio else []) + enc
             r = _run(cmd)
             if r.returncode == 0:
                 return
@@ -394,16 +399,17 @@ def cut_one(ffmpeg, video, seg, out, cap, info, tmp, log, chip=None, item_sec=No
         except Exception as e:
             log("Could not draw the graphic, cutting without it. %s" % e)
     cmd = base + audio_in + ["-vf", fit, "-map", "0:v"] + \
-        (amap if amap else ["-map", "1:a"]) + enc
+        (amap if amap else ["-map", "1:a"]) + (["-af", "atempo=0.5"] if slow and has_audio else []) + enc
     r = _run(cmd)
     if r.returncode != 0:
         raise RuntimeError("The cutting program stopped: " + r.stderr.strip()[-300:])
 
 
 def make_video(video, date, out, offset=0.0, test=False, local_dir=None, log=print, progress=None, saves=True,
-               angles=None, attack=None, all_angles=False):
+               angles=None, attack=None, all_angles=False, slow=False, zoom=1.0):
     """angles: [{"name": "Home Cam", "file": "C:\\home.mp4"}]. Each goal is then shown again from the camera behind
-    the net the Kings scored on. all_angles also replays highlight clips and saves from every angle."""
+    the net the Kings scored on. all_angles also replays highlight clips and saves from every angle.
+    slow plays the replays at half speed and zoom (like 1.5) crops in on the middle of the replay picture."""
     files = fetch_game_files(date, local_dir)
     items = [i for i in collect(files) if saves or i["kind"] != "save"]
     if not items:
@@ -444,7 +450,7 @@ def make_video(video, date, out, offset=0.0, test=False, local_dir=None, log=pri
             for c in pick:
                 if c and (c["name"], it["sec"]) not in done:
                     done.add((c["name"], it["sec"]))
-                    rs = replay_segment(it, c, offset)
+                    rs = replay_segment(it, c, offset, slow)
                     if c["info"][0]:
                         rs["end"] = min(rs["end"], c["info"][0])
                     if rs["end"] - rs["start"] > 2:
@@ -462,8 +468,9 @@ def make_video(video, date, out, offset=0.0, test=False, local_dir=None, log=pri
             first = s["items"][0]
             chip = None
             if cams:
-                chip = (camname, True) if kind == "replay" else ("Main Cam", False)
-            cut_one(ffmpeg, vid, s, fn, caption_for(first, roster), vinfo, tmp, log, chip, moment, target)
+                chip = ((camname + (" 0.5x" if slow else "") + (" zoom" if zoom > 1.0 else ""), True) if kind == "replay" else ("Main Cam", False))
+            cut_one(ffmpeg, vid, s, fn, caption_for(first, roster), vinfo, tmp, log, chip, moment, target,
+                    slow and kind == "replay", zoom if kind == "replay" else 1.0)
             names.append(fn)
             if progress:
                 progress(i + 1, len(plan))
@@ -548,6 +555,8 @@ def main():
     ap.add_argument("--angle", action="append", default=[], help='Extra camera video, like "Home Cam=C:\\home.mp4"')
     ap.add_argument("--attack", default=None, help="Name of the camera at the end the Kings attack in period 1")
     ap.add_argument("--all-angles", action="store_true", help="Replay highlight clips and saves from every angle too")
+    ap.add_argument("--slow", action="store_true", help="Play the replays at half speed")
+    ap.add_argument("--zoom", type=float, default=1.0, help="Zoom the replays in, like 1.5")
     ap.add_argument("--out", default=None)
     ap.add_argument("--local-dir", default=None, help="Read the game files from a folder instead of GitHub")
     a = ap.parse_args()
@@ -559,7 +568,7 @@ def main():
                                 "Kings_highlights_%s%s.mp4" % (a.date, "_test" if a.test else ""))
     angles = [{"name": x.split("=", 1)[0], "file": x.split("=", 1)[1]} for x in a.angle if "=" in x]
     make_video(a.video, a.date, out, a.offset, a.test, a.local_dir, saves=not a.no_saves, angles=angles,
-               attack=a.attack, all_angles=a.all_angles)
+               attack=a.attack, all_angles=a.all_angles, slow=a.slow, zoom=a.zoom)
 
 
 if __name__ == "__main__":

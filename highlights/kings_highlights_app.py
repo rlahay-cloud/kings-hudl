@@ -31,8 +31,8 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Kings Highlight Video")
-        self.geometry("660x720")
-        self.minsize(600, 600)
+        self.geometry("660x780")
+        self.minsize(600, 660)
         self.q = queue.Queue()
         self.busy = False
         pad = {"padx": 12, "pady": 6}
@@ -70,6 +70,8 @@ class App(tk.Tk):
         self.ang_files = {}
         self.attack = tk.StringVar()
         self.all_ang = tk.BooleanVar(value=False)
+        self.slow = tk.BooleanVar(value=False)
+        self.zoom = tk.StringVar(value="No zoom")
         self.cb.bind("<<ComboboxSelected>>", lambda e: self.load_angles())
         self.cb.bind("<FocusOut>", lambda e: self.load_angles())
         self.saves = tk.BooleanVar(value=True)
@@ -143,7 +145,13 @@ class App(tk.Tk):
             ttk.Combobox(row, textvariable=self.attack, values=[a["name"] for a in angles], width=16,
                          state="readonly").pack(side="left", padx=8)
         ttk.Checkbutton(self.ang_rows, text="Also replay highlight clips and saves from the other angles",
-                        variable=self.all_ang).pack(anchor="w", pady=(4, 6))
+                        variable=self.all_ang).pack(anchor="w", pady=(4, 0))
+        ttk.Checkbutton(self.ang_rows, text="Play the replays at half speed", variable=self.slow).pack(anchor="w")
+        zr = tk.Frame(self.ang_rows)
+        zr.pack(fill="x", pady=(0, 6))
+        tk.Label(zr, text="Zoom in on the replays:").pack(side="left")
+        ttk.Combobox(zr, textvariable=self.zoom, values=["No zoom", "1.25x", "1.5x", "2x"], width=9,
+                     state="readonly").pack(side="left", padx=8)
 
     def pick_angle(self, name, lbl):
         p = filedialog.askopenfilename(title="Choose the %s video" % name,
@@ -183,12 +191,17 @@ class App(tk.Tk):
         keep_awake(True)
         angles = [{"name": n, "file": f} for n, f in self.ang_files.items()]
         threading.Thread(target=self.work, args=(date, off, test, out, self.saves.get(), each, angles,
-                                                 self.attack.get() or None, self.all_ang.get()), daemon=True).start()
+                                                 self.attack.get() or None, self.all_ang.get(),
+                                                 self.slow.get(), self.zoom_value()), daemon=True).start()
 
-    def work(self, date, off, test, out, saves=True, each=False, angles=None, attack=None, all_ang=False):
+    def zoom_value(self):
+        m = re.match(r"^([\d.]+)x$", self.zoom.get())
+        return float(m.group(1)) if m else 1.0
+
+    def work(self, date, off, test, out, saves=True, each=False, angles=None, attack=None, all_ang=False, slow=False, zoom=1.0):
         try:
             import highlights
-            kw = {} if each else {"angles": angles, "attack": attack, "all_angles": all_ang}
+            kw = {} if each else {"angles": angles, "attack": attack, "all_angles": all_ang, "slow": slow, "zoom": zoom}
             (highlights.make_each if each else highlights.make_video)(self.video, date, out, off, test, None,
                                   log=lambda t: self.q.put(("line", t)), saves=saves,
                                   progress=lambda i, n: self.q.put(("bar", 100.0 * i / n)), **kw)
