@@ -8,3 +8,4 @@ G|Ottawa Valley Silver Seven White|H|12:30|Cardinal
 L|10,10,12
 X|2,38
 A|Home Cam|https://youtu.be/vANxzA_qLpU|1.9
+A|Away Cam|https://youtu.be/XSpPt90k9lc|-0.3
