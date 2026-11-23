@@ -1236,6 +1236,26 @@ body:has(#teDraw) .vpxrow { display: none; }
     var tot = (lv + rv) || 1;
     return '<div class="cmp"><b class="l">' + l + '</b><span class="c">' + c + "</span><b>" + r + '</b><div class="bars"><i style="width:' + (lv * 100 / tot) + '%"></i><i style="width:' + (rv * 100 / tot) + '%"></i></div></div>';
   }
+  // One game's shot map for the game page: every shot on goal and goal marked for that game, we attack the net on the right.
+  function gameShotMap(g) {
+    var pts = shotPoints(g.date).filter(function (p) { return p.r === "G" || p.r === "S"; });
+    if (!pts.length) return "";
+    var m = "", cnt = {H: {sog: 0, g: 0}, A: {sog: 0, g: 0}};
+    pts.forEach(function (p) {
+      var x = (p.x * 200).toFixed(1), y = (p.y * 85).toFixed(1), them = p.t === "A";
+      cnt[p.t].sog++; if (p.r === "G") cnt[p.t].g++;
+      if (p.r === "G") m += '<circle cx="' + x + '" cy="' + y + '" r="2.8" fill="' + (them ? "#e5484d" : "#a974ff") + '" stroke="#fff" stroke-width=".8"/>';
+      else m += '<circle cx="' + x + '" cy="' + y + '" r="2.1" fill="none" stroke="' + (them ? "#e5484d" : "#1e5fd0") + '" stroke-width="1"' + (them ? ' stroke-dasharray="1.2 .8"' : "") + "/>";
+    });
+    var rink = fullRink()
+      .replace('id="rinkF"', 'id="gmRink"').replace('Tap to choose a spot and a zone.', 'Shots on goal and goals for this game.')
+      .replace('<text class="cn" id="cntL" x="14" y="80"></text>', "").replace('<text class="cn" id="cntR" x="186" y="80" text-anchor="end"></text>', "")
+      .replace('<g id="rinkFMarks"></g>', "<g>" + m + "</g>");
+    var tally = '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px;font-weight:700"><span>' + esc(tn(g.away)) + ' <span class="mut">' + cnt.A.sog + " SOG, " + cnt.A.g + ' G</span></span><span>' + esc(usN()) + ' <span class="mut">' + cnt.H.sog + " SOG, " + cnt.H.g + " G</span></span></div>";
+    return "<h2>Shot map<small><a href='#/shots'>all games and filters</a></small></h2><div class='card'>" + tally + rink +
+      '<div class="leg"><span><i style="background:#a974ff;border-radius:50%"></i>' + esc(usN()) + ' goal</span><span><i style="background:#e5484d;border-radius:50%"></i>Opponent goal</span><span><i style="border:2px solid #1e5fd0;border-radius:50%"></i>' + esc(usN()) + ' shot on goal</span><span><i style="border:2px dashed #e5484d;border-radius:50%"></i>Opponent shot on goal</span></div>' +
+      '<p class="note">We attack the net on the right. Only shots on goal and goals are shown.</p></div>';
+  }
   function vGame(id) {
     var g = D.games.filter(function (x) { return x.id === id; })[0];
     if (!g) return '<a class="back" href="#/games">&larr; All games</a><div class="card empty">Game not found.</div>';
@@ -1243,6 +1263,7 @@ body:has(#teDraw) .vpxrow { display: none; }
     h += '<div class="card"><div class="score"><div class="t" title="' + esc(g.home) + '">' + tn(g.home) + '</div><div class="s">' + g.hs + '</div><div class="s mut">-</div><div class="s">' + g.as + '</div><div class="t" title="' + esc(g.away) + '">' + tn(g.away) + "</div></div>" +
       cmpRow(g.hShots, "Shots", g.aShots, g.hShots, g.aShots) +
       (g.fo ? '<div class="cmp fo"><b>' + esc(g.fo) + '</b><span class="c">Faceoffs won</span></div>' : "") + "</div>";
+    h += gameShotMap(g);
     var goalsH = !g.goals.length ? "" : "<h2>Goals</h2><div class='card'>" + g.goals.map(function (x) {
       return '<div class="ev ' + (x.home ? "goal" : "pen") + '"><span class="t" style="font-family:var(--display);font-weight:700;font-size:18px;min-width:90px">' + (x.nc ? "P" + esc(x.per) + " video " + hms(x.vsec) : "P" + esc(x.per) + " " + Math.floor(x.sec / 60) + ":" + ("0" + x.sec % 60).slice(-2)) + '</span><span class="lb">' + (x.sit ? '<span class="pill W">' + x.sit + "</span> " : "") +
         (x.home ? (x.scorer !== null ? esc(label(x.scorer)) + (x.assists.length ? ' <span class="mut">from ' + x.assists.map(function (n) { return esc(label(n)); }).join(", ") + "</span>" : ' <span class="mut">unassisted</span>') : esc(g.home)) : esc(g.away)) + "</span></div>";
@@ -3689,25 +3710,29 @@ body:has(#teDraw) .vpxrow { display: none; }
       "<p class='note'>Only shots on goal and goals are counted. Shooting % is goals divided by shots on goal. Percentages move a lot with only a few shots, so read them next to the shot counts. The slot is the high danger area. Power play and penalty kill filters only use shots marked in Game analysis, because those have a time.</p>";
     return h;
   }
+  // Every shot and goal marked for one game, turned so we always attack the net on the right.
+  function shotPoints(d) {
+    var out = [];
+      mergeBy(D.shots[d], lget(SK)[d]).forEach(function (s0) {
+        var them = s0.t === "A", x = them ? (100 - s0.x * 100) / 200 : (100 + s0.x * 100) / 200, y = them ? 1 - s0.y : s0.y;
+        out.push({d: d, x: x, y: y, n: s0.n, r: s0.r, t: s0.t, c: s0.coach});
+      });
+      allReview(d).forEach(function (c) {
+        if (c.x == null || c.y == null) return;
+        var m = /^(For|Against): (Goal|Shot on goal|Missed shot|Blocked shot)$/.exec(c.tag); if (!m) return;
+        var us = m[1] === "For", a = c.assists || [], sc = c.players.filter(function (n) { return a.indexOf(n) < 0; })[0];
+        var rl = allReview(d), pu = 0, pt = 0;
+        rl.forEach(function (q) { if ((q.tag === "Penalty" || q.tag === "Away Penalty") && penStart(q) <= c.sec && c.sec <= penEnd(rl, q)) { if (q.tag === "Penalty") pu++; else pt++; } });
+        var sit = pu === pt ? "E" : (us ? (pt > pu ? "PP" : "SH") : (pu > pt ? "PP" : "SH"));
+        out.push({d: d, sec: c.sec, sit: sit, x: c.x, y: c.y, n: us && sc !== undefined ? sc : null, r: m[2] === "Goal" ? "G" : m[2] === "Shot on goal" ? "S" : m[2] === "Missed shot" ? "M" : "B", t: us ? "H" : "A", c: c.coach});
+      });
+    return out;
+  }
   function bindShots(sub) {
     if (sub === "mark") return bindMark();
     function all() {
       var out = [];
-      shotDates().forEach(function (d) {
-        mergeBy(D.shots[d], lget(SK)[d]).forEach(function (s0) {
-          var them = s0.t === "A", x = them ? (100 - s0.x * 100) / 200 : (100 + s0.x * 100) / 200, y = them ? 1 - s0.y : s0.y;
-          out.push({d: d, x: x, y: y, n: s0.n, r: s0.r, t: s0.t, c: s0.coach});
-        });
-        allReview(d).forEach(function (c) {
-          if (c.x == null || c.y == null) return;
-          var m = /^(For|Against): (Goal|Shot on goal|Missed shot|Blocked shot)$/.exec(c.tag); if (!m) return;
-          var us = m[1] === "For", a = c.assists || [], sc = c.players.filter(function (n) { return a.indexOf(n) < 0; })[0];
-          var rl = allReview(d), pu = 0, pt = 0;
-          rl.forEach(function (q) { if ((q.tag === "Penalty" || q.tag === "Away Penalty") && penStart(q) <= c.sec && c.sec <= penEnd(rl, q)) { if (q.tag === "Penalty") pu++; else pt++; } });
-          var sit = pu === pt ? "E" : (us ? (pt > pu ? "PP" : "SH") : (pu > pt ? "PP" : "SH"));
-          out.push({d: d, sec: c.sec, sit: sit, x: c.x, y: c.y, n: us && sc !== undefined ? sc : null, r: m[2] === "Goal" ? "G" : m[2] === "Shot on goal" ? "S" : m[2] === "Missed shot" ? "M" : "B", t: us ? "H" : "A", c: c.coach});
-        });
-      });
+      shotDates().forEach(function (d) { shotPoints(d).forEach(function (p) { out.push(p); }); });
       return out;
     }
     var data = all().filter(function (s0) { return s0.r === "G" || s0.r === "S"; }), lastT = null, FOC = null;
