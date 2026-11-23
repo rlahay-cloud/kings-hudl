@@ -171,7 +171,7 @@ class App(tk.Tk):
         tk.Label(self.ang_rows, anchor="w", justify="left", wraplength=580,
                  text="Goals get one short replay from the camera behind the net they were scored on. "
                       "Use the Replay column in the list below to add one to any other clip.").pack(fill="x", pady=(4, 0))
-        ttk.Checkbutton(self.ang_rows, text="Slow motion on replays (silent)", variable=self.slow).pack(anchor="w")
+        ttk.Checkbutton(self.ang_rows, text="Slow motion on replays (crowd sound)", variable=self.slow).pack(anchor="w")
         zr = tk.Frame(self.ang_rows)
         zr.pack(fill="x", pady=(0, 6))
         tk.Label(zr, text="Zoom in on the replays:").pack(side="left")

@@ -373,8 +373,9 @@ def cut_one(ffmpeg, video, seg, out, cap, info, tmp, log, chip=None, item_sec=No
     """Cuts one clip. cap is the lower third text (tag, number, name, sub) or None. chip is
     (text, is_replay) for the camera tag in the top left, or None. info is video_info(video)."""
     dur_s, w, h, has_audio = info
+    bed = seg.get("bed") if slow else None  # slowed sound is garbled, so slow motion plays the crowd from the main video
     if slow:
-        has_audio = False  # slowed sound is garbled, so slow motion is silent
+        has_audio = False
     out_w, out_h = target or fit_size(w, h)
     fit = "scale=%d:%d:force_original_aspect_ratio=decrease,pad=%d:%d:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=24" % (out_w, out_h, out_w, out_h)
     scale = out_w / 1920.0
@@ -386,9 +387,13 @@ def cut_one(ffmpeg, video, seg, out, cap, info, tmp, log, chip=None, item_sec=No
     base = [ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-ss", "%.2f" % seg["start"], "-i", video]
     enc = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "22", "-pix_fmt", "yuv420p", "-r", "24",
            "-c:a", "aac", "-b:a", "128k", "-ar", "44100", "-ac", "2", "-t", "%.2f" % out_len, out]
-    audio_in, amap = [], ["-map", "0:a:0"]
+    audio_in, amap, afx = [], ["-map", "0:a:0"], []
     if not has_audio:
-        audio_in = ["-f", "lavfi", "-t", "%.2f" % out_len, "-i", "anullsrc=r=44100:cl=stereo"]
+        if bed:
+            audio_in = ["-ss", "%.2f" % bed[1], "-t", "%.2f" % out_len, "-i", bed[0]]
+            afx = ["-af", "volume=0.6,afade=t=in:d=0.4,afade=t=out:st=%.2f:d=0.4" % max(0.0, out_len - 0.4)]
+        else:
+            audio_in = ["-f", "lavfi", "-t", "%.2f" % out_len, "-i", "anullsrc=r=44100:cl=stereo"]
         amap = None
     if (cap or chip) and graphic is not None:
         try:
@@ -419,7 +424,7 @@ def cut_one(ffmpeg, video, seg, out, cap, info, tmp, log, chip=None, item_sec=No
                 last = "[v%d]" % n
             # input numbering: 0 video, then each png (8 arguments per png), then the silent audio if used
             amap_cmd = amap if amap else ["-map", "%d:a" % (1 + len(inputs) // 8)]
-            cmd = base + inputs + audio_in + ["-filter_complex", ";".join(chain), "-map", last] + amap_cmd + enc
+            cmd = base + inputs + audio_in + ["-filter_complex", ";".join(chain), "-map", last] + amap_cmd + afx + enc
             r = _run(cmd)
             if r.returncode == 0:
                 return
@@ -427,7 +432,7 @@ def cut_one(ffmpeg, video, seg, out, cap, info, tmp, log, chip=None, item_sec=No
         except Exception as e:
             log("Could not draw the graphic, cutting without it. %s" % e)
     cmd = base + audio_in + ["-vf", fit, "-map", "0:v"] + \
-        (amap if amap else ["-map", "1:a"]) + enc
+        (amap if amap else ["-map", "1:a"]) + afx + enc
     r = _run(cmd)
     if r.returncode != 0:
         raise RuntimeError("The cutting program stopped: " + r.stderr.strip()[-300:])
@@ -486,9 +491,11 @@ def make_video(video, date, out, offset=0.0, test=False, local_dir=None, log=pri
                         if slow and rs["start"] + 1.0 < mark - SLOW_FROM < rs["end"] - 1.0:
                             cut = mark - SLOW_FROM
                             plan.append(("replay", {"start": rs["start"], "end": cut, "items": [it], "label": lab}, c["file"], c["info"], c["name"], mark, False))
-                            plan.append(("replay", {"start": cut, "end": rs["end"], "items": [it], "label": lab + " (half speed)"}, c["file"], c["info"], c["name"], mark, True))
+                            bed = (video, it["sec"] + offset - SLOW_FROM) if info[3] else None
+                            plan.append(("replay", {"start": cut, "end": rs["end"], "items": [it], "label": lab + " (half speed)", "bed": bed}, c["file"], c["info"], c["name"], mark, True))
                         else:
-                            plan.append(("replay", dict(rs, items=[it], label=lab), c["file"], c["info"], c["name"], mark, slow))
+                            bed = (video, it["sec"] + offset - SLOW_FROM) if (slow and info[3]) else None
+                            plan.append(("replay", dict(rs, items=[it], label=lab, bed=bed), c["file"], c["info"], c["name"], mark, slow))
     total = sum((p[1]["end"] - p[1]["start"]) * (2 if p[6] else 1) for p in plan)
     log("%d clips, %d minutes %d seconds in all." % (len(plan), total // 60, total % 60))
     tmp = tempfile.mkdtemp(prefix="kings_hl_")
