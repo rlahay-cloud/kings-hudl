@@ -40,6 +40,8 @@ LEAD_SAVE, TAIL_SAVE = 4.0, 3.0
 REPLAY_LEAD, REPLAY_TAIL = 8.0, 2.0  # the same window the Film Room plays around a mark
 SLOW_FROM = 3.0  # a slowed replay runs at normal speed, then goes to half speed this many seconds before the mark
 MAX_WIDTH = 1920
+VERT_SIZE = (1080, 1920)
+VERT_SCALE = 0.72  # graphics are drawn smaller in the tall picture
 
 
 # ---------- the clip list from Kings Film Room ----------
@@ -159,13 +161,29 @@ def _lists(field):
     return [p.strip() for p in (field or "").split(";") if p.strip()]
 
 
+def guess_pan(it, attack_side="Right"):
+    """Where the action is across the main video (0 left to 1 right), from the mark's place on the ice.
+    The Film Room draws the Kings attacking to the right; the Kings really attack the attack_side of the
+    picture in period 1 and swap sides every period."""
+    x = it.get("x")
+    if x is None:
+        return 0.5
+    if it["kind"] == "goal":
+        x = max(x, 0.85)  # follow the net the goal went into, not where the shot came from
+    elif it["tag"] in ("Against: Goal", "Goal against"):
+        x = min(x, 0.15)
+    p = it.get("period") or 1
+    right = (attack_side != "Left") == (p % 2 == 1)
+    return min(0.95, max(0.05, x if right else 1.0 - x))
+
+
 def collect_all(files):
     """Every mark Kings Film Room has for the game as a pickable clip:
     {id, sec, end, label, kind, tag, num, assists, period, lists, default}. default is True for goals and
     anything in a playlist whose name starts with Highlight."""
     items = []
 
-    def add(kind, sec, end, tag, main, assists, period, lists, label=None, mine_goal=False):
+    def add(kind, sec, end, tag, main, assists, period, lists, label=None, xpos=None):
         num = None
         if kind == "goal":
             scorer = [n for n in main if n not in assists]
@@ -176,7 +194,7 @@ def collect_all(files):
         if kind == "goal":
             lab = "Goal" + (" #" + num if num else "") + (" (A " + ", ".join("#" + n for n in assists) + ")" if assists else "")
         items.append({"id": "%d|%s" % (sec, tag), "sec": float(sec), "end": end, "label": lab, "kind": kind, "tag": tag,
-                      "num": num, "assists": list(assists), "period": period, "lists": lists,
+                      "num": num, "assists": list(assists), "period": period, "lists": lists, "x": xpos,
                       "default": kind == "goal" or any(p.lower().startswith("highlight") for p in lists)})
 
     for text in files.get("review", []):
@@ -191,13 +209,15 @@ def collect_all(files):
             main, assists = players_text(a[2])
             m = re.match(r"^[^,]*,[^,]*,(\d+)", a[3])
             period = int(m.group(1)) if m else None
+            mx = re.match(r"^(0?\.\d+|[01](?:\.\d+)?),", a[3])
+            xp = float(mx.group(1)) if mx else None
             lists = _lists(a[4]) if len(a) > 4 else []
             if tag == "Against: Shot on goal":
-                add("save", sec, None, "Save", main, [], period, lists)
+                add("save", sec, None, "Save", main, [], period, lists, xpos=xp)
             elif tag == "For: Goal":
-                add("goal", sec, None, "Goal", main, assists, period, lists)
+                add("goal", sec, None, "Goal", main, assists, period, lists, xpos=xp)
             else:
-                add("clip", sec, None, tag.replace("For: ", ""), main, [], period, lists)
+                add("clip", sec, None, tag.replace("For: ", ""), main, [], period, lists, xpos=xp)
     seen = {(round(i["sec"]), i["tag"]) for i in items}
     goal_secs = [i["sec"] for i in items if i["kind"] == "goal"]
     for text in files.get("clips", []):
@@ -395,7 +415,48 @@ def video_length(ffmpeg, video):
     return video_info(ffmpeg, video)[0]
 
 
+_NVENC = {}
+
+
+def use_gpu(ffmpeg, log=print):
+    """True when the Dell's graphics card can do the video encoding (NVIDIA NVENC). Tested once with a tiny clip."""
+    if ffmpeg in _NVENC:
+        return _NVENC[ffmpeg]
+    ok = False
+    try:
+        r = subprocess.run([ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i",
+                            "color=c=black:s=256x144:d=0.2", "-c:v", "h264_nvenc", "-f", "null", "-"],
+                           stderr=subprocess.PIPE, stdout=subprocess.DEVNULL, text=True, timeout=30,
+                           creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        ok = r.returncode == 0
+    except Exception:
+        ok = False
+    _NVENC[ffmpeg] = ok
+    log("Using the graphics card for cutting." if ok else "Using the processor for cutting.")
+    return ok
+
+
 def _run(cmd):
+    """Runs ffmpeg. If the graphics card encoder fails, runs again with the processor."""
+    r = _run1(cmd)
+    if r.returncode != 0 and "h264_nvenc" in cmd:
+        _NVENC[cmd[0]] = False
+        r = _run1(_cpu_cmd(cmd))
+    return r
+
+
+def _cpu_cmd(cmd):
+    out = list(cmd)
+    i = out.index("h264_nvenc")
+    out[i] = "libx264"
+    j = out.index("-cq")
+    out[j:j + 2] = ["-crf", "22"]
+    k = out.index("-preset")
+    out[k + 1] = "veryfast"
+    return out
+
+
+def _run1(cmd):
     return subprocess.run(cmd, stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace",
                           creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
 
@@ -405,7 +466,7 @@ def _fades(d, fade):
     return ("fade=t=in:st=0:d=0.3:alpha=1," if fade[0] else "") + ("fade=t=out:st=%.2f:d=0.4:alpha=1," % max(0.0, d - 0.5) if fade[1] else "")
 
 
-def cut_one(ffmpeg, video, seg, out, cap, info, tmp, log, chip=None, item_sec=None, target=None, slow=False, zoom=1.0, bug=None, fade=(True, True)):
+def cut_one(ffmpeg, video, seg, out, cap, info, tmp, log, chip=None, item_sec=None, target=None, slow=False, zoom=1.0, bug=None, fade=(True, True), pan=None):
     """Cuts one clip. cap is the lower third text (tag, number, name, sub) or None. chip is
     (text, is_replay) for the camera tag in the top left, or None. info is video_info(video).
     bug is {"args": (us_name, us, them_name, them, scored), "t0": seconds into this clip} for the score in the top right.
@@ -417,13 +478,19 @@ def cut_one(ffmpeg, video, seg, out, cap, info, tmp, log, chip=None, item_sec=No
     out_w, out_h = target or fit_size(w, h)
     fit = "scale=%d:%d:force_original_aspect_ratio=decrease,pad=%d:%d:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=24" % (out_w, out_h, out_w, out_h)
     scale = out_w / 1920.0
+    if pan is not None:  # vertical for phones: a tall slice of the picture, centred on pan (0 left to 1 right)
+        fit = ("crop=w='min(iw,ih*%d/%d)':h=ih:x='max(0,min(iw-ow,%.4f*iw-ow/2))':y=0,scale=%d:%d,setsar=1,fps=24"
+               % (out_w, out_h, min(1.0, max(0.0, pan)), out_w, out_h))
+        scale = out_w / 1080.0 * VERT_SCALE
     length = seg["end"] - seg["start"]
     f = 2.0 if slow else 1.0  # half speed makes the clip twice as long on screen
     out_len = length * f
     pre = ("crop=iw/%.3f:ih/%.3f," % (zoom, zoom) if zoom and zoom > 1.0 else "") + ("setpts=2*PTS," if slow else "")
     fit = pre + fit
     base = [ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-ss", "%.2f" % seg["start"], "-i", video]
-    enc = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "22", "-pix_fmt", "yuv420p", "-r", "24",
+    vcodec = ["-c:v", "h264_nvenc", "-preset", "p4", "-cq", "23"] if use_gpu(ffmpeg) else \
+        ["-c:v", "libx264", "-preset", "veryfast", "-crf", "22"]
+    enc = vcodec + ["-pix_fmt", "yuv420p", "-r", "24",
            "-c:a", "aac", "-b:a", "128k", "-ar", "44100", "-ac", "2", "-t", "%.2f" % out_len, out]
     audio_in, amap, afx = [], ["-map", "0:a:0"], []
     if not has_audio:
@@ -486,7 +553,7 @@ def cut_one(ffmpeg, video, seg, out, cap, info, tmp, log, chip=None, item_sec=No
 
 
 def make_video(video, date, out, offset=0.0, test=False, local_dir=None, log=print, progress=None, saves=True,
-               angles=None, attack=None, slow=False, zoom=1.0, picks=None, show_score=False):
+               angles=None, attack=None, slow=False, zoom=1.0, picks=None, show_score=False, vertical=False, attack_side="Right"):
     """angles: [{"name": "Home Cam", "file": "C:\\home.mp4"}]. Each goal is then shown again from the camera behind
     the net the Kings scored on (one replay, not every angle). picks is the list of clips to use (from catalog());
     a clip with replay set to True also gets a replay, goals do by default.
@@ -517,6 +584,10 @@ def make_video(video, date, out, offset=0.0, test=False, local_dir=None, log=pri
         if not (show_score and sc and (is_goal_for(it) or is_goal_against(it))):
             return None
         return {"args": ("Kings", sc[0], opp_name, sc[1], sc[2]), "t0": t0}
+
+    def seg_pan(seg):
+        g = next((i for i in seg["items"] if i["kind"] == "goal" or is_goal_against(i)), seg["items"][0])
+        return g["pan"] if g.get("pan") is not None else guess_pan(g, attack_side)
 
     def self_bug(seg):
         g = next((i for i in seg["items"] if is_goal_for(i) or is_goal_against(i)), None)
@@ -564,34 +635,46 @@ def make_video(video, date, out, offset=0.0, test=False, local_dir=None, log=pri
     total = sum((p[1]["end"] - p[1]["start"]) * (2 if p[6] else 1) for p in plan)
     log("%d clips, %d minutes %d seconds in all." % (len(plan), total // 60, total % 60))
     tmp = tempfile.mkdtemp(prefix="kings_hl_")
+    variants = [None] + (["vertical"] if vertical else [])
+    n_total, n_done = len(plan) * len(variants), 0
+    outs = []
     try:
-        names = []
-        for i, (kind, s, vid, vinfo, camname, moment, is_slow, rbug, fade) in enumerate(plan):
-            log("Cutting clip %d of %d: %s" % (i + 1, len(plan), s["label"]))
-            fn = os.path.join(tmp, "c%03d.mp4" % i)
-            first = s["items"][0]
-            chip = None
-            if cams:
-                chip = ((camname + (" 0.5x" if is_slow else "") + (" zoom" if zoom > 1.0 else ""), True) if kind == "replay" else ("Main Cam", False))
-            cut_one(ffmpeg, vid, s, fn, caption_for(first, roster) if kind == "main" else None, vinfo, tmp, log, chip, moment, target,
-                    is_slow, zoom if kind == "replay" else 1.0,
-                    rbug if kind == "replay" else self_bug(s), fade)
-            names.append(fn)
-            if progress:
-                progress(i + 1, len(plan))
-        lst = os.path.join(tmp, "list.txt")
-        with open(lst, "w", encoding="utf-8") as f:
-            for n in names:
-                f.write("file '%s'\n" % n.replace("\\", "/").replace("'", "'\\''"))
-        os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
-        log("Joining the clips.")
-        r = _run([ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-f", "concat", "-safe", "0",
-                  "-i", lst, "-c", "copy", "-movflags", "+faststart", out])
-        if r.returncode != 0:
-            raise RuntimeError("Could not join the clips: " + r.stderr.strip()[-300:])
+        for variant in variants:
+            names = []
+            vt = VERT_SIZE if variant else target
+            for i, (kind, s, vid, vinfo, camname, moment, is_slow, rbug, fade) in enumerate(plan):
+                log("Cutting %sclip %d of %d: %s" % ("vertical " if variant else "", i + 1, len(plan), s["label"]))
+                fn = os.path.join(tmp, "%s%03d.mp4" % ("v" if variant else "c", i))
+                first = s["items"][0]
+                chip = None
+                if cams:
+                    chip = ((camname + (" 0.5x" if is_slow else "") + (" zoom" if zoom > 1.0 else ""), True) if kind == "replay" else ("Main Cam", False))
+                pan = None
+                if variant:  # replay cameras sit behind the net, so they stay centred
+                    pan = 0.5 if kind == "replay" else seg_pan(s)
+                cut_one(ffmpeg, vid, s, fn, caption_for(first, roster) if kind == "main" else None, vinfo, tmp, log, chip, moment, vt,
+                        is_slow, zoom if kind == "replay" else 1.0,
+                        rbug if kind == "replay" else self_bug(s), fade, pan)
+                names.append(fn)
+                n_done += 1
+                if progress:
+                    progress(n_done, n_total)
+            lst = os.path.join(tmp, "list%s.txt" % ("v" if variant else ""))
+            with open(lst, "w", encoding="utf-8") as f:
+                for n in names:
+                    f.write("file '%s'\n" % n.replace("\\", "/").replace("'", "'\\''"))
+            dest = out if not variant else os.path.splitext(out)[0] + "_vertical.mp4"
+            os.makedirs(os.path.dirname(os.path.abspath(dest)), exist_ok=True)
+            log("Joining the %sclips." % ("vertical " if variant else ""))
+            r = _run([ffmpeg, "-y", "-hide_banner", "-loglevel", "error", "-f", "concat", "-safe", "0",
+                      "-i", lst, "-c", "copy", "-movflags", "+faststart", dest])
+            if r.returncode != 0:
+                raise RuntimeError("Could not join the clips: " + r.stderr.strip()[-300:])
+            outs.append(dest)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
-    log("Done: " + out)
+    for o in outs:
+        log("Done: " + o)
     return out
 
 
@@ -659,6 +742,8 @@ def main():
     ap.add_argument("--each", action="store_true", help="Cut every clip into its own file (for the Download buttons)")
     ap.add_argument("--angle", action="append", default=[], help='Extra camera video, like "Home Cam=C:\\home.mp4"')
     ap.add_argument("--attack", default=None, help="Name of the camera at the end the Kings attack in period 1")
+    ap.add_argument("--vertical", action="store_true", help="Also make a tall version for phones")
+    ap.add_argument("--attack-side", default="Right", choices=["Right", "Left"], help="Side of the picture the Kings attack in period 1")
     ap.add_argument("--score", action="store_true", help="Show the score on goals and replays")
     ap.add_argument("--slow", action="store_true", help="Play the replays at half speed")
     ap.add_argument("--zoom", type=float, default=1.0, help="Zoom the replays in, like 1.5")
@@ -673,7 +758,8 @@ def main():
                                 "Kings_highlights_%s%s.mp4" % (a.date, "_test" if a.test else ""))
     angles = [{"name": x.split("=", 1)[0], "file": x.split("=", 1)[1]} for x in a.angle if "=" in x]
     make_video(a.video, a.date, out, a.offset, a.test, a.local_dir, saves=not a.no_saves, angles=angles,
-               attack=a.attack, slow=a.slow, zoom=a.zoom, show_score=a.score)
+               attack=a.attack, slow=a.slow, zoom=a.zoom, show_score=a.score,
+               vertical=a.vertical, attack_side=a.attack_side)
 
 
 if __name__ == "__main__":

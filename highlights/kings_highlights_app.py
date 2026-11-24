@@ -31,8 +31,8 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Kings Highlight Video")
-        self.geometry("700x930")
-        self.minsize(640, 810)
+        self.geometry("700x990")
+        self.minsize(640, 870)
         self.q = queue.Queue()
         self.busy = False
         pad = {"padx": 12, "pady": 6}
@@ -76,6 +76,18 @@ class App(tk.Tk):
         self.score = tk.BooleanVar(value=False)
         ttk.Checkbutton(self, text="Show the score on goals and replays (leave off for games you lost)",
                         variable=self.score).pack(anchor="w", padx=12)
+        fv = ttk.LabelFrame(self, text="Vertical version for phones (optional)")
+        fv.pack(fill="x", **pad)
+        self.vert = tk.BooleanVar(value=False)
+        self.side = tk.StringVar(value="Right")
+        self.pans = {}
+        vr = tk.Frame(fv)
+        vr.pack(fill="x", padx=8, pady=6)
+        ttk.Checkbutton(vr, text="Also make a tall version", variable=self.vert).pack(side="left")
+        tk.Label(vr, text="   In period 1 the Kings attack the").pack(side="left")
+        ttk.Combobox(vr, textvariable=self.side, values=["Right", "Left"], width=6, state="readonly").pack(side="left", padx=4)
+        tk.Label(vr, text="of the picture").pack(side="left")
+        ttk.Button(vr, text="Check the framing...", command=self.open_framing).pack(side="right")
         f5 = ttk.LabelFrame(self, text="Clips to include (tick the ones you want)")
         f5.pack(fill="both", expand=True, **pad)
         top = tk.Frame(f5)
@@ -254,6 +266,77 @@ class App(tk.Tk):
             self.sel[i["id"]]["use"] = on
         self.draw_picks()
 
+    def picked_items(self):
+        return [i for i in self.items if self.sel.get(i["id"], {}).get("use")]
+
+    def open_framing(self):
+        """A small window to check and nudge where the tall version is framed for each picked clip."""
+        import highlights, subprocess, tempfile
+        picks = self.picked_items()
+        if not picks:
+            messagebox.showinfo("Framing", "Tick the clips you want first.", parent=self)
+            return
+        if not self.video:
+            messagebox.showinfo("Framing", "Choose the game video first.", parent=self)
+            return
+        win = tk.Toplevel(self)
+        win.title("Tall version framing")
+        W, H = 640, 360
+        cv = tk.Canvas(win, width=W, height=H, bg="black", highlightthickness=0)
+        cv.pack(padx=10, pady=10)
+        info = tk.Label(win, anchor="w")
+        info.pack(fill="x", padx=10)
+        pos = tk.IntVar(value=0)
+        side = self.side.get()
+        ff = highlights.find_ffmpeg(lambda t: None)
+        tmpdir = tempfile.mkdtemp(prefix="kings_frame_")
+        state = {"img": None}
+        slider = tk.Scale(win, from_=0, to=100, orient="horizontal", length=600, showvalue=False)
+        slider.pack(padx=10)
+        tk.Label(win, text="Slide so the action sits inside the box. The box is what the phone shows.").pack(padx=10)
+
+        def box():
+            frac = (9.0 / 16.0) / (16.0 / 9.0)  # tall slice width as a share of the picture width
+            cx = slider.get() / 100.0
+            x0 = min(max(cx - frac / 2, 0), 1 - frac) * W
+            cv.delete("box")
+            cv.create_rectangle(x0, 0, x0 + frac * W, H, outline="#9b7cff", width=3, tags="box")
+            cv.create_rectangle(0, 0, x0, H, fill="black", stipple="gray50", tags="box")
+            cv.create_rectangle(x0 + frac * W, 0, W, H, fill="black", stipple="gray50", tags="box")
+            if pos.get() < len(picks):
+                self.pans[picks[pos.get()]["id"]] = cx
+
+        def show(i):
+            i = max(0, min(len(picks) - 1, i))
+            pos.set(i)
+            it = picks[i]
+            png = os.path.join(tmpdir, "f%d.png" % i)
+            if not os.path.exists(png):
+                try:
+                    off = float(self.off.get().strip() or "0")
+                except ValueError:
+                    off = 0.0
+                t = max(0.0, it["sec"] + off)
+                subprocess.run([ff, "-y", "-loglevel", "error", "-ss", "%.2f" % t, "-i", self.video, "-frames:v", "1",
+                                "-vf", "scale=%d:%d" % (W, H), png], creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            cv.delete("pic")
+            if os.path.exists(png):
+                state["img"] = tk.PhotoImage(file=png)
+                cv.create_image(0, 0, anchor="nw", image=state["img"], tags="pic")
+                cv.tag_lower("pic")
+            cx = self.pans.get(it["id"], highlights.guess_pan(it, side))
+            slider.set(int(round(cx * 100)))
+            info.config(text="Clip %d of %d: %s" % (i + 1, len(picks), it["label"]))
+            box()
+
+        slider.config(command=lambda v: box())
+        nav = tk.Frame(win)
+        nav.pack(pady=8)
+        ttk.Button(nav, text="< Previous", command=lambda: show(pos.get() - 1)).pack(side="left", padx=6)
+        ttk.Button(nav, text="Next >", command=lambda: show(pos.get() + 1)).pack(side="left", padx=6)
+        ttk.Button(nav, text="Done", command=win.destroy).pack(side="left", padx=6)
+        show(0)
+
     def pick_angle(self, name, lbl):
         p = filedialog.askopenfilename(title="Choose the %s video" % name,
                                        filetypes=[("Video", "*.mov *.mp4 *.mkv *.m4v *.avi"), ("All files", "*.*")])
@@ -289,7 +372,7 @@ class App(tk.Tk):
         for i in self.items:
             s = self.sel.get(i["id"])
             if s and s["use"]:
-                picks.append(dict(i, replay=s["replay"]))
+                picks.append(dict(i, replay=s["replay"], pan=self.pans.get(i["id"])))
         if not each and not picks:
             messagebox.showinfo("Highlight video", "Tick at least one clip in the list first.", parent=self)
             return
@@ -300,16 +383,17 @@ class App(tk.Tk):
         self.b_each.config(state="disabled")
         keep_awake(True)
         threading.Thread(target=self.work, args=(date, off, test, out, each, angles, self.attack.get() or None,
-                                                 self.slow.get(), self.zoom_value(), picks, self.score.get()), daemon=True).start()
+                                                 self.slow.get(), self.zoom_value(), picks, self.score.get(),
+                                                 self.vert.get(), self.side.get()), daemon=True).start()
 
     def zoom_value(self):
         m = re.match(r"^([\d.]+)x$", self.zoom.get())
         return float(m.group(1)) if m else 1.0
 
-    def work(self, date, off, test, out, each=False, angles=None, attack=None, slow=False, zoom=1.0, picks=None, score=False):
+    def work(self, date, off, test, out, each=False, angles=None, attack=None, slow=False, zoom=1.0, picks=None, score=False, vertical=False, side="Right"):
         try:
             import highlights
-            kw = {} if each else {"angles": angles, "attack": attack, "slow": slow, "zoom": zoom, "picks": picks, "show_score": score}
+            kw = {} if each else {"angles": angles, "attack": attack, "slow": slow, "zoom": zoom, "picks": picks, "show_score": score, "vertical": vertical, "attack_side": side}
             (highlights.make_each if each else highlights.make_video)(self.video, date, out, off, test, None,
                                   log=lambda t: self.q.put(("line", t)),
                                   progress=lambda i, n: self.q.put(("bar", 100.0 * i / n)), **kw)

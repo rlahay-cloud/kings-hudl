@@ -19,3 +19,6 @@ Videos are saved in Documents\KingsHighlights.
 Files for the Download buttons
 Press "Make a file for every clip (for downloads)". Each goal, save and highlight gets its own small video
 in Documents\KingsHighlights\clips_DATE, with a clips.json list. Running it again skips clips already cut.
+
+Vertical version: tick "Also make a tall version" for a phone-shaped copy saved next to the main video (name ends in _vertical). Say which side of the picture the Kings attack in period 1, then use "Check the framing..." to slide the box over the action for any clip that is off.
+Cutting uses the graphics card automatically when it can, and the processor otherwise.
