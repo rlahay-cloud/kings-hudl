@@ -1586,10 +1586,24 @@ body:has(#teDraw) .vpxrow { display: none; }
     st.style.left = vv.offsetLeft + "px"; st.style.top = vv.offsetTop + "px"; st.style.width = vv.width + "px"; st.style.height = vv.height + "px";
   }
   if (window.visualViewport) { window.visualViewport.addEventListener("resize", vpFit); window.visualViewport.addEventListener("scroll", vpFit); }
+  // Debug readout for the iPhone landscape problem: open the site with ?dbg=1 on the end of the address.
+  var vpDbgT = 0;
+  function vpDbg() {
+    if (!/[?&]dbg=1/.test(location.search)) return;
+    var st = $("vpStage"), box = document.getElementById("vpDbg");
+    if (!vpFullNow()) { if (box) box.remove(); clearInterval(vpDbgT); vpDbgT = 0; return; }
+    if (!box) { box = document.createElement("pre"); box.id = "vpDbg"; box.style.cssText = "position:absolute;left:8px;top:60px;z-index:99999;margin:0;padding:6px 8px;background:rgba(0,0,0,.8);color:#7CFC8A;font:11px/1.25 monospace;pointer-events:none;white-space:pre"; st.appendChild(box); }
+    var pr = document.getElementById("vpProbe");
+    if (!pr) { pr = document.createElement("div"); pr.id = "vpProbe"; pr.style.cssText = "position:fixed;left:0;top:0;visibility:hidden;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)"; document.body.appendChild(pr); }
+    var cs = getComputedStyle(pr), vv = window.visualViewport || {}, r = st.getBoundingClientRect(), yb = st.querySelector(".ytbox, video"), yr = yb ? yb.getBoundingClientRect() : {left: 0, width: 0, top: 0, height: 0};
+    var bar = document.getElementById("vpBar"), br = bar ? bar.getBoundingClientRect() : {left: 0, width: 0};
+    box.textContent = "build 25ea7a0b\ninner " + innerWidth + "x" + innerHeight + "  screen " + screen.width + "x" + screen.height + "\nvv " + Math.round(vv.width) + "x" + Math.round(vv.height) + " off " + Math.round(vv.offsetLeft) + "," + Math.round(vv.offsetTop) + " scale " + vv.scale + "\nscroll " + scrollX + "," + scrollY + "  docW " + document.documentElement.scrollWidth + "\nsafe T" + cs.paddingTop + " R" + cs.paddingRight + " B" + cs.paddingBottom + " L" + cs.paddingLeft + "\nstage " + Math.round(r.left) + "," + Math.round(r.top) + " " + Math.round(r.width) + "x" + Math.round(r.height) + "\nvideo " + Math.round(yr.left) + "," + Math.round(yr.top) + " " + Math.round(yr.width) + "x" + Math.round(yr.height) + "\nbar " + Math.round(br.left) + " w" + Math.round(br.width);
+    if (!vpDbgT) vpDbgT = setInterval(vpDbg, 500);
+  }
   function vpFull(on) {
     var st = $("vpStage"); if (!st) return;
     if (on === undefined) on = !st.classList.contains("full");
-    vpIsFull = on; if (on) { try { window.scrollTo(0, 0); } catch (e) {} } if (!on) st.classList.remove("nohud"); vpZoomReset(); st.classList.toggle("full", on); st.classList.remove("idle"); document.body.style.overflow = on ? "hidden" : ""; vpFit(); setTimeout(vpFit, 150); setTimeout(vpFit, 600);
+    vpIsFull = on; if (on) { try { window.scrollTo(0, 0); } catch (e) {} } if (!on) st.classList.remove("nohud"); vpZoomReset(); st.classList.toggle("full", on); st.classList.remove("idle"); document.body.style.overflow = on ? "hidden" : ""; vpFit(); setTimeout(vpFit, 150); setTimeout(vpFit, 600); setTimeout(vpDbg, 200);
     // iPhone cannot do real full screen for a page element, so the stage is pinned over the whole page: lift its card above the header and hide the header
     document.body.classList.toggle("vpfull", on); var vc = $("vpCard"); if (vc) vc.style.zIndex = on ? "100000" : "";
     var fb = $("vpFs"); if (fb) fb.textContent = on ? "Exit" : "Full"; fb.setAttribute("aria-label", on ? "Exit full screen" : "Full screen");
