@@ -7,5 +7,5 @@ E|3|3540.4
 G|Ottawa Sting|H|19:30|Spencerville
 L|10,10,12
 X|33,38
-A|Home Cam|https://youtu.be/yHkluN6Coc4|0.0
+A|Home Cam|https://youtu.be/yHkluN6Coc4|-677.1
 A|Away Cam|https://youtu.be/-eKwrKeKoPY|-678.8
