@@ -1529,7 +1529,7 @@ body:has(#teDraw) .vpxrow { display: none; }
   }
   var vpIdle = null;
   var vpIsFull = false;
-  function vpWake() { var st = $("vpStage"); if (!st) return; st.classList.remove("idle"); clearTimeout(vpIdle); if (st.classList.contains("full") && vpCtl.playing) vpIdle = setTimeout(function () { st.classList.add("idle"); }, 3000); }
+  function vpWake() { var st = $("vpStage"); if (!st) return; st.classList.remove("idle"); clearTimeout(vpIdle); /* controls stay up until the Hide button is pressed, so no idle timer */ }
   // pinch to zoom, drag to move and double tap to reset, for the video in full screen (iPad turns off page zoom in real full screen)
   var vpZ = {s: 1, x: 0, y: 0, block: false, pts: {}, d0: 0, s0: 1, last: 0, moved: false};
   function vpZoomApply() {
