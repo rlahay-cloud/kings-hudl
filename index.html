@@ -1576,10 +1576,20 @@ body:has(#teDraw) .vpxrow { display: none; }
     if (!k.length && vpZ.moved) setTimeout(function () { vpZ.block = false; }, 350);
   }
   document.addEventListener("pointerup", vpZoomUp); document.addEventListener("pointercancel", vpZoomUp);
+  // Pin the full-screen stage to exactly what the screen shows right now (the visual viewport). On iPhone in landscape the page can
+  // sit a little off to one side or be wider than the screen, which pushed the video right and cut it off.
+  function vpFit() {
+    var st = $("vpStage"); if (!st) return;
+    var vv = window.visualViewport;
+    if (!vpFullNow() || !vv) { st.style.left = st.style.top = st.style.width = st.style.height = st.style.right = st.style.bottom = ""; return; }
+    st.style.right = "auto"; st.style.bottom = "auto";
+    st.style.left = vv.offsetLeft + "px"; st.style.top = vv.offsetTop + "px"; st.style.width = vv.width + "px"; st.style.height = vv.height + "px";
+  }
+  if (window.visualViewport) { window.visualViewport.addEventListener("resize", vpFit); window.visualViewport.addEventListener("scroll", vpFit); }
   function vpFull(on) {
     var st = $("vpStage"); if (!st) return;
     if (on === undefined) on = !st.classList.contains("full");
-    vpIsFull = on; if (on) { try { window.scrollTo(0, 0); } catch (e) {} } if (!on) st.classList.remove("nohud"); vpZoomReset(); st.classList.toggle("full", on); st.classList.remove("idle"); document.body.style.overflow = on ? "hidden" : "";
+    vpIsFull = on; if (on) { try { window.scrollTo(0, 0); } catch (e) {} } if (!on) st.classList.remove("nohud"); vpZoomReset(); st.classList.toggle("full", on); st.classList.remove("idle"); document.body.style.overflow = on ? "hidden" : ""; vpFit(); setTimeout(vpFit, 150); setTimeout(vpFit, 600);
     // iPhone cannot do real full screen for a page element, so the stage is pinned over the whole page: lift its card above the header and hide the header
     document.body.classList.toggle("vpfull", on); var vc = $("vpCard"); if (vc) vc.style.zIndex = on ? "100000" : "";
     var fb = $("vpFs"); if (fb) fb.textContent = on ? "Exit" : "Full"; fb.setAttribute("aria-label", on ? "Exit full screen" : "Full screen");
@@ -4451,7 +4461,7 @@ body:has(#teDraw) .vpxrow { display: none; }
     });
     window.scrollTo(0, 0);
   }
-  function vpRecenter() { if (vpFullNow()) { try { window.scrollTo(0, 0); } catch (e) {} } }
+  function vpRecenter() { if (vpFullNow()) { try { window.scrollTo(0, 0); } catch (e) {} vpFit(); } }
   window.addEventListener("orientationchange", function () { setTimeout(vpRecenter, 120); setTimeout(vpRecenter, 500); }); window.addEventListener("resize", vpRecenter);
   window.addEventListener("hashchange", function () { if (window.__khPop && !/^#\/coach\/analysis/.test(location.hash)) { clearInterval(window.__khPopPoll); try { window.__khPop.close(); } catch (e) {} window.__khPop = null; } });
   window.addEventListener("hashchange", route);
