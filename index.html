@@ -115,6 +115,15 @@ iframe.gsteam { height: 1000px; } @media (max-width: 1100px) { iframe.gsteam { h
 .shfp.on span { color: var(--accent-ink); }
 .shfstat { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 8px 0 2px; }
 #shfState { font-family: var(--display); font-size: 22px; letter-spacing: .1em; padding: 2px 12px; border-radius: 8px; }
+@media (max-width: 600px) {
+  .shfstat { display: grid; grid-template-columns: 1fr auto 1fr; } .shfstat > :first-child { font-size: 12px; } .shfstat > :last-child { text-align: right; font-size: 12px; }
+  #shfState { font-size: 17px; letter-spacing: .08em; white-space: nowrap; }
+  .shfv:not(.fs) > .seg[aria-label="Video controls"] { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+  .shfv:not(.fs) > .seg[aria-label="Video controls"] > button { min-width: 0; padding: 6px 2px; font-size: 14px; letter-spacing: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; grid-column: span 2; }
+  .shfv:not(.fs) > .seg[aria-label="Video controls"] > select { grid-column: 1 / -1; min-height: 44px; }
+  .shfv:not(.fs) > .seg[aria-label="Video controls"] > #shfWhistle { grid-column: 1 / -1; font-size: 17px; letter-spacing: .1em; }
+  .shfv:not(.fs) > .seg[aria-label="Video controls"] > #shfLast, .shfv:not(.fs) > .seg[aria-label="Video controls"] > #shfFs { grid-column: span 3; }
+}
 #shfState.go { background: #1f7a4d; color: #fff; } #shfState.stop { background: #c8372d; color: #fff; }
 .pcard .st { display: flex; flex-wrap: wrap; gap: 8px 12px; color: var(--muted); font-size: 13px; }
 .pcard .st b { display: block; color: var(--fg); font-size: 18px; font-family: var(--display); }
@@ -228,6 +237,8 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
 .rvbtns { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; } .rvbtns.fo { grid-template-columns: repeat(2, 1fr); }
 .rvb { min-height: 48px; border: 0; border-radius: 10px; background: var(--c); color: #0b1220; font-family: var(--display); font-weight: 700; font-size: 18px; letter-spacing: .04em; }
 .rvb:disabled { opacity: .45; }
+.rvbtns:not(.three) > .rvb:last-child:nth-child(odd) { grid-column: 1 / -1; }
+@media (max-width: 560px) { .rvbtns:has(#rvPenBtn) { grid-template-columns: 1fr; } .seg > #rvUndo, .seg > #rvClear { flex: 1 1 100%; } }
 .cntbar { display: grid; gap: 2px; margin-bottom: 8px; font-variant-numeric: tabular-nums; } .cntbar b { font-family: var(--display); letter-spacing: .06em; text-transform: uppercase; margin-right: 6px; }
 .rinkwrap svg text.gnum { fill: #fff; font-size: 4px; font-family: var(--display); font-weight: 800; } .rinkwrap.full svg { cursor: crosshair; } .rinkwrap svg text.zl { font-size: 4.2px; fill: #46556e; opacity: .7; letter-spacing: .3px; } .rinkwrap svg text.cn { font-size: 4.6px; font-weight: 700; fill: #1b2a44; }
 .rvbtns.three { grid-template-columns: repeat(3, 1fr); }
@@ -408,7 +419,7 @@ h2.mhead small { display: block; margin: 8px 0 0; font-size: 14px; letter-spacin
 @media (max-width: 600px) { #vpStage.full #teBar #teRowDraw { max-width: calc(100% - 56px); flex-wrap: wrap; } }
 #vpBar .vpbtns button.vpfsonly { display: none; } #vpStage.full #vpBar .vpbtns button.vpfsonly { display: flex; }
 /* round icon buttons: icon drawn as SVG so it is exactly centred */
-.vpx, #vpExit { display: inline-flex; align-items: center; justify-content: center; padding: 0 !important; line-height: 0; } .navarrow { align-items: center; justify-content: center; padding: 0 !important; line-height: 0; }
+.vpx, #vpExit { align-items: center; justify-content: center; } .vpx { display: inline-flex; align-items: center; justify-content: center; padding: 0 !important; line-height: 0; } .navarrow { align-items: center; justify-content: center; padding: 0 !important; line-height: 0; }
 .vpx svg, #vpExit svg, .navarrow svg { display: block; flex: none; margin: 0; }
 .navarrow svg { width: 14px; height: 14px; } #vpExit svg { width: 18px; height: 18px; }
 #vpStage.full #vpExit { display: flex; }
@@ -1670,7 +1681,7 @@ body:has(#teDraw) .vpxrow { display: none; }
     var vt = $("vpTitle"); if (vt) vt.textContent = clipTitle(it);
     var pt = pTime(it.date, it.sec), now = it.game + ", " + hms(it.sec) + (pt ? " (" + pt + ")" : "") + " " + (it.disp || it.tag) + (ci >= 0 ? " (" + cams[ci].name + ")" : "");
     var cb = $("vpCam"); if (!cb) { cb = document.createElement("div"); cb.id = "vpCam"; cb.className = "seg camrow"; cb.style.marginTop = "10px"; $("vpNow").parentNode.appendChild(cb); }
-    cb.innerHTML = cams.length ? '<button data-cam="-1" aria-pressed="' + (ci < 0) + '">Main camera</button>' + cams.map(function (c, i) { return '<button data-cam="' + i + '" aria-pressed="' + (ci === i) + '">' + esc(c.name) + "</button>"; }).join("") : "";
+    cb.innerHTML = cams.length ? '<button data-cam="-1" aria-pressed="' + (ci < 0) + '">Main</button>' + cams.map(function (c, i) { return '<button data-cam="' + i + '" aria-pressed="' + (ci === i) + '">' + esc(c.name) + "</button>"; }).join("") : "";
     if (!id) { $("vpBox").innerHTML = ""; $("vpBox").style.display = "none"; $("vpNow").textContent = now + ". No video link for this game yet. Add it to videos.txt or in Coach’s Corner."; return; }
     $("vpBox").style.display = "";
     var st = Math.max(0, Math.floor((it.start != null ? it.start : it.sec) + off)), en = Math.max(st + 2, Math.ceil(clipEnd(it) + off));
@@ -1684,6 +1695,24 @@ body:has(#teDraw) .vpxrow { display: none; }
     var b = e.target.closest && e.target.closest("button[data-cam]"); if (!b || !lastPlayed) return;
     camSel[lastPlayed.date] = +b.getAttribute("data-cam"); playItem(lastPlayed);
   });
+  // Tidy wrapped button rows: if a row of buttons wraps and leaves ONE button alone on the last line, stretch that button across the full row.
+  function tidySegs() {
+    document.querySelectorAll(".seg").forEach(function (sg) {
+      var bs = [].filter.call(sg.children, function (k) { return /^(BUTTON|LABEL|SELECT)$/.test(k.tagName); });
+      bs.forEach(function (k) { if (k.hasAttribute("data-tidy")) { k.style.flex = ""; k.style.minWidth = ""; k.removeAttribute("data-tidy"); } });
+      if (bs.length < 3 || sg.offsetParent === null || sg.closest(".full, .vpbtns")) return;
+      var rows = {}, tops = [];
+      bs.forEach(function (k) { if (k.offsetParent === null) return; var t = Math.round(k.getBoundingClientRect().top / 4); if (!rows[t]) { rows[t] = []; tops.push(t); } rows[t].push(k); });
+      if (tops.length < 2) return;
+      tops.sort(function (x, y) { return x - y; });
+      var last = rows[tops[tops.length - 1]], prev = rows[tops[tops.length - 2]];
+      if (last.length === 1 && prev.length > 1) { bs.forEach(function (k) { k.setAttribute("data-tidy", "1"); k.style.flex = "1 1 auto"; }); last[0].style.flex = "1 1 100%"; }
+    });
+  }
+  var tidyT = 0;
+  function tidyLater() { clearTimeout(tidyT); tidyT = setTimeout(tidySegs, 60); }
+  window.addEventListener("resize", tidyLater); window.addEventListener("orientationchange", tidyLater);
+  if (window.MutationObserver) new MutationObserver(function (ms) { for (var i = 0; i < ms.length; i++) if (ms[i].type === "childList") { tidyLater(); return; } }).observe(document.getElementById("app") || document.body, {childList: true, subtree: true});
   var PL = [];
   function playCard() {
     return '<div class="card" id="vpCard" hidden style="position:sticky;top:calc(var(--hdr, 96px) + 14px);z-index:30;margin-bottom:12px"><div class="vpxrow"><div id="vpTitle" aria-live="polite"></div><button type="button" class="vpx" data-vpclose="1" aria-label="Hide the video" title="Hide video"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><path d="M5 5l14 14M19 5L5 19" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" fill="none"/></svg></button></div>' +
@@ -3236,7 +3265,7 @@ body:has(#teDraw) .vpxrow { display: none; }
       "</div></div>";
     h += '<h2>Review summary</h2><div id="rvSum"></div>' +
       '<h2>Events<small id="rvCount"></small></h2><div class="card" id="rvList"></div>' +
-      '<div class="seg" style="margin-top:12px"><button class="btn" id="rvUndo">Undo last</button><button class="btn" id="rvClear">Delete all of mine for this game</button></div>' +
+      '<div class="seg" style="margin-top:12px"><button class="btn" id="rvUndo">Undo last</button><button class="btn" id="rvClear">Delete all my marks</button></div>' +
       (function () { mineOf(CK, "c", date); mineOf(EK, "e", date); mineOf(RK, "r", date); var bk = lget("kh-backup-v1"), n = ["c", "e", "r"].reduce(function (t, k) { return t + ((bk[k + "|" + date] || []).length); }, 0); return n ? '<div class="card" style="margin-top:10px"><p class="note" style="margin:0 0 6px">' + n + ' marks that were on this device before the last update are saved here. Missing something? Bring them back, then check the list and tap Share.</p><div class="seg"><button class="btn" id="rvBk">Bring back my earlier marks</button></div></div>' : ""; })() +
       '<div class="seg" style="margin-top:12px"><button class="btn" id="rvSend" style="width:100%">Share to Kings Film Room</button></div><p class="note" id="rvShare" aria-live="polite"></p>';
     return h;
@@ -3400,7 +3429,7 @@ body:has(#teDraw) .vpxrow { display: none; }
       var b = $("rvCam"); if (!b) return;
       if (!cams.length || !cur || !mainSrc) { b.hidden = true; return; }
       b.hidden = false;
-      b.innerHTML = '<button type="button" data-rcam="-1" aria-pressed="' + (camI < 0) + '">Main camera</button>' + cams.map(function (c, i) {
+      b.innerHTML = '<button type="button" data-rcam="-1" aria-pressed="' + (camI < 0) + '">Main</button>' + cams.map(function (c, i) {
         return '<button type="button" data-rcam="' + i + '" aria-pressed="' + (camI === i) + '">' + esc(c.name) + "</button>"; }).join("");
     }
     function ready(c) { cur = c; window.__stepCur = c; enable(); var rs = $("rvStep"); if (rs) rs.hidden = false; $("clNote").textContent = "Video loaded. Tap a button when something happens."; drawTl(); drawCams(); }
@@ -4082,7 +4111,7 @@ body:has(#teDraw) .vpxrow { display: none; }
     if (!items.length) { box.innerHTML = '<div class="card" style="margin-top:12px"><p style="margin:0"><b>Nothing to fix.</b> Every mark has what it needs.</p></div>'; return; }
     var n = 0, h = '<p class="note" style="margin-top:12px">' + items.length + (items.length === 1 ? " thing" : " things") + " to fix. Tap Watch to see the clip, fix it right here, and it disappears from the list. Then tap Share for that game.</p>";
     order.forEach(function (d) {
-      h += "<h2>" + esc(by[d][0].game) + "<small>" + by[d].length + '</small></h2><div class="seg" style="margin-bottom:8px"><button class="btn" data-fx="share" data-d="' + d + '">Share this game to Kings Film Room</button></div><p class="note" data-fxn="' + d + '" aria-live="polite"></p>';
+      h += "<h2>" + esc(by[d][0].game) + "<small>" + by[d].length + '</small></h2><div class="seg" style="margin-bottom:8px"><button class="btn" data-fx="share" data-d="' + d + '">Share to Film Room</button></div><p class="note" data-fxn="' + d + '" aria-live="polite"></p>';
       by[d].forEach(function (x) {
         h += '<div class="card fxit" data-d="' + d + '" data-s="' + (x.sec == null ? "" : x.sec) + '" data-t="' + esc(x.tag) + '" data-k="' + x.kind + '" style="margin-bottom:10px"><div class="seg" style="justify-content:space-between;align-items:center;margin-bottom:8px"><b>' + (x.sec != null ? hms(x.sec) + " " : "") + esc(x.what) + "</b>" + (x.sec != null ? '<button data-fx="watch">Watch</button>' : "") + "</div>" + fixBody(x) + "</div>";
       });
