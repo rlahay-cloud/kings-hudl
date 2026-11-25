@@ -3,7 +3,6 @@
 0:11:53|Faceoff: DZ Loss|97|,,1,f
 0:12:14|For: Shot on goal|97|0.797,0.284,1,f
 0:13:01|Faceoff: DZ Loss|17|,,1,f
-0:13:19|Against: Shot on goal|2|0.197,0.453,1,f
 0:14:22|Faceoff: DZ Loss|97|,,1,f
 0:14:46|Faceoff: NZ Loss|97|,,1,f
 0:17:22|Against: Shot on goal|2|0.085,0.557,1,f
