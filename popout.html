@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kings Film Room video</title>
+<style>
+  :root { --bg: #0a0814; --panel: #17132b; --line: #3a3166; --fg: #f3f4fb; --muted: #a9a9b8; --accent: #9b7cff; --accent-ink: #12062b; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.3 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  #wrap { height: 100%; display: flex; flex-direction: column; gap: 10px; padding: 10px; }
+  .row { display: flex; gap: 8px; flex: none; }
+  .row button { flex: 1 1 0; min-width: 0; min-height: 46px; padding: 6px 8px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); font: 700 15px/1.1 inherit; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row button:hover { border-color: var(--accent); }
+  .row button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  #stage { flex: 1 1 auto; min-height: 0; background: #000; border-radius: 12px; overflow: hidden; position: relative; }
+  #stage iframe, #yt { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+  #msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 20px; color: var(--muted); }
+  #info { flex: none; color: var(--muted); font-size: 13px; min-height: 18px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div class="row" id="cams" hidden></div>
+  <div id="stage"><div id="yt"></div><div id="msg">Waiting for the Game Desk to send the video...</div></div>
+  <div class="row" id="steps">
+    <button type="button" data-step="-2">&minus;2s</button>
+    <button type="button" data-step="-1">&minus;1s</button>
+    <button type="button" data-step="-0.0334">&#9664; Frame</button>
+    <button type="button" data-step="p" id="pp">Play / Pause</button>
+    <button type="button" data-step="0.0334">Frame &#9654;</button>
+    <button type="button" data-step="1">+1s</button>
+    <button type="button" data-step="2">+2s</button>
+  </div>
+  <div id="info"></div>
+</div>
+<script>
+(function () {
+  var opener = window.opener, pl = null, apiReady = false, queue = null, off = 0, ytLoaded = false, curId = "";
+  function send(m) { try { if (opener && !opener.closed) opener.postMessage(m, location.origin); } catch (e) {} }
+  function $(id) { return document.getElementById(id); }
+  function withYT(cb) {
+    if (window.YT && window.YT.Player) return cb();
+    var prev = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = function () { if (prev) prev(); cb(); };
+    if (!ytLoaded) { ytLoaded = true; var sc = document.createElement("script"); sc.src = "https://www.youtube.com/iframe_api"; document.head.appendChild(sc); }
+    setTimeout(function () { if (!(window.YT && window.YT.Player)) { $("msg").textContent = "YouTube did not load. Check the connection."; } }, 9000);
+  }
+  function load(m) {
+    off = m.off || 0;
+    var start = Math.max(0, Math.floor((m.start || 0) + off));
+    drawCams(m.cams || [], m.camI);
+    $("info").textContent = m.label || "";
+    withYT(function () {
+      if (pl && pl.loadVideoById) { pl.loadVideoById({videoId: m.id, startSeconds: start}); curId = m.id; $("msg").style.display = "none"; send({t: "loaded"}); return; }
+      $("yt").innerHTML = ""; var d = document.createElement("div"); d.id = "ytp"; $("yt").appendChild(d);
+      pl = new window.YT.Player("ytp", {videoId: m.id, width: "100%", height: "100%", playerVars: {playsinline: 1, rel: 0, start: start, autoplay: 1},
+        events: {onReady: function () { curId = m.id; $("msg").style.display = "none"; send({t: "loaded"}); }}});
+    });
+  }
+  function drawCams(list, camI) {
+    var box = $("cams");
+    if (!list.length) { box.hidden = true; box.innerHTML = ""; return; }
+    box.hidden = false;
+    box.innerHTML = list.map(function (n, i) { var idx = i - 1; return '<button type="button" data-cam="' + idx + '" aria-pressed="' + (camI === idx) + '"></button>'; }).join("");
+    [].forEach.call(box.children, function (b, i) { b.textContent = list[i]; });
+  }
+  function step(d) {
+    if (!pl || !pl.getCurrentTime) return;
+    if (d === "p") { if (pl.getPlayerState() === 1) pl.pauseVideo(); else pl.playVideo(); return; }
+    pl.pauseVideo(); pl.seekTo(Math.max(0, pl.getCurrentTime() + d), true);
+  }
+  $("steps").addEventListener("click", function (e) { var b = e.target.closest("button[data-step]"); if (!b) return; var v = b.getAttribute("data-step"); step(v === "p" ? "p" : +v); });
+  $("cams").addEventListener("click", function (e) { var b = e.target.closest("button[data-cam]"); if (b) send({t: "cam", i: +b.getAttribute("data-cam")}); });
+  window.addEventListener("keydown", function (e) {
+    if (e.key === " ") { e.preventDefault(); step("p"); } else if (e.key === "ArrowLeft") { e.preventDefault(); step(e.shiftKey ? -1 : -0.0334); } else if (e.key === "ArrowRight") { e.preventDefault(); step(e.shiftKey ? 1 : 0.0334); }
+  });
+  window.addEventListener("message", function (e) {
+    if (e.origin !== location.origin || e.source !== opener) return;
+    var m = e.data || {};
+    if (m.t === "load") load(m);
+    else if (m.t === "seek" && pl && pl.seekTo) { pl.seekTo(Math.max(0, m.s + off), true); pl.playVideo(); }
+    else if (m.t === "step") step(m.d);
+    else if (m.t === "toggle") step("p");
+    else if (m.t === "close") window.close();
+  });
+  setInterval(function () {
+    if (!pl || !pl.getCurrentTime) return;
+    try { send({t: "time", cur: pl.getCurrentTime() - off, dur: Math.max(0, (pl.getDuration() || 0) - off), playing: pl.getPlayerState() === 1}); } catch (e) {}
+  }, 250);
+  window.addEventListener("pagehide", function () { send({t: "closed"}); });
+  send({t: "hello"});
+})();
+</script>
+</body>
+</html>

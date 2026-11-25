@@ -237,6 +237,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
 .rvbtns { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; } .rvbtns.fo { grid-template-columns: repeat(2, 1fr); }
 .rvb { min-height: 48px; border: 0; border-radius: 10px; background: var(--c); color: #0b1220; font-family: var(--display); font-weight: 700; font-size: 18px; letter-spacing: .04em; }
 .rvb:disabled { opacity: .45; }
+.rvpop { margin: 0 0 8px; } .rvpop button { flex: 1 1 100%; min-height: 40px; font-size: 15px; }
 .rvbtns:not(.three) > .rvb:last-child:nth-child(odd) { grid-column: 1 / -1; }
 @media (max-width: 560px) { .rvbtns:has(#rvPenBtn) { grid-template-columns: 1fr; } .seg > #rvUndo, .seg > #rvClear { flex: 1 1 100%; } }
 .cntbar { display: grid; gap: 2px; margin-bottom: 8px; font-variant-numeric: tabular-nums; } .cntbar b { font-family: var(--display); letter-spacing: .06em; text-transform: uppercase; margin-right: 6px; }
@@ -3247,7 +3248,7 @@ body:has(#teDraw) .vpxrow { display: none; }
       '<div class="fld"><label for="rvAuto">Playlist for new marks (optional)</label><input type="text" id="rvAuto" list="rvPlAuto" maxlength="40" placeholder="Like Breakouts to fix"><datalist id="rvPlAuto">' + allPlaylistNames().map(function (n) { return '<option value="' + esc(n) + '">'; }).join("") + "</datalist></div></div>" +
       '<div class="ldrow"><button class="btn" id="clLoad">Load video</button><span class="mut">or</span><label class="ldfile" for="clFile">Choose a video file from this device</label><input type="file" id="clFile" accept="video/*" hidden></div>' +
       '<p class="note" id="clNote" aria-live="polite" style="margin:10px 0 0">' + (url ? "Loading the video." : "Load the game video to start.") + "</p></div>";
-    h += '<div class="rv"><div class="rvl"><div class="rvvideo"><div id="rvCam" class="seg rvcam" role="group" aria-label="Camera angle" hidden></div><div id="clVideo"></div><div id="rvStep" class="seg rvstep" role="group" aria-label="Step through the video" hidden><button type="button" data-step="-2" aria-label="Back two seconds">&minus;2s</button><button type="button" data-step="-1" aria-label="Back one second">&minus;1s</button><button type="button" data-step="-0.0334" aria-label="Back one frame">&#9664;<br>Frame</button><button type="button" data-step="p" aria-label="Play or pause">Play<br>Pause</button><button type="button" data-step="0.0334" aria-label="Forward one frame">Frame<br>&#9654;</button><button type="button" data-step="1" aria-label="Forward one second">+1s</button><button type="button" data-step="2" aria-label="Forward two seconds">+2s</button></div></div><div class="card rvtl" id="rvTl"></div><div class="card" id="rvSel"></div></div><div class="rvr">' +
+    h += '<div class="rv"><div class="rvl"><div class="rvvideo"><div id="rvPopRow" class="seg rvpop" hidden><button type="button" id="rvPop">Pop video out to another screen</button></div><div id="rvCam" class="seg rvcam" role="group" aria-label="Camera angle" hidden></div><div id="clVideo"></div><div id="rvStep" class="seg rvstep" role="group" aria-label="Step through the video" hidden><button type="button" data-step="-2" aria-label="Back two seconds">&minus;2s</button><button type="button" data-step="-1" aria-label="Back one second">&minus;1s</button><button type="button" data-step="-0.0334" aria-label="Back one frame">&#9664;<br>Frame</button><button type="button" data-step="p" aria-label="Play or pause">Play<br>Pause</button><button type="button" data-step="0.0334" aria-label="Forward one frame">Frame<br>&#9654;</button><button type="button" data-step="1" aria-label="Forward one second">+1s</button><button type="button" data-step="2" aria-label="Forward two seconds">+2s</button></div></div><div class="card rvtl" id="rvTl"></div><div class="card" id="rvSel"></div></div><div class="rvr">' +
       '<div class="card"><h3>Rink</h3><div class="cntbar" id="rvCnt"></div>' + fullRink() +
       '<p class="note" style="margin:6px 0">We attack the net on the right. Tap the rink to choose a spot and a zone, then tap what happened.</p>' +
       '<div class="seg" id="rvFilt"><button data-f="on" aria-pressed="true">Markers on</button><button data-f="H" aria-pressed="true">' + esc(usN()) + '</button><button data-f="A" aria-pressed="true">' + esc(themN(date)) + '</button><button data-f="G" aria-pressed="true">Goals</button><button data-f="S" aria-pressed="true">Shots</button></div>' +
@@ -3330,6 +3331,7 @@ body:has(#teDraw) .vpxrow { display: none; }
   }
   function bindReview() {
     if (window.__rvT) { clearInterval(window.__rvT); window.__rvT = null; }
+    clearInterval(window.__khPopPoll); if (window.__khPop) { try { window.__khPop.close(); } catch (e) {} window.__khPop = null; }
     var date = $("rvDate").value, cur = null, st = {p: 1, team: "For", pend: null, sel: null, last: null, zone: "", filt: {on: true, H: true, A: true, G: true, S: true}, tz: {z: 1, s: 0, row: ""}};
     var HL = getMyClips(date, false), EV = getMyClips(date, true), RV = getMyReview(date), view = [];
     HL.forEach(function (c) { c.src = "hl"; }); EV.forEach(function (c) { c.src = "ev"; }); RV.forEach(function (c) { c.src = "rv"; });
@@ -3432,7 +3434,7 @@ body:has(#teDraw) .vpxrow { display: none; }
       b.innerHTML = '<button type="button" data-rcam="-1" aria-pressed="' + (camI < 0) + '">Main</button>' + cams.map(function (c, i) {
         return '<button type="button" data-rcam="' + i + '" aria-pressed="' + (camI === i) + '">' + esc(c.name) + "</button>"; }).join("");
     }
-    function ready(c) { cur = c; window.__stepCur = c; enable(); var rs = $("rvStep"); if (rs) rs.hidden = false; $("clNote").textContent = "Video loaded. Tap a button when something happens."; drawTl(); drawCams(); }
+    function ready(c) { cur = c; window.__stepCur = c; enable(); var rs = $("rvStep"); if (rs) rs.hidden = false; $("clNote").textContent = "Video loaded. Tap a button when something happens."; drawTl(); drawCams(); drawPopBtn(); }
     function switchCam(i) {
       if (i === camI || !cur || !mainSrc) return;
       var t = cur.get();
@@ -3441,8 +3443,52 @@ body:has(#teDraw) .vpxrow { display: none; }
       else if (mainSrc.file) loadFile(mainSrc.file, t, true);
       else loadYT(mainSrc.url, t, true);
     }
+    // Pop the video out to a second window (desktop only). The pop-out has its own player, camera buttons and step buttons.
+    // Here a stand-in object reports the pop-out's time, so marks are still saved in main video time.
+    var pop = null, popT = {cur: 0, dur: 0, playing: false, at: 0}, popPoll = null, popOk = false, DESK = window.matchMedia && window.matchMedia("(min-width: 900px) and (hover: hover) and (pointer: fine)").matches;
+    var popProxy = {
+      get: function () { return popT.cur + (popT.playing ? (Date.now() - popT.at) / 1000 : 0); },
+      step: function (d) { popPost({t: "step", d: d}); popT.playing = false; popT.cur = Math.max(0, popProxy.get() + d); popT.at = Date.now(); },
+      toggle: function () { popPost({t: "toggle"}); }, seek: function (s) { popPost({t: "seek", s: s}); popT.cur = s; popT.at = Date.now(); popT.playing = true; }, dur: function () { return popT.dur; }
+    };
+    function popPost(m) { try { if (pop && !pop.closed) pop.postMessage(m, location.origin); } catch (e) {} }
+    function drawPopBtn() {
+      var row = $("rvPopRow"); if (!row) return;
+      row.hidden = !(DESK && mainSrc && mainSrc.url);
+      $("rvPop").textContent = pop ? "Bring the video back here" : "Pop video out to another screen";
+    }
+    function popSend(id, startAt, off, label) {
+      popPost({t: "load", id: id, start: startAt, off: off || 0, label: label, cams: ["Main"].concat(cams.map(function (c) { return c.name; })), camI: camI});
+      popT.cur = startAt; popT.at = Date.now(); popT.playing = true;
+      $("clVideo").innerHTML = '<div class="card empty"><p class="note">The video is playing in the pop-out window. Your buttons here still work.</p></div>';
+      ready(popProxy); $("clNote").textContent = "Video is in the pop-out window (" + label + "). Your marks are still saved in main video time.";
+    }
+    function popSource() { var t = cur ? cur.get() : 0; if (camI >= 0) popSend(ytId(cams[camI].url), t, cams[camI].off || 0, cams[camI].name); else popSend(ytId(mainSrc.url), t, 0, "Main"); }
+    function popOpen() {
+      var w = window.open("popout.html", "khVideo", "popup=yes,width=1100,height=720");
+      if (!w) { $("clNote").textContent = "Your browser blocked the pop-out. Allow pop-ups for this site and try again."; return; }
+      pop = w; window.__khPop = w; popOk = false; drawPopBtn();
+      clearInterval(popPoll); popPoll = window.__khPopPoll = setInterval(function () { if (!pop || pop.closed) popBack(); }, 800);
+    }
+    function popBack() {
+      clearInterval(popPoll); if (!pop) return;
+      var t = popProxy.get(), w = pop; pop = null; window.__khPop = null; try { if (!w.closed) w.close(); } catch (e) {}
+      drawPopBtn(); if (!mainSrc) return;
+      if (camI >= 0) loadAngle(cams[camI], t); else loadYT(mainSrc.url, t, true);
+    }
+    if (window.__popMsg) window.removeEventListener("message", window.__popMsg);
+    window.__popMsg = function (e) {
+      if (e.origin !== location.origin || !pop || e.source !== pop) return;
+      var m = e.data || {};
+      if (m.t === "hello") popSource();
+      else if (m.t === "time") { popT.cur = m.cur; popT.dur = m.dur; popT.playing = m.playing; popT.at = Date.now(); }
+      else if (m.t === "cam") switchCam(m.i);
+    };
+    window.addEventListener("message", window.__popMsg);
+    $("rvPop").addEventListener("click", function () { if (pop) popBack(); else if (cur && mainSrc && mainSrc.url) popOpen(); });
     function loadAngle(c, startAt) {
       var off = c.off || 0;
+      if (pop && !pop.closed) { popSend(ytId(c.url), startAt, off, c.name); return; }
       $("clVideo").innerHTML = '<div class="ytbox" id="ytp"></div>';
       withYT(function () {
         var pl = new window.YT.Player("ytp", {videoId: ytId(c.url), width: "100%", height: "100%", playerVars: {playsinline: 1, rel: 0, start: Math.max(0, Math.floor(startAt + off))},
@@ -3479,6 +3525,7 @@ body:has(#teDraw) .vpxrow { display: none; }
           .then(function (r) { return r.json().catch(function () { return {ok: false}; }); })
           .then(function (j) { if (j.ok) { D.videos[date] = url; $("rvShare").textContent = "Video link saved for everyone."; } });
       }
+      if (pop && !pop.closed) { popSend(id, startAt || 0, 0, "Main"); return; }
       $("clVideo").innerHTML = '<div class="ytbox" id="ytp"></div>';
       withYT(function () {
         var pl = new window.YT.Player("ytp", {videoId: id, width: "100%", height: "100%", playerVars: {playsinline: 1, rel: 0, start: startAt > 0 ? Math.floor(startAt) : 0},
@@ -4403,6 +4450,7 @@ body:has(#teDraw) .vpxrow { display: none; }
     });
     window.scrollTo(0, 0);
   }
+  window.addEventListener("hashchange", function () { if (window.__khPop && !/^#\/coach\/analysis/.test(location.hash)) { clearInterval(window.__khPopPoll); try { window.__khPop.close(); } catch (e) {} window.__khPop = null; } });
   window.addEventListener("hashchange", route);
   if (/[?&]sample\b/.test(location.search)) { loadAll().then(function () { if (!D.games.length) sampleData(); route(); }); }
   else loadAll().then(route, function (e) { D.error = String(e); route(); });
