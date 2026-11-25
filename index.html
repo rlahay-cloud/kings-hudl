@@ -190,7 +190,7 @@ input[type=text], input[type=url], input[type=date], input[type=time], select, t
 #teBar { display: none; }
 #vpBox { position: relative; }
 #vpStage.te-editing #vpTap { pointer-events: none; }
-#vpStage.full #teBar { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px 14px; position: absolute; left: 0; right: 0; top: 0; z-index: 4; padding: max(10px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) 26px max(14px, env(safe-area-inset-left)); background: linear-gradient(rgba(0,0,0,.82) 70%, transparent); }
+#vpStage.full #teBar { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px 14px; position: absolute; left: 0; right: 0; top: 0; z-index: 4; padding: max(10px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) 26px max(14px, var(--vp-l, env(safe-area-inset-left))); background: linear-gradient(rgba(0,0,0,.82) 70%, transparent); }
 #vpStage.full.idle:not(.te-editing) #teBar { opacity: 0; pointer-events: none; }
 #teBar .seg, #teBar .fld { margin: 0; flex-wrap: wrap; flex: 0 0 auto; } #teBar select { width: auto; min-height: 38px; } #teBar button { min-height: 38px; padding: 4px 10px; font-size: 14px; } #teBar #teTextFld { display: none; } #teBar:has([data-tool="text"][aria-pressed="true"]) #teTextFld { display: block; flex: 1 1 240px; } #teBar .fld label { color: #fff; }
 #vpStage.full #teBar button:not([data-col]), #vpStage.full #teBar select { background: rgba(255,255,255,.16); color: #fff; border: 1px solid rgba(255,255,255,.45); }
@@ -216,8 +216,8 @@ body:has(#vpStage.full) #vpCard { position: static !important; }
 html:has(#vpStage.full), body:has(#vpStage.full) { overflow: hidden !important; overscroll-behavior: none; }
 #vpStage.full { background: #000; position: fixed; top: 0; right: 0; bottom: 0; left: 0; width: auto; height: auto; margin: 0; z-index: 9999; border-radius: 0; }
 #vpStage.full .ytbox { position: absolute; inset: 0; max-height: none; width: 100%; height: 100%; aspect-ratio: auto; border-radius: 0; }
-#vpStage.full .ytbox iframe { border-radius: 0 !important; }
-#vpStage.full #vpBar { position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; padding: 28px max(14px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); background: linear-gradient(transparent, rgba(0,0,0,.75)); color: #fff; transition: opacity .2s; }
+#vpStage.full .ytbox iframe { border-radius: 0 !important; margin-left: calc(-1 * var(--vp-yt, 0px)); width: calc(100% + var(--vp-yt, 0px)) !important; }
+#vpStage.full #vpBar { position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; padding: 28px max(14px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(14px, var(--vp-l, env(safe-area-inset-left))); background: linear-gradient(transparent, rgba(0,0,0,.75)); color: #fff; transition: opacity .2s; }
 #vpStage.full #vpBar button { background: rgba(255,255,255,.16); color: #fff; border: 1px solid rgba(255,255,255,.45); }
 #vpStage.full.idle #vpBar { opacity: 0; pointer-events: none; }
 video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 12px; aspect-ratio: 16 / 9; display: block; }
@@ -1581,6 +1581,12 @@ body:has(#teDraw) .vpxrow { display: none; }
   function vpFit() {
     var st = $("vpStage"); if (!st) return;
     var vv = window.visualViewport;
+    // Chrome on iPhone already starts the page after the notch, yet still reports the notch as a safe-area inset (and the YouTube player pads for it too),
+    // which pushed the video and controls to the right. When the page is narrower than the screen by at least that inset, ignore it.
+    var pr0 = document.getElementById("vpProbe");
+    if (!pr0) { pr0 = document.createElement("div"); pr0.id = "vpProbe"; pr0.style.cssText = "position:fixed;left:0;top:0;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)"; document.body.appendChild(pr0); }
+    var L0 = parseFloat(getComputedStyle(pr0).paddingLeft) || 0, sw0 = Math.max(screen.width, screen.height), already = vpFullNow() && innerWidth > innerHeight && L0 > 0 && (sw0 - innerWidth) > L0 + 4;
+    st.style.setProperty("--vp-l", already ? "0px" : L0 + "px"); st.style.setProperty("--vp-yt", already ? L0 + "px" : "0px");
     if (!vpFullNow() || !vv) { st.style.left = st.style.top = st.style.width = st.style.height = st.style.right = st.style.bottom = ""; return; }
     st.style.right = "auto"; st.style.bottom = "auto";
     st.style.left = vv.offsetLeft + "px"; st.style.top = vv.offsetTop + "px"; st.style.width = vv.width + "px"; st.style.height = vv.height + "px";
@@ -1597,7 +1603,7 @@ body:has(#teDraw) .vpxrow { display: none; }
     if (!pr) { pr = document.createElement("div"); pr.id = "vpProbe"; pr.style.cssText = "position:fixed;left:0;top:0;visibility:hidden;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)"; document.body.appendChild(pr); }
     var cs = getComputedStyle(pr), vv = window.visualViewport || {}, r = st.getBoundingClientRect(), yb = st.querySelector(".ytbox, video"), yr = yb ? yb.getBoundingClientRect() : {left: 0, width: 0, top: 0, height: 0};
     var bar = document.getElementById("vpBar"), br = bar ? bar.getBoundingClientRect() : {left: 0, width: 0};
-    box.textContent = "build 25ea7a0b\ninner " + innerWidth + "x" + innerHeight + "  screen " + screen.width + "x" + screen.height + "\nvv " + Math.round(vv.width) + "x" + Math.round(vv.height) + " off " + Math.round(vv.offsetLeft) + "," + Math.round(vv.offsetTop) + " scale " + vv.scale + "\nscroll " + scrollX + "," + scrollY + "  docW " + document.documentElement.scrollWidth + "\nsafe T" + cs.paddingTop + " R" + cs.paddingRight + " B" + cs.paddingBottom + " L" + cs.paddingLeft + "\nstage " + Math.round(r.left) + "," + Math.round(r.top) + " " + Math.round(r.width) + "x" + Math.round(r.height) + "\nvideo " + Math.round(yr.left) + "," + Math.round(yr.top) + " " + Math.round(yr.width) + "x" + Math.round(yr.height) + "\nbar " + Math.round(br.left) + " w" + Math.round(br.width);
+    box.textContent = "build fix3\ninner " + innerWidth + "x" + innerHeight + "  screen " + screen.width + "x" + screen.height + "\nvv " + Math.round(vv.width) + "x" + Math.round(vv.height) + " off " + Math.round(vv.offsetLeft) + "," + Math.round(vv.offsetTop) + " scale " + vv.scale + "\nscroll " + scrollX + "," + scrollY + "  docW " + document.documentElement.scrollWidth + "\nsafe T" + cs.paddingTop + " R" + cs.paddingRight + " B" + cs.paddingBottom + " L" + cs.paddingLeft + "\nstage " + Math.round(r.left) + "," + Math.round(r.top) + " " + Math.round(r.width) + "x" + Math.round(r.height) + "\nvideo " + Math.round(yr.left) + "," + Math.round(yr.top) + " " + Math.round(yr.width) + "x" + Math.round(yr.height) + "\nbar " + Math.round(br.left) + " w" + Math.round(br.width) + "\nvp-l " + st.style.getPropertyValue("--vp-l") + " vp-yt " + st.style.getPropertyValue("--vp-yt");
     if (!vpDbgT) vpDbgT = setInterval(vpDbg, 500);
   }
   function vpFull(on) {
