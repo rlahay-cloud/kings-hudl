@@ -4141,7 +4141,11 @@ body:has(#teDraw) .vpxrow { display: none; }
         var t = c.tag;
         if ((c.lists || []).indexOf("Double check") >= 0) add("Flagged to double check: watch it, use another angle if you have one, and confirm what kind of mark it is", c, "flag");
         if (t === "Penalty" && !(c.players || []).length) add("Penalty on us has no player", c, "pick");
-        if ((t === "Penalty" || t === "Away Penalty") && c.until == null) add((t === "Penalty" ? "Penalty on us" : "Penalty on them") + " has no end time (the site guesses 2.5 minutes)", c, "noend");
+        if ((t === "Penalty" || t === "Away Penalty") && c.until == null) {
+          // a goal by the other team already ends a minor on its own, so only ask when nothing ends it
+          var pe0 = penEnd(R, c);
+          if (pe0 >= penStart(c) + ASSUME_PEN_SEC) add((t === "Penalty" ? "Penalty on us" : "Penalty on them") + " has no end time (the site guesses it ends at " + hms(pe0) + ", 2.5 minutes after it started)", c, "noend");
+        }
         if (t === "For: Goal" && !(c.players || []).length) add("Our goal has no scorer", c, "pick");
         if (t === "For: Goal" && !(c.ice || []).length) add("Our goal has no one on the ice picked (plus/minus)", c, "pick");
         if (t === "Against: Goal" && !(c.ice || []).length) add("Goal against has no one on the ice picked (plus/minus)", c, "pick");
@@ -4166,7 +4170,7 @@ body:has(#teDraw) .vpxrow { display: none; }
       return '<p class="note" style="margin:0 0 6px">Right now it is marked as <b>' + esc(geName(c.tag, it.date)) + '</b>. Use the camera buttons under the video to check another angle.</p><div class="seg"><button data-fx="clearflag">It is right, clear the flag</button></div><div class="fld" style="margin-top:8px"><label>Or change it to</label><select data-fx="newtag">' + RT.map(function (t) { return '<option value="' + esc(t) + '"' + (t === c.tag ? " selected" : "") + ">" + esc(geName(t, it.date)) + "</option>"; }).join("") + '</select></div><div class="seg"><button data-fx="retag">Change it and clear the flag</button></div>';
     }
     if (it.kind === "dup") return '<div class="seg"><button data-fx="deldup">Remove one of them</button></div>';
-    if (it.kind === "noend") return '<div class="fld"><label>Video time when the penalty ends (watch the clip)</label><input type="text" data-fx="end" placeholder="' + hms(c.sec + ASSUME_PEN_SEC) + '" value="' + hms(c.sec + ASSUME_PEN_SEC) + '" inputmode="numeric" style="max-width:140px"></div><div class="seg"><button data-fx="saveend">Save end time</button></div><p class="note" style="margin:6px 0 0">It starts with a 2.5 minute guess. Change it to the video time you see the penalty end.</p>';
+    if (it.kind === "noend") return '<div class="fld"><label>Video time when the penalty ends (watch the clip)</label><input type="text" data-fx="end" placeholder="' + hms(penEnd(allReview(it.date), c)) + '" value="' + hms(penEnd(allReview(it.date), c)) + '" inputmode="numeric" style="max-width:140px"></div><div class="seg"><button data-fx="saveend">Save end time</button></div><p class="note" style="margin:6px 0 0">It starts with a 2.5 minute guess. Change it to the video time you see the penalty end.</p>';
     if (it.kind === "nospot") return '<p class="note" style="margin:0 0 6px">Tap the rink where it happened.</p>' + FIX_RINK;
     return reviewPick(c, it.date);
   }
