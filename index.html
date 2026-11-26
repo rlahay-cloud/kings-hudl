@@ -4476,7 +4476,14 @@ body:has(#teDraw) .vpxrow { display: none; }
     });
     Array.prototype.forEach.call(document.querySelectorAll("#posChips button"), function (bt) { bt.addEventListener("click", function () { posFilter = bt.getAttribute("data-pos"); route(); }); });
     Array.prototype.forEach.call(document.querySelectorAll("th.sort"), function (th) {
-      th.addEventListener("click", function () { var k = th.getAttribute("data-k"); if (k === sortKey) sortDir = -sortDir; else { sortKey = k; sortDir = -1; } route(); });
+      th.addEventListener("click", function () {
+        var k = th.getAttribute("data-k"), box = th.closest(".scroll"), sl = box ? box.scrollLeft : 0, sy = window.scrollY;
+        if (k === sortKey) sortDir = -sortDir; else { sortKey = k; sortDir = -1; }
+        route();
+        // keep the table where it was (the page used to jump back to the left and to the top, hiding the column just sorted)
+        var nb = document.querySelector(".scroll"); if (nb) nb.scrollLeft = sl;
+        window.scrollTo(0, sy);
+      });
     });
     window.scrollTo(0, 0);
   }
