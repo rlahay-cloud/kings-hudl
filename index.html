@@ -157,6 +157,7 @@ iframe.gsteam { height: 1000px; } @media (max-width: 1100px) { iframe.gsteam { h
 .btn.alt { background: var(--panel2); color: var(--fg); border: 1px solid var(--line); }
 .banner { background: rgba(169,116,255,.16); border: 1px solid var(--accent); border-radius: 10px; padding: 10px 12px; margin: 14px 0; }
 .ev { display: flex; gap: 10px; align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.ev > .tm, .ev > .t { flex: none; min-width: 86px !important; }
 .ev a.t { font-family: var(--display); font-weight: 700; font-size: 18px; min-width: 70px; }
 .ev.goal .lb { color: var(--good); font-weight: 600; } .ev.pen .lb { color: var(--bad); }
 svg text { fill: var(--muted); font-family: var(--font); font-size: 11px; }
@@ -1316,6 +1317,13 @@ body:has(#teDraw) .vpxrow { display: none; }
     return h;
   }
   // One Highlights list per game: coach clips, the Streamn timestamps, and every Us goal marked in the Review screen (added automatically).
+  // PP / SH label for a goal row: look up the Game analysis goal at that time and see if a penalty was running
+  function rowSitPill(date, r) {
+    var rl = allReview(date), against = /against/i.test(r.tag), want = against ? "Against: Goal" : "For: Goal", best = null;
+    rl.forEach(function (c) { if (c.tag === want && Math.abs(c.sec - r.mark) <= 4 && (!best || Math.abs(c.sec - r.mark) < Math.abs(best.sec - r.mark))) best = c; });
+    var sit = best ? goalSit(rl, best) : "";
+    return sit ? '<span class="pill W" title="' + (sit === "PP" ? "Power play goal" : "Short handed goal") + '">' + sit + "</span> " : "";
+  }
   function highlightsBlock(g) {
     var url = D.videos[g.date] || lget(VK)[g.date] || "", ev = D.events[g.date] || [], clips = allClips(g.date);
     var gl = fmtDate(g.date) + " vs " + g.away, rows = [];
@@ -1348,7 +1356,7 @@ body:has(#teDraw) .vpxrow { display: none; }
     if (!rows.length) h += '<p class="note">No highlights yet. " + usN() + " goals show up here by themselves once they are marked in Coach’s Corner.</p>';
     h += rows.map(function (r) {
       var tl = timeBtn({date: g.date, game: gl, sec: r.sec, start: r.start, end: r.end, tag: r.tag, title: plainText("<b>" + r.tag + "</b>" + r.html)}, !!ytId(url));
-      return '<div class="ev ' + (r.goal ? "goal" : r.pen ? "pen" : "") + '">' + tl + '<span class="lb">' + (r.goal && rH === GM_N.H && rA === GM_N.A ? (/against/i.test(r.tag) ? goalChip(++sA, true) : goalChip(++sH, false)) : "") + "<b>" + esc(r.tag) + "</b>" + r.html + "</span></div>";
+      return '<div class="ev ' + (r.goal ? "goal" : r.pen ? "pen" : "") + '">' + tl + '<span class="lb">' + (r.goal && rH === GM_N.H && rA === GM_N.A ? (/against/i.test(r.tag) ? goalChip(++sA, true) : goalChip(++sH, false)) : "") + (r.goal ? rowSitPill(g.date, r) : "") + "<b>" + esc(r.tag) + "</b>" + r.html + "</span></div>";
     }).join("");
     return h + "</div>";
   }
