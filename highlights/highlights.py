@@ -247,73 +247,7 @@ def collect_all(files):
                     continue
                 add("clip", sec, end, name, main, [], None, lists, label=name)
     items.sort(key=lambda i: i["sec"])
-    mark_situations(items, files)
     return items
-
-
-ASSUME_PEN_SEC = 150  # same guess Kings Film Room uses for a penalty with no end time
-
-
-def _penalties(files):
-    """(who, start, until or None) for each penalty in the review: who is 'us' or 'them'."""
-    pens = []
-    for text in files.get("review", []):
-        for line in text.splitlines():
-            a = line.split("|")
-            if len(a) < 4:
-                continue
-            tag = a[1].strip()
-            if tag not in ("Penalty", "Away Penalty"):
-                continue
-            sec = hms(a[0])
-            if sec is None:
-                continue
-            ms = re.search(r",s(\d+)", a[3])
-            me = re.search(r",e(\d+)", a[3])
-            pens.append(("us" if tag == "Penalty" else "them", float(ms.group(1)) if ms else float(sec),
-                         float(me.group(1)) if me else None))
-    return pens
-
-
-def mark_situations(items, files):
-    """Set it['sit'] to PP (power play) or SH (short handed) for goals scored while a penalty was running, and say so in
-    the label. The same rules as the Film Room: a penalty with no end time lasts 2.5 minutes of video, or until the other
-    team scores, unless the other team also has a penalty running."""
-    pens = _penalties(files)
-    if not pens:
-        return
-    goals_for = [i["sec"] for i in items if i["kind"] == "goal"]
-    goals_against = [i["sec"] for i in items if is_goal_against(i)]
-
-    def end_of(p):
-        who, start, until = p
-        if until is not None:
-            return until
-        end = start + ASSUME_PEN_SEC
-        goals = goals_against if who == "us" else goals_for
-        for g in goals:
-            if g < start or g >= end:
-                continue
-            other = any(q[0] != who and q[1] <= g <= (q[2] if q[2] is not None else q[1] + ASSUME_PEN_SEC) for q in pens)
-            if not other:
-                end = g
-        return end
-
-    spans = [(p[0], p[1], end_of(p)) for p in pens]
-    for it in items:
-        scored_by = "us" if it["kind"] == "goal" else "them" if is_goal_against(it) else None
-        if not scored_by:
-            continue
-        us = sum(1 for w, a, b in spans if w == "us" and a <= it["sec"] <= b)
-        th = sum(1 for w, a, b in spans if w == "them" and a <= it["sec"] <= b)
-        if scored_by == "us":
-            sit = "PP" if th > us else "SH" if us > th else None
-        else:
-            sit = "PP" if us > th else "SH" if th > us else None
-        if sit:
-            it["sit"] = sit
-            if it["kind"] == "goal":
-                it["label"] += " PP" if sit == "PP" else " SH"
 
 
 def collect(files):
@@ -371,10 +305,7 @@ def caption_for(it, roster):
             sub = "Unassisted"
     num = it.get("num")
     if it["kind"] == "goal" or it["kind"] == "save" or num:
-        tag = it.get("tag") or "Highlight"
-        if it["kind"] == "goal" and it.get("sit"):
-            tag = "Power Play Goal" if it["sit"] == "PP" else "Short Handed Goal"
-        return tag, num, (nm(num) if num else None), sub
+        return it.get("tag") or "Highlight", num, (nm(num) if num else None), sub
     return "Highlight", None, it.get("tag") or "Highlight", sub
 
 
