@@ -45,7 +45,7 @@
 0:38:04|For: Goal|97 a72 a11 i19 i72 i11 i13|0.907,0.601,2,f
 0:38:32|Faceoff: NZ Win|97|,,2,f
 0:39:25|For: Shot on goal|13|0.891,0.384,2,f
-0:39:28|Away Penalty||,,2,f,s2399
+0:39:28|Away Penalty||,,2,f,s2399,e2439
 0:40:17|Faceoff: OZ Win|17|,,2,f
 0:40:31|For: Shot on goal|86|0.793,0.700,2,f
 0:40:33|For: Goal|17 a86 i18 i88 i14|0.920,0.461,2,f
