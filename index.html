@@ -242,7 +242,7 @@ video, .ytbox { width: 100%; max-height: 60vh; background: #000; border-radius: 
 .rvbtns:not(.three) > .rvb:last-child:nth-child(odd) { grid-column: 1 / -1; }
 @media (max-width: 560px) { .rvbtns:has(#rvPenBtn) { grid-template-columns: 1fr; } .seg > #rvUndo, .seg > #rvClear { flex: 1 1 100%; } }
 .cntbar { display: grid; gap: 2px; margin-bottom: 8px; font-variant-numeric: tabular-nums; } .cntbar b { font-family: var(--display); letter-spacing: .06em; text-transform: uppercase; margin-right: 6px; }
-.rinkwrap svg text.gnum { fill: #fff; font-size: 4px; font-family: var(--display); font-weight: 800; } .rinkwrap.full svg { cursor: crosshair; } .rinkwrap svg text.zl { font-size: 4.2px; fill: #46556e; opacity: .7; letter-spacing: .3px; } .rinkwrap svg text.cn { font-size: 4.6px; font-weight: 700; fill: #1b2a44; }
+.rinkwrap svg text.gsit { fill: #111; stroke: #fff; stroke-width: .9px; paint-order: stroke; font: 800 3.4px var(--display); letter-spacing: .1px; } .rinkwrap svg text.gnum { fill: #fff; font-size: 4px; font-family: var(--display); font-weight: 800; } .rinkwrap.full svg { cursor: crosshair; } .rinkwrap svg text.zl { font-size: 4.2px; fill: #46556e; opacity: .7; letter-spacing: .3px; } .rinkwrap svg text.cn { font-size: 4.6px; font-weight: 700; fill: #1b2a44; }
 .rvbtns.three { grid-template-columns: repeat(3, 1fr); }
 .rvz { min-height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel2); color: var(--fg); font-family: var(--display); font-weight: 700; font-size: 18px; letter-spacing: .06em; }
 .rvz[aria-pressed="true"] { background: rgba(180,192,214,.22); border-color: var(--c); box-shadow: inset 0 0 0 1px var(--c); }
@@ -1270,15 +1270,16 @@ body:has(#teDraw) .vpxrow { display: none; }
     GM_N = {H: 0, A: 0};
     gl.forEach(function (o) { o.p.gn = ++GM_N[o.p.t === "A" ? "A" : "H"]; });
     pts.forEach(function (p) {
-      var x = (p.x * 200).toFixed(1), y = (p.y * 85).toFixed(1), them = p.t === "A", tap = p.sec != null;
+      var x = (p.x * 200).toFixed(1), y = (p.y * 85).toFixed(1), them = p.t === "A", tap = p.sec != null, sitW = p.r === "G" && p.sit === "PP" ? "power play " : p.r === "G" && p.sit === "SH" ? "short handed " : "";
       cnt[p.t].sog++; if (p.r === "G") cnt[p.t].g++;
       if (tap) {
         var who = them ? themN(g.date) : usN();
-        GMITEMS.push({date: g.date, game: fmtDate(g.date) + (oppFor(g.date) ? " vs " + oppFor(g.date) : ""), sec: p.sec, start: Math.max(0, p.sec - LEAD), end: p.sec + TAIL, mark: p.sec, tag: p.r === "G" ? (them ? "Goal against" : "Goal") : "Shot on goal", disp: who + (p.r === "G" ? " goal" : " shot on goal"), players: p.n != null ? [p.n] : [], s0: p});
-        m += '<g data-gk="' + (GMITEMS.length - 1) + '" style="cursor:pointer"><title>' + (p.r === "G" ? "Goal " + p.gn + ", " : "") + esc(who) + (p.r === "G" ? " goal" : " shot on goal") + ', tap to watch</title><circle cx="' + x + '" cy="' + y + '" r="4.6" fill="transparent"/>';
+        GMITEMS.push({date: g.date, game: fmtDate(g.date) + (oppFor(g.date) ? " vs " + oppFor(g.date) : ""), sec: p.sec, start: Math.max(0, p.sec - LEAD), end: p.sec + TAIL, mark: p.sec, tag: p.r === "G" ? (them ? "Goal against" : "Goal") : "Shot on goal", disp: who + (p.r === "G" ? " " + sitW + "goal" : " shot on goal"), players: p.n != null ? [p.n] : [], s0: p});
+        m += '<g data-gk="' + (GMITEMS.length - 1) + '" style="cursor:pointer"><title>' + (p.r === "G" ? "Goal " + p.gn + ", " : "") + esc(who) + (p.r === "G" ? " " + sitW + "goal" : " shot on goal") + ', tap to watch</title><circle cx="' + x + '" cy="' + y + '" r="4.6" fill="transparent"/>';
       }
       if (p.r === "G") m += '<circle cx="' + x + '" cy="' + y + '" r="3.3" fill="' + (them ? "#c8232c" : "#6d28d9") + '" stroke="#fff" stroke-width=".7"/>' +
-        '<text x="' + x + '" y="' + (+y + 1.4) + '" text-anchor="middle" class="gnum" font-weight="800" style="pointer-events:none">' + p.gn + "</text>";
+        '<text x="' + x + '" y="' + (+y + 1.4) + '" text-anchor="middle" class="gnum" font-weight="800" style="pointer-events:none">' + p.gn + "</text>" +
+        (sitW ? '<text x="' + x + '" y="' + (y > 9 ? +y - 4.6 : +y + 7.2) + '" text-anchor="middle" class="gsit" style="pointer-events:none">' + (p.sit === "PP" ? "PP" : "SH") + "</text>" : "");
       else m += '<circle cx="' + x + '" cy="' + y + '" r="2.1" fill="none" stroke="' + (them ? "#e5484d" : "#1e5fd0") + '" stroke-width="1"' + (them ? ' stroke-dasharray="1.2 .8"' : "") + "/>";
       if (tap) m += "</g>";
     });
@@ -1289,7 +1290,7 @@ body:has(#teDraw) .vpxrow { display: none; }
     var tally = '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px;font-weight:700"><span>' + esc(g.away) + ' <span class="mut">' + cnt.A.sog + " SOG, " + cnt.A.g + ' G</span></span><span>' + esc(usN()) + ' <span class="mut">' + cnt.H.sog + " SOG, " + cnt.H.g + " G</span></span></div>";
     return "<h2>Shot map<small><a href='#/shots'>all games and filters</a></small></h2><div class='card'>" + tally + rink +
       '<div class="leg"><span><i style="background:#6d28d9;border-radius:50%"></i>' + esc(usN()) + ' goal</span><span><i style="background:#c8232c;border-radius:50%"></i>Opponent goal</span><span><i style="border:2px solid #1e5fd0;border-radius:50%"></i>' + esc(usN()) + ' shot on goal</span><span><i style="border:2px dashed #e5484d;border-radius:50%"></i>Opponent shot on goal</span></div>' +
-      '<p class="note">We attack the net on the right. Only shots on goal and goals are shown. The numbers are the order the goals were scored. Tap a shot to watch its clip.</p></div>';
+      '<p class="note">We attack the net on the right. Only shots on goal and goals are shown. The numbers are the order the goals were scored. PP marks a power play goal and SH a short handed goal. Tap a shot to watch its clip.</p></div>';
   }
   function vGame(id) {
     var g = D.games.filter(function (x) { return x.id === id; })[0];
