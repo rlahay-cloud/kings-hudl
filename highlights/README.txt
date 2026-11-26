@@ -22,3 +22,6 @@ in Documents\KingsHighlights\clips_DATE, with a clips.json list. Running it agai
 
 Vertical version: tick "Also make a tall version" for a phone-shaped copy saved next to the main video (name ends in _vertical). Say which side of the picture the Kings attack in period 1, then use "Check the framing..." to slide the box over the action for any clip that is off.
 Cutting uses the graphics card automatically when it can, and the processor otherwise.
+
+Power play and short handed goals
+If a goal was scored while a penalty was running (from the penalties you marked in the Film Room), the picture caption says POWER PLAY GOAL or SHORT HANDED GOAL, and the pick list shows PP or SH after the goal.
